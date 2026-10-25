@@ -1,4 +1,4 @@
-# Non-LLM recall belt — hard-50
+# Non-LLM recall belt: hard-50
 
 **Goal:** hit ≥90% must-recall with BM25 / AST / LSP / Graphify / CodeRank only (no LLM).
 
@@ -15,10 +15,10 @@
 
 ## Verdict
 
-- **≥90% must-rec is solved without an LLM** — wide bidirectional + Graphify island + hot floor → **100%** must-recall on all 50.
+- **≥90% must-rec is solved without an LLM**: wide bidirectional + Graphify island + hot floor → **100%** must-recall on all 50.
 - Cost: precision collapses (~0.10) → hard-correct 0/50 (too much junk hot).
 - `recall_fuse` keeps perfect recall and **better ranking** (nDCG 0.91, must@10 0.85) by merging polytrace scores.
-- Next non-LLM lever for prec @ high rec: learned/listwise prune, hub fan-in prior, obligation paths — **not** another widen pass.
+- Next non-LLM lever for prec @ high rec: learned/listwise prune, hub fan-in prior, obligation paths, **not** another widen pass.
 
 Code: `packages/trace_lab/recall_belt.py`  
 Raw: `docs/superpowers/plans/verify-hard-recall-belt.json`

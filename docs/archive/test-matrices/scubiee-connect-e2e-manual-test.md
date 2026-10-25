@@ -1,4 +1,4 @@
-# Scubiee connect — MCP format research & manual E2E test
+# Scubiee connect: MCP format research & manual E2E test
 
 How `scubiee connect` writes MCP + rules for each AI coding tool, what was tested, and how to repeat on **macOS** (or Linux/Windows).
 
@@ -25,7 +25,7 @@ The lifecycle E2E script (`tests/_e2e_run_cmds.sh`) previously skipped `connect`
 ## Design (current Scubiee behavior)
 
 1. **`scubiee connect --<tool>`** writes **project-local MCP** under each enrolled repo (fan-out from registry).
-2. **Global user MCP** in `~/.cursor/mcp.json`, `~/.claude.json`, etc. is **removed** (legacy migration — project-local is canonical).
+2. **Global user MCP** in `~/.cursor/mcp.json`, `~/.claude.json`, etc. is **removed** (legacy migration, project-local is canonical).
 3. **GATE rules** go to repo paths (e.g. `.cursor/rules/scubiee.mdc`, `AGENTS.md`).
 4. **`CTX_REPO`** is pinned in project MCP env so the server knows which repo to serve.
 5. **`--dry-run`** prints JSON of what would be written without touching disk.
@@ -40,12 +40,12 @@ Paths below are **project-local** (under repo root) unless noted. Schema = what 
 
 | Tool | Project MCP file | Schema key | Shape |
 |------|------------------|------------|-------|
-| **Cursor** | `.cursor/mcp.json` | `mcpServers` | `{ command, args, env }` — [Cursor MCP docs](https://cursor.com/docs/mcp) |
-| **Claude Code** | `.mcp.json` | `mcpServers` | Same Claude-style stdio — [Claude Code MCP](https://code.claude.com/docs/en/mcp) |
-| **Codex** | `.codex/config.toml` | `[mcp_servers.scubiee]` | TOML: `command`, `args`, `env`, optional `cwd` — [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp.md) |
-| **OpenCode** | `opencode.json` | `mcp.scubiee` | `type: local`, `command: []`, **`environment`** (not `env`) — [OpenCode MCP](https://opencode.ai/docs/mcp-servers/) |
-| **Amp** | `.amp/settings.json` | `"amp.mcpServers"` | Dotted key at top level — [Amp MCP manual](https://ampcode.com/manual/mcp.md) |
-| **Pi** | `.mcp.json` | `mcpServers` | Claude-style; needs `pi-mcp-adapter` — [Pi MCP adapter](https://nicobailon-pi-mcp-adapter.mintlify.app/introduction) |
+| **Cursor** | `.cursor/mcp.json` | `mcpServers` | `{ command, args, env }`, [Cursor MCP docs](https://cursor.com/docs/mcp) |
+| **Claude Code** | `.mcp.json` | `mcpServers` | Same Claude-style stdio, [Claude Code MCP](https://code.claude.com/docs/en/mcp) |
+| **Codex** | `.codex/config.toml` | `[mcp_servers.scubiee]` | TOML: `command`, `args`, `env`, optional `cwd`, [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp.md) |
+| **OpenCode** | `opencode.json` | `mcp.scubiee` | `type: local`, `command: []`, **`environment`** (not `env`), [OpenCode MCP](https://opencode.ai/docs/mcp-servers/) |
+| **Amp** | `.amp/settings.json` | `"amp.mcpServers"` | Dotted key at top level, [Amp MCP manual](https://ampcode.com/manual/mcp.md) |
+| **Pi** | `.mcp.json` | `mcpServers` | Claude-style; needs `pi-mcp-adapter`, [Pi MCP adapter](https://nicobailon-pi-mcp-adapter.mintlify.app/introduction) |
 | **Continue** | `.continue/mcpServers/scubiee.yaml` | YAML list item | `name`, `command`, `args`, `env` |
 | **Zed** | `.zed/settings.json` | `context_servers` | `{ command, args, env }` |
 | **Kiro** | `.kiro/settings/mcp.json` | `mcpServers` | Claude-style |
@@ -63,18 +63,18 @@ Paths below are **project-local** (under repo root) unless noted. Schema = what 
 
 Cross-checked against official docs. Scubiee’s adapters match current public formats for:
 
-- **Cursor** — `mcpServers` + `command`/`args`/`env` in `.cursor/mcp.json` or `~/.cursor/mcp.json`
-- **Claude Code** — `.mcp.json` (project) or top-level `mcpServers` in `~/.claude.json` (user scope)
-- **Codex** — `[mcp_servers.name]` tables in TOML (underscore, not dot)
-- **OpenCode v1** — top-level `mcp.{name}` with `type: local`, `command` array, `environment`
-- **Pi** — standard `mcpServers`; adapter reads `.mcp.json` at project root
+- **Cursor**: `mcpServers` + `command`/`args`/`env` in `.cursor/mcp.json` or `~/.cursor/mcp.json`
+- **Claude Code**: `.mcp.json` (project) or top-level `mcpServers` in `~/.claude.json` (user scope)
+- **Codex**: `[mcp_servers.name]` tables in TOML (underscore, not dot)
+- **OpenCode v1**: top-level `mcp.{name}` with `type: local`, `command` array, `environment`
+- **Pi**: standard `mcpServers`; adapter reads `.mcp.json` at project root
 
 ### Known gaps / watch items
 
-1. **OpenCode v2** — newer docs use `mcp.servers.{name}` and `disabled` instead of `enabled`. Scubiee still emits **v1** shape (`mcp.scubiee`). Test with your OpenCode version on Mac; if MCP missing, we may need a v2 adapter or dual-write.
-2. **Pi global path** — Scubiee also documents `~/.pi/agent/mcp.json`; pi-mcp-adapter **prefers** project `.mcp.json`. Project-local connect (current behavior) is correct for Pi.
-3. **Codex transport** — newest Codex builds support nested `transport = { type = "stdio", ... }`. Scubiee uses flat `command`/`args`/`env` which remains valid per OpenAI docs.
-4. **IDE restart** — all hosts need reload/restart after MCP file changes (Cursor: Settings → MCP toggle or restart).
+1. **OpenCode v2**: newer docs use `mcp.servers.{name}` and `disabled` instead of `enabled`. Scubiee still emits **v1** shape (`mcp.scubiee`). Test with your OpenCode version on Mac; if MCP missing, we may need a v2 adapter or dual-write.
+2. **Pi global path**: Scubiee also documents `~/.pi/agent/mcp.json`; pi-mcp-adapter **prefers** project `.mcp.json`. Project-local connect (current behavior) is correct for Pi.
+3. **Codex transport**: newest Codex builds support nested `transport = { type = "stdio", ... }`. Scubiee uses flat `command`/`args`/`env` which remains valid per OpenAI docs.
+4. **IDE restart**: all hosts need reload/restart after MCP file changes (Cursor: Settings → MCP toggle or restart).
 
 ---
 
@@ -92,7 +92,7 @@ scubiee init .
 
 ---
 
-## Phase A — Dry-run (safe, no disk writes)
+## Phase A: Dry-run (safe, no disk writes)
 
 Run from repo root. Expect exit **0** and `"ok": true` for every tool.
 
@@ -116,7 +116,7 @@ for x in data:
 
 ---
 
-## Phase B — Real connect (one tool at a time)
+## Phase B: Real connect (one tool at a time)
 
 Pick tools you actually have installed. After each connect, **restart that app** and confirm Scubiee MCP appears.
 
@@ -174,12 +174,12 @@ pi                               # /mcp panel should list scubiee
 
 ---
 
-## Phase C — Verify MCP entry shape
+## Phase C: Verify MCP entry shape
 
 After real connect, spot-check one file per tool:
 
 ```bash
-# Cursor / Claude / Pi — JSON mcpServers
+# Cursor / Claude / Pi - JSON mcpServers
 python3 <<'PY'
 import json, pathlib
 for p in [".cursor/mcp.json", ".mcp.json"]:
@@ -191,7 +191,7 @@ for p in [".cursor/mcp.json", ".mcp.json"]:
         print(p, "OK", s["command"], s["args"][:2])
 PY
 
-# Codex — TOML
+# Codex - TOML
 grep -E '^(command|args|\[mcp_servers)' .codex/config.toml 2>/dev/null | head -10
 
 # OpenCode
@@ -208,7 +208,7 @@ print('opencode OK', e['command'][:3])
 
 ---
 
-## Phase D — Disconnect / reconnect
+## Phase D: Disconnect / reconnect
 
 ```bash
 scubiee disconnect --cursor
@@ -220,7 +220,7 @@ test -f .cursor/mcp.json && echo "cursor MCP restored OK"
 
 ---
 
-## Phase E — Connect after stop / wipe
+## Phase E: Connect after stop / wipe
 
 | Scenario | Command | Expect |
 |----------|---------|--------|
@@ -287,7 +287,7 @@ Paste your `tests/_connect_e2e_results.txt` or `_connect_dry_run.json` when repo
 
 **Question:** If `mcp.json` already has another server (e.g. Figma MCP), does `connect` / `disconnect` leave valid JSON and keep the other server?
 
-**Unit tests:** `tests/test_mcp_config_merge.py` — parametrized over **all 13 tools** with a mock `my-local-mcp` neighbor. Also refuses corrupt JSON (won't overwrite broken files). **19 tests pass.**
+**Unit tests:** `tests/test_mcp_config_merge.py`, parametrized over **all 13 tools** with a mock `my-local-mcp` neighbor. Also refuses corrupt JSON (won't overwrite broken files). **19 tests pass.**
 
 **Real CLI experiment:** `tests/_e2e_mcp_merge_experiment.py` seeds a **Figma-like** mock, then runs actual `scubiee connect` / `disconnect`:
 
@@ -303,6 +303,6 @@ python3 tests/_e2e_mcp_merge_experiment.py
 | OpenCode | `opencode.json` | both under `mcp` | `figma` only |
 | Codex | `.codex/config.toml` | both `[mcp_servers.*]` | Figma table kept, valid TOML |
 
-**Windows run (2026-08-30):** all four passed — no syntax/structure breakage.
+**Windows run (2026-08-30):** all four passed, no syntax/structure breakage.
 
-**Not covered in CLI experiment yet:** Copilot dual-path, Continue YAML, Zed, Amp dotted key — but unit tests cover all 13 slugs via `test_write_remove_roundtrip_preserves_other_servers`.
+**Not covered in CLI experiment yet:** Copilot dual-path, Continue YAML, Zed, Amp dotted key, but unit tests cover all 13 slugs via `test_write_remove_roundtrip_preserves_other_servers`.

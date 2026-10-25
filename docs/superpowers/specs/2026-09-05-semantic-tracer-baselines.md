@@ -1,6 +1,6 @@
-# Semantic tracer baselines (Phase 1 — frozen)
+# Semantic tracer baselines (Phase 1: frozen)
 
-Immutable bakeoff baselines — do not “improve” by silent rewrite:
+Immutable bakeoff baselines, do not “improve” by silent rewrite:
 
 | Arm | Role |
 |-----|------|

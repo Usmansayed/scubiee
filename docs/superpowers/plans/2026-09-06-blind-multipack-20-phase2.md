@@ -2,7 +2,7 @@
 
 Winner by pack must-symbol then must-file: **`semantic_tracer_fuse`** (tied recall with composite/hyb; tighter mean hot).
 
-Embed: **real CodeRank DML** batch=16 (3770 new + 1280 cached ≈ 5.2 min). NEW u01–u20.
+Embed: **real CodeRank DML** batch=16 (3770 new + 1280 cached ≈ 5.2 min). NEW u01, u20.
 
 Shared map seeds across arms. Score = coverage of independent must files/symbols in pack top15∪hot.
 

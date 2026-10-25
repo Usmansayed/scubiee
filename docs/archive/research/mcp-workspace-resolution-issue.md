@@ -2,7 +2,7 @@
 
 ## The Problem
 
-When Scubiee's MCP server starts, it needs to know **which repository** to serve. But the MCP process is spawned by the IDE — not by the user — and it doesn't always receive the correct workspace path.
+When Scubiee's MCP server starts, it needs to know **which repository** to serve. But the MCP process is spawned by the IDE, not by the user, and it doesn't always receive the correct workspace path.
 
 ### What happens:
 

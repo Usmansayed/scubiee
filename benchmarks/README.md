@@ -34,8 +34,8 @@ Details: [Claude Code results](claude-code.md) · [Kiro CLI results](kiro.md) ·
 
 ## Where the savings come from
 
-- **The harder the code is to find, the bigger the saving.** Easy, exact-name edits save 10–20%;
-  hard cross-module changes save 50–80%.
+- **The harder the code is to find, the bigger the saving.** Easy, exact-name edits save 10-20%;
+  hard cross-module changes save 50-80%.
 - **Fewer wasted searches.** Without Scubiee, agents search, read the wrong file, and search again.
   Scubiee hands back the right code and its callers in one or two calls.
 - **No runaway sessions.** Without Scubiee, one agent run passed 2.1M tokens on a single task.
@@ -58,7 +58,7 @@ Details: [Claude Code results](claude-code.md) · [Kiro CLI results](kiro.md) ·
 ## Limits
 
 - Internal benchmarks on one codebase, not a third-party evaluation.
-- 2–5 runs per task per arm. Agent cost varies run to run; the direction is consistent across
+- 2-5 runs per task per arm. Agent cost varies run to run; the direction is consistent across
   tasks, individual percentages are not tight estimates.
 - On trivial edits where the target is an exact, searchable name, the saving is small or zero.
 - Kiro credits and Claude Code tokens are different units; don't compare them with each other.

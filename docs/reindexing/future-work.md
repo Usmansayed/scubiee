@@ -1,4 +1,4 @@
-# Future work — Context Engine production backlog
+# Future work: Context Engine production backlog
 
 **Date:** 2026-08-18  
 **Worktree:** `.worktrees/production-certification`  
@@ -9,31 +9,31 @@ P0 items below were patched in this worktree (2026-08-18 reliability pass). Rema
 
 ---
 
-## P0 — must fix before any “production” claim
+## P0: must fix before any “production” claim
 
-### 1. Search queries become repo paths — **FIXED (this worktree)**
+### 1. Search queries become repo paths: **FIXED (this worktree)**
 
 CLI used to parse `search . "test query"` as query=`.` and path=`test query`, then `resolve_project` mkdir’d that folder. Now: directory-first heuristic; `write_id_file` requires an existing dir; nested folders inherit the parent id.json without writing a new one; HTTP client ignores non-directory `path` values.
 
-### 2. Project ID churn for one repo — **PARTIALLY FIXED**
+### 2. Project ID churn for one repo: **PARTIALLY FIXED**
 
 Nested non-git folders no longer mint a new `ce_…` or get their own `id.json`. Git worktree family still shares `git_common_dir` by design. Leftover stores under `~/.context-engine/projects/` from earlier runs still need a one-time cleanup.
 
-### 3. MCP status vs HTTP health contradiction — **FIXED (this worktree)**
+### 3. MCP status vs HTTP health contradiction: **FIXED (this worktree)**
 
 `status` now checks `/health` first. A slow `/v1/status` timeout can no longer report `healthy: true` and `unreachable` together.
 
-### 4. Engine uptime / idle stop vs MCP — **IMPROVED (this worktree)**
+### 4. Engine uptime / idle stop vs MCP: **IMPROVED (this worktree)**
 
-MCP `main()` and `_client_for` call `ensure_daemon(..., force_if_hung=True)`. Unix `stop_daemon` now SIGTERM then SIGKILL / killpg. Idle 120s and LaunchAgent KeepAlive are unchanged — still be careful on a MacBook (`CTX_WATCHDOG=0` / skip `ctx setup` for a first trial).
+MCP `main()` and `_client_for` call `ensure_daemon(..., force_if_hung=True)`. Unix `stop_daemon` now SIGTERM then SIGKILL / killpg. Idle 120s and LaunchAgent KeepAlive are unchanged, still be careful on a MacBook (`CTX_WATCHDOG=0` / skip `ctx setup` for a first trial).
 
 ---
 
-## P1 — correctness and operator trust
+## P1: correctness and operator trust
 
 ### 5. CLI `search` vs warm HTTP search
 
-With the engine down (or CLI local path), `ctx search` returned unrelated files and printed “large drift — NOT auto-reindexing”. `/v1/search` was correct after live upserts.
+With the engine down (or CLI local path), `ctx search` returned unrelated files and printed “large drift, NOT auto-reindexing”. `/v1/search` was correct after live upserts.
 
 - Align CLI with daemon when up; fail fast or label local fallback when down.
 
@@ -64,7 +64,7 @@ Uninstall succeeded while `:8765` kept serving.
 
 ---
 
-## P2 — indexing resilience (dump / replace / libraries)
+## P2: indexing resilience (dump / replace / libraries)
 
 Already skipped: `node_modules`, `.venv`, `venv`, `site-packages`, `dist`, `build`, `testdata/`, `.git`, `.cursor`, vendor, etc.
 
@@ -91,7 +91,7 @@ Skip lists are substring/dir-name based. Not skipped: `Lib/`, `vendor-copy/src`,
 
 ---
 
-## P3 — polish
+## P3: polish
 
 | Item | Notes |
 |------|--------|
@@ -99,7 +99,7 @@ Skip lists are substring/dir-name based. Not skipped: `Lib/`, `vendor-copy/src`,
 | Bare `ctx` | No default help beyond argparse error |
 | Large-drift warning spam | Every local search; scares people into `--force` |
 | pytest + logfire plugin | Need `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` on this machine |
-| Probe / chaos artifacts | `tests/ce_newfile_auto_index.py`, `tests/ce_live_index_beacon.py`, `tests/_chaos_run.py`, `tests/_chaos_output.jsonl` — delete or gitignore |
+| Probe / chaos artifacts | `tests/ce_newfile_auto_index.py`, `tests/ce_live_index_beacon.py`, `tests/_chaos_run.py`, `tests/_chaos_output.jsonl`, delete or gitignore |
 | Publish 0.2.4 | PyPI/npm not shipped; local editable only |
 | Parent checkout MCP | Must not point CE at the wrong worktree |
 | Dashboard Forget / pause | Built earlier; not re-certified end-to-end after chaos |
@@ -121,8 +121,8 @@ Skip lists are substring/dir-name based. Not skipped: `Lib/`, `vendor-copy/src`,
 2. Stable `project_id` (#2)  
 3. MCP health vs HTTP (#3) + engine ensure on use (#4)  
 4. CLI search parity (#5)  
-5. Init flags + doctor exit codes (#7–8)  
-6. Dump/replace operator path (#6, #10–12)  
+5. Init flags + doctor exit codes (#7-8)  
+6. Dump/replace operator path (#6, #10-12)  
 7. Polish + publish  
 
 **Do not treat this repo as production-ready until P0 is done.**

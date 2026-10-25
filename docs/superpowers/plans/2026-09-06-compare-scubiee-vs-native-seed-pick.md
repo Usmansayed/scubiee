@@ -1,4 +1,4 @@
-# Compare: Scubiee vs Native — seed-pick context collect
+# Compare: Scubiee vs Native: seed-pick context collect
 
 **Work prompt:** Improve map→pack seed selection (public packages/ defs, not empty cards / `_` helpers).
 
@@ -12,7 +12,7 @@
 ## Shared (correct) diagnosis
 
 1. `cli_map` fabricates empty-symbol `function` cards (`file:1-1`)
-2. `pick_suggested_seed` skips tests/docs only — not `_` / empty symbols
+2. `pick_suggested_seed` skips tests/docs only, not `_` / empty symbols
 3. `resolve_seed_node` empty symbol → earliest in-file function (`_root`, `_templates_dir`)
 4. Tests gap in `test_incremental_context_ladder.py`
 
@@ -31,4 +31,4 @@
 
 ## Efficiency note
 
-Self-reported chars: Native **lower** (~48k vs ~78k) despite more tool calls — Scubiee paid for map/pack/expand JSON. Fairer metric still: useful spans / facts, not raw chars.
+Self-reported chars: Native **lower** (~48k vs ~78k) despite more tool calls, Scubiee paid for map/pack/expand JSON. Fairer metric still: useful spans / facts, not raw chars.

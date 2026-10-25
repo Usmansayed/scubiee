@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `ctx dashboard` — a clean light localhost operator UI to manage admission, repos, missing/delete validation, indexes, health, runtime, storage, and graph.
+**Goal:** Ship `ctx dashboard`, a clean light localhost operator UI to manage admission, repos, missing/delete validation, indexes, health, runtime, storage, and graph.
 
 **Architecture:** A dedicated loopback HTTP process (uncommon private port + `/ce-dashboard`) serves static shadcn-like light UI and JSON APIs that wrap existing `repo_lifecycle`, registry/`project_id`, doctor/certify, sync_status, storage_policy, and load-only accel/runtime state. Presence validation separates Missing from true delete before Forget.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Bind `127.0.0.1` only; base path `/ce-dashboard`; private port range `49152–65535`.
+- Bind `127.0.0.1` only; base path `/ce-dashboard`; private port range `49152-65535`.
 - Light Apple/Google-like UI; shadcn-style components; no dark-theme redesign of the new shell.
 - Missing ≠ deleted; Forget requires validation + typed confirm.
 - Admission modes: `automatic` | `mcp_cli` (Manual); dashboard Settings must toggle them.
@@ -367,7 +367,7 @@ Plan complete and saved to `docs/superpowers/plans/2026-08-17-ce-operator-dashbo
 
 **Two execution options:**
 
-1. **Subagent-Driven (recommended)** — fresh subagent per task, review between tasks  
-2. **Inline Execution** — execute tasks in this session with checkpoints  
+1. **Subagent-Driven (recommended)**: fresh subagent per task, review between tasks  
+2. **Inline Execution**: execute tasks in this session with checkpoints  
 
 Which approach?

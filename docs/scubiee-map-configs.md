@@ -3,7 +3,7 @@
 > **Shipped surface (current product, v0.3.142+).** The design study below explored a
 > five-config set (`find` / `refs` / `open` / `around` / `outline`); an interim build
 > shipped four. What ships **now** in `pipeline.map_v3_server` is the distilled
-> **two-config** surface — `CONFIGS = ("find", "focus")`:
+> **two-config** surface, `CONFIGS = ("find", "focus")`:
 >
 > | Shipped config | Answers | Folds in |
 > |---|---|---|
@@ -42,8 +42,8 @@ This doc goes beyond counting tool calls. For each retrieval call it asks what t
 | R1 | **Locate code by concept**: "where does X happen?", with no names | 30.8% of SWE-chat first prompts have no file, symbol or error. Before its first edit the agent spends a median of 8 retrieval calls in our runs and 16 in TraceLab, pulling in a median of 63k chars (TraceLab). **[STR]** | File, symbol, line range | The first exploration phase of a session (before the first edit) is the biggest retrieval cost |
 | R2 | **See the matching lines, not a file list** | Grep was called in content mode 115 times and with `-n` (line numbers) 136 times, against 76 file-list calls. `-C` (context lines) 22 times. **[OBS]** | The matching line, its line number, a couple of lines around it | A file-list result forces a second call to see the lines |
 | R3 | **Read the enclosing code, not the matched chunk** | After a map, Reads were a median of 60 lines against a 24-line card span (2.5×). 97% were wider than the card, and only 53% fully contained it: the agent read mostly *after* the card (median +31 lines, p75 +115). **[OBS]** | The whole function or class the hit is in, plus a bit of what follows | Map's chunk boundary is the wrong unit. The agent guesses a range, often re-reads, or reads the whole file (59% of reads were whole files) |
-| R4 | **Find every occurrence of known names** (definitions, call sites, imports) | 51% of our greps were followed by another grep; 35.7% in TraceLab. 29% of greps reused names that had appeared in an earlier map result (56 of 191). When the first prompt names a symbol, the research share of the session doubles (median 0.62 vs about 0.30). **[STR]** | A complete list of occurrences, grouped by file, with one line each | Chains of 2–10 greps; 21.5% of them come back empty |
-| R5 | **Read several related pieces in a row** | In TraceLab, 52% of reads are followed by another read. SWE-chat sessions touch a median of 3 files, and 85% of multi-file sessions span more than one directory. **[STR]** | Several function bodies across files | One round-trip per file. Each extra model call re-reads about 35–40k tokens of context (our runs) |
+| R4 | **Find every occurrence of known names** (definitions, call sites, imports) | 51% of our greps were followed by another grep; 35.7% in TraceLab. 29% of greps reused names that had appeared in an earlier map result (56 of 191). When the first prompt names a symbol, the research share of the session doubles (median 0.62 vs about 0.30). **[STR]** | A complete list of occurrences, grouped by file, with one line each | Chains of 2-10 greps; 21.5% of them come back empty |
+| R5 | **Read several related pieces in a row** | In TraceLab, 52% of reads are followed by another read. SWE-chat sessions touch a median of 3 files, and 85% of multi-file sessions span more than one directory. **[STR]** | Several function bodies across files | One round-trip per file. Each extra model call re-reads about 35-40k tokens of context (our runs) |
 | R6 | **Get an overview of the layout** | List commands (`ls`, `find`, `tree`) are 10.4% of TraceLab retrieval, and 28% of them are followed by another listing. Reads in the first 20% of a session are larger (median 4.5k vs 3.1k chars). **[STR]** | Which files exist, and what each one contains | Repeated `ls`/`find`, then large reads early in the session just to understand the layout |
 | R7 | **Recover when a search finds nothing** | 44% of failed TraceLab greps are followed straight away by another grep. 21.5% of our greps and 44% of our globs came back empty. **[STR]** | Something to try next | Blind retries |
 | R8 | **Check something before editing**: does X exist, is it used elsewhere | 12 greps were followed directly by an Edit. Retrieval bursts after the first edit are tiny (median 1 call ours, 3 TraceLab). **[OBS]** | A count, and where the occurrences are | Usually cheap, but a broad pattern returns huge output |
@@ -81,7 +81,7 @@ There's one `map` tool with a `config` field. **There are at most five configs; 
 
 Exact literal or regex search stays with native Grep (3.2% of our calls), and change history stays with `git`. Neither is worth putting into map.
 
-### 2.1 `find` — locate by concept
+### 2.1 `find`: locate by concept
 
 ```json
 {"config": "find",
@@ -98,7 +98,7 @@ Exact literal or regex search stays with native Grep (3.2% of our calls), and ch
 Response:
 
 ```text
-confidence: high — "keywords tokens_saved, compare_queries match in packages/pipeline/token_meter.py"
+confidence: high - "keywords tokens_saved, compare_queries match in packages/pipeline/token_meter.py"
 1. packages/pipeline/token_meter.py:142-198  compare_queries()  [keyword+semantic]
    148:     tokens_saved = baseline.tokens - arm.tokens
    151:     pct_saved = ...
@@ -116,7 +116,7 @@ related tests: tests/test_token_meter.py::test_compare_queries_pct
 - **When nothing matches** (R7), it returns close identifiers that do exist, likely file names (which also replaces a fuzzy Glob), and a broader query to try. It never returns a bare empty list.
 - **Budget:** 4,000 chars by default (R9). Anything trimmed is reported as `+N more hits`.
 
-### 2.2 `refs` — every occurrence of known names
+### 2.2 `refs`: every occurrence of known names
 
 ```json
 {"config": "refs", "names": ["git_dirty_files"], "kind": "uses"}
@@ -131,7 +131,7 @@ related tests: tests/test_token_meter.py::test_compare_queries_pct
 Response:
 
 ```text
-git_dirty_files — 1 definition, 4 uses, 2 imports (7 total)
+git_dirty_files - 1 definition, 4 uses, 2 imports (7 total)
 def   packages/pipeline/freshness.py:105        def git_dirty_files(root: Path) -> list[str]:
 uses  packages/pipeline/sync_loop.py:212        dirty = git_dirty_files(root)
       packages/pipeline/freshness.py:188        files = git_dirty_files(repo)[:limit]
@@ -145,7 +145,7 @@ imports packages/pipeline/sync_loop.py:9        from pipeline.freshness import g
 - It is **complete, not ranked**: the agent asks for every occurrence before a rename or signature change. If the list is over budget, it says `showing 40 of 112` and gives the file distribution.
 - This replaces the post-map grep chains (51% of greps were followed by another grep).
 
-### 2.3 `open` — the right code for one or more targets
+### 2.3 `open`: the right code for one or more targets
 
 ```json
 {"config": "open",
@@ -164,7 +164,7 @@ imports packages/pipeline/sync_loop.py:9        from pipeline.freshness import g
 - A whole file is never sent by default. A file path with no symbol returns that file's `outline`.
 - Native `Read` still works for anything unusual. `open` exists because the agent can't know symbol boundaries and native Read can't batch.
 
-### 2.4 `around` — what's connected to a piece of code
+### 2.4 `around`: what's connected to a piece of code
 
 ```json
 {"config": "around", "target": "token_meter.py::compare_queries"}
@@ -179,7 +179,7 @@ imports packages/pipeline/sync_loop.py:9        from pipeline.freshness import g
 - Covers the "found the main function, now what surrounds it" step that today takes a grep and a read per hop.
 - Lowest priority of the five: `refs kind=uses` already answers "callers" for most needs.
 
-### 2.5 `outline` — what's here
+### 2.5 `outline`: what's here
 
 ```json
 {"config": "outline", "path": "packages/pipeline", "query": "freshness"}
@@ -223,7 +223,7 @@ Where the likely future needs would go:
 
 Measured cost model (this study): **tokens ≈ context size × number of model
 calls**, and the call count is the term that runs away. Every extra call
-re-reads the whole transcript — about 35–40k tokens in our runs — and keeps
+re-reads the whole transcript, about 35-40k tokens in our runs, and keeps
 paying it on every later turn. Returning a few thousand extra characters costs
 those characters once; forcing another call costs ~35k and compounds.
 
@@ -254,7 +254,7 @@ These need no decision from the agent:
 | Code before tests/docs | R1 | `scope=code` default; tests summarized in one line |
 | No-match recovery | R7 | Close identifiers, file names, a broader query; never an empty list |
 | Confidence + reason | R1, R3 | Decides whether `find` includes a body; tells the agent when to stop |
-| `next` names only tools that exist | — | Today's `next` field suggests `pack_context` even when that tool isn't available |
+| `next` names only tools that exist | - | Today's `next` field suggests `pack_context` even when that tool isn't available |
 | Slim result line | R9 | `loc`, `symbol`, match type (`keyword` / `semantic` / both), one line. Drop `file` (it's in `loc`), `rank`, `source`, `role` and telemetry |
 
 ---
@@ -262,7 +262,7 @@ These need no decision from the agent:
 ## 4. What the agent's instructions become
 
 ```text
-Scubiee map — pick the config by what you know:
+Scubiee map - pick the config by what you know:
 - No idea where it is ............... map find  (query + any names you know as keywords)
 - Know the names, need every place .. map refs  (names, kind=def|uses|imports)
 - Need the code of specific places .. map open  (targets; batch several in one call)
@@ -284,13 +284,13 @@ Take a typical locate → understand → edit task (median 3 files touched):
 | Step | Today (observed) | With configs |
 |---|---|---|
 | Locate | map (+ a retry after the first-call failure) | `find` (includes the top body) |
-| Read target | Read (always followed map, 33/33), often re-read | — |
-| Find uses / defs | 2–10 greps (median chain 2, p90 4) | 1 `refs` |
+| Read target | Read (always followed map, 33/33), often re-read | - |
+| Find uses / defs | 2-10 greps (median chain 2, p90 4) | 1 `refs` |
 | Read the other files | one Read per file (read → read 52%) | 1 `open` with several targets |
 | Check before editing | grep | the count is already in the `refs` result |
 | **Retrieval model calls** | **~8 median (ours), ~16 (TraceLab)** | **~3** |
 
-Each model call saved means about 35–40k tokens of context not re-read (our measurement). So going from about 8 to 3 retrieval calls is roughly 175–200k tokens on a typical task in our setup. That is a **[HYP]** until it's tested.
+Each model call saved means about 35-40k tokens of context not re-read (our measurement). So going from about 8 to 3 retrieval calls is roughly 175-200k tokens on a typical task in our setup. That is a **[HYP]** until it's tested.
 
 ---
 
@@ -321,7 +321,7 @@ Everything here sits in front of the engine routes that already exist in `server
 
 Prototype it in `scripts/claude_sdk_harness/mini_mcp_bridge.py`, which already proxies the engine and doesn't affect the shipped product.
 
-**Build order:** `find`, `refs` and `open` first. They cover R1–R5 and R7–R10, which account for most of the volume. Then `outline`, then `around`.
+**Build order:** `find`, `refs` and `open` first. They cover R1, R5 and R7, R10, which account for most of the volume. Then `outline`, then `around`.
 
 ---
 

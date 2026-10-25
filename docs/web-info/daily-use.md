@@ -142,7 +142,7 @@ scubiee dashboard --status
 scubiee dashboard stop
 ```
 
-Separate from engine port `8765`. Port is dynamic — use `--status` for the URL.
+Separate from engine port `8765`. Port is dynamic, use `--status` for the URL.
 
 ---
 

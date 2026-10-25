@@ -24,6 +24,6 @@ the "with" arm adds the Scubiee MCP server (`map` with `find` / `focus`) and its
 | Unify token estimate | 4.25 → **2.5** |
 
 - On the feature build, Scubiee also finished about **35% faster** (about 205 s vs 310 s).
-- The Scubiee runs on the integration task were tight (0.96–1.19 credits); the native runs were
+- The Scubiee runs on the integration task were tight (0.96-1.19 credits); the native runs were
   all above 4 credits.
 - Kiro used Scubiee in every run: the `map` tool replaced native searching rather than adding to it.

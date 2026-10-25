@@ -30,7 +30,7 @@ See also: [research-freshness.md](research-freshness.md).
 
 ## Warm server
 
-First load warns (~20–40s). Later queries reuse in-process model. After sync, engine rebinds.
+First load warns (~20-40s). Later queries reuse in-process model. After sync, engine rebinds.
 
 ```text
 CTX_FAST_ROOTS=src,lib,app,packages,testdata

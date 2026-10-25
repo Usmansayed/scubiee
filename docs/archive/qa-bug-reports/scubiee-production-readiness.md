@@ -1,50 +1,50 @@
-# Scubiee v0.3.140 — Production Readiness Report
+# Scubiee v0.3.140: Production Readiness Report
 
 Prepared for the production ship. Scope: finalize the map surface decision, baseline + fix the test
 suite, build + clean-install the package, and validate the installed MCP server end-to-end.
 
-## 1. Map surface decision — SHIP 4-config (find|focus|related|graph)
+## 1. Map surface decision: SHIP 4-config (find|focus|related|graph)
 The production contract (`pipeline/mcp_ship_check.py` `SHIP_CONFIGS`, `map_v3_server`
 SERVER_INSTRUCTIONS + schema enum + tool description, the live acceptance scripts, and the
 production_test files) is all built on the four Map V3 configs. The 2-config (find|focus)
 simplification was a research finding validated only on harness bridges, with a neutral-to-slight
-benefit — not worth rewriting the shipped contract on ship day. **Decision: ship 4-config; the
+benefit, not worth rewriting the shipped contract on ship day. **Decision: ship 4-config; the
 2-config change + the best 2-config rule (`k_2cfg_decomp`) are documented for a future release in
 `docs/scubiee-2config-future-release.md`.**
 
 ## 2. Test suite
 Env: dev run under Miniconda (py3.13, pytest 9) with `pythonpath=packages`, `-m "not integration"`.
 The `logfire` pytest plugin is disabled (`-p no:logfire`) because this dev env has a broken
-`opentelemetry` import — an environment issue, not a Scubiee bug.
+`opentelemetry` import, an environment issue, not a Scubiee bug.
 
 **Baseline:** 1681 passed / 30 failed / 14 skipped (98.3%).
-**After fixes (Miniconda):** 1687 passed / 24 failed — the 24 remaining are all tests that need the
+**After fixes (Miniconda):** 1687 passed / 24 failed, the 24 remaining are all tests that need the
 real embedder (`fastembed`), which Miniconda lacks.
 
-### All 30 original failures triaged — ZERO genuine product regressions
+### All 30 original failures triaged: ZERO genuine product regressions
 Two buckets:
 
 **(A) Stale tests from the Map V3 / v0.3.136 migration (product changed intentionally; assertions
 not updated). FIXED to the shipped contract:**
-- `test_package_install_entry` + `test_daemon_guardrails` — asserted `CTX_MCP_SURFACE=="phase"`;
+- `test_package_install_entry` + `test_daemon_guardrails`, asserted `CTX_MCP_SURFACE=="phase"`;
   that knob was retired in v0.3.136 (`scubiee connect` no longer writes it). → assert it is absent.
-- `test_mcp_permissions::...prune_classic_lab_sticky` — asserted `*:pack_context` is kept;
+- `test_mcp_permissions::...prune_classic_lab_sticky`: asserted `*:pack_context` is kept;
   pack_context is a retired Map V3 tool, so it is now pruned like the other classic/lab tools.
-- `test_mcp_reliability_locate_idle::...never_clobbers_higher` — asserted `server_entry`
+- `test_mcp_reliability_locate_idle::...never_clobbers_higher`: asserted `server_entry`
   `CTX_ENGINE_IDLE_S=="10"`; ships `"4800"` (deliberate 80-min resident to skip dense re-warm).
-- `test_lifecycle_ownership::test_attach_mcp_session_is_nonblocking` — tracked the legacy warm call
+- `test_lifecycle_ownership::test_attach_mcp_session_is_nonblocking`: tracked the legacy warm call
   path; default attach now routes through `RuntimeController.ensure`. Pinned the legacy path via
   `CTX_MCP_ATTACH_WARM=0` so the non-blocking contract is still asserted on the path it mocks.
-- `test_mcp_lifecycle_universal::...waits_for_embedder` — mock asserted the blocking warm sends
+- `test_mcp_lifecycle_universal::...waits_for_embedder`: mock asserted the blocking warm sends
   `wait/sync=True`; shipped code posts a non-waiting prewarm and derives readiness from the reply.
-- `test_auto_sessions_observability::...telemetry` — mocked `urllib.request.urlopen`, but the default
+- `test_auto_sessions_observability::...telemetry`: mocked `urllib.request.urlopen`, but the default
   transport is now `httpx`; pinned `CTX_ENGINE_HTTP_TRANSPORT=urllib` so the mock applies.
-- `test_open_preservation` `_FakeCE.search()` + `test_polytrace` — fake lacked the new `lean`
+- `test_open_preservation` `_FakeCE.search()` + `test_polytrace`, fake lacked the new `lean`
   kwarg (Map V3 lean-search optimization in `ce_service.search` / `/v1/search`). → added `lean`.
-- `test_production_scenarios::...certify_required_gate` — asserted certify check
+- `test_production_scenarios::...certify_required_gate`: asserted certify check
   `install_mcp_phase_env`; renamed to `install_mcp_launches_map_v3` in the migration.
 
-**(B) Environment gaps — not reproducible in production.** Miniconda lacks `fastembed` and has a
+**(B) Environment gaps, not reproducible in production.** Miniconda lacks `fastembed` and has a
 broken `huggingface_hub`/`importlib_metadata`. Validated these in a **clean venv built from the
 shipped wheel** (fastembed 0.8.1): the embedder/MLX/coderank/progress/hot-lane/cpu-path tests all
 pass there (**237 passed / 1 failed across the previously-failing modules**).
@@ -71,7 +71,7 @@ pass there (**237 passed / 1 failed across the previously-failing modules**).
   `CONFIGS=('find','focus','related','graph')`, `TOOLS=['map','gate','status']`, all 3 console
   entry-point exes resolve.
 
-## 4. Installed MCP server — end-to-end (the ship gate)
+## 4. Installed MCP server: end-to-end (the ship gate)
 `scripts/prod_mcp_e2e.py` drives the REAL installed `map_v3_server` over JSON-RPC via the uv-tool
 python (production interpreter) against the live engine. **13/13 PASS:**
 - initialize (serverInfo + instructions advertise find|focus|related|graph)

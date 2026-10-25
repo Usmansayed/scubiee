@@ -1,4 +1,4 @@
-# Scubiee / TraceMap — Top 5 Semantic Tracer Architectures & Experiments
+# Scubiee / TraceMap: Top 5 Semantic Tracer Architectures & Experiments
 
 ## Objective
 
@@ -16,7 +16,7 @@ The five architectures below are deliberately different. Implement them independ
 
 ---
 
-# Architecture 1 — Vector Candidate Proposal → Structural Verification
+# Architecture 1: Vector Candidate Proposal → Structural Verification
 
 ## Hypothesis
 
@@ -143,7 +143,7 @@ This architecture is valuable only if it increases must-recall on seed-hard boar
 
 ---
 
-# Architecture 2 — Semantic Frontier / Best-First Expansion
+# Architecture 2: Semantic Frontier / Best-First Expansion
 
 ## Hypothesis
 
@@ -216,19 +216,19 @@ logger.info()
 
 ## Fusion experiments
 
-### B1 — Additive
+### B1: Additive
 
 ```text
 final = structural + semantic
 ```
 
-### B2 — Multiplicative
+### B2: Multiplicative
 
 ```text
 final = structural × semantic
 ```
 
-### B3 — Gated
+### B3: Gated
 
 ```text
 semantic > threshold
@@ -236,7 +236,7 @@ AND
 structural > threshold
 ```
 
-### B4 — Learned
+### B4: Learned
 
 Feed all features to a small ranker such as:
 
@@ -270,7 +270,7 @@ We want higher must-recall and/or faster discovery of must-symbols with the same
 
 ---
 
-# Architecture 3 — Multi-View Semantic Representation
+# Architecture 3: Multi-View Semantic Representation
 
 ## Hypothesis
 
@@ -288,7 +288,7 @@ The vector system should represent these separately.
 
 ## Build multiple representations for every graph node
 
-### View 1 — Raw Code
+### View 1: Raw Code
 
 ```text
 function verifyJWT(token) {
@@ -296,7 +296,7 @@ function verifyJWT(token) {
 }
 ```
 
-### View 2 — Symbol Representation
+### View 2: Symbol Representation
 
 ```text
 Function:
@@ -309,7 +309,7 @@ Return:
 payload
 ```
 
-### View 3 — Behavior Representation
+### View 3: Behavior Representation
 
 ```text
 Purpose:
@@ -327,7 +327,7 @@ signature verification
 expiration check
 ```
 
-### View 4 — Data-flow Representation
+### View 4: Data-flow Representation
 
 ```text
 token
@@ -336,7 +336,7 @@ token
  → userId
 ```
 
-### View 5 — Graph-context Representation
+### View 5: Graph-context Representation
 
 ```text
 Called by:
@@ -422,7 +422,7 @@ Determine whether multi-view embeddings can discover relevant code that the exis
 
 ---
 
-# Architecture 4 — Semantic Trace State + Semantic Islands
+# Architecture 4: Semantic Trace State + Semantic Islands
 
 ## Hypothesis
 
@@ -558,7 +558,7 @@ Test whether dynamic trace-state embeddings recover relevant regions missed by:
 
 ---
 
-# Architecture 5 — Learned Semantic Heat / Information-Gain Tracer
+# Architecture 5: Learned Semantic Heat / Information-Gain Tracer
 
 ## Hypothesis
 
@@ -787,7 +787,7 @@ When the seed is already in the correct must-file, structural methods have a lar
 
 Therefore create two benchmark categories.
 
-## Category A — Seed-perfect
+## Category A: Seed-perfect
 
 Seed is already inside the important region.
 
@@ -798,7 +798,7 @@ Purpose:
 - measure ranking
 - measure unnecessary expansion
 
-## Category B — Seed-hard
+## Category B: Seed-hard
 
 Seed is relevant but structural tracing is known to miss at least one important must-symbol.
 

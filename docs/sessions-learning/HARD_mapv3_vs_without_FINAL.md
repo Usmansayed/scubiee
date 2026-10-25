@@ -1,4 +1,4 @@
-# Final hard dev tests: map_v3 (WITH) vs without (native) — post-fix, clean harness
+# Final hard dev tests: map_v3 (WITH) vs without (native): post-fix, clean harness
 
 This is the clean, post-fix confirmation round the user asked for: after fixing the
 three issues from the earlier map_v3 study (P-H2 grep-wander, P-H3 silent fuzzy focus,
@@ -22,11 +22,11 @@ $4/cell cost cap.
 | distinct_huge_change_strategy | **362,300 · 1/2** (map1 grep2 read4) | 1,757,816 · 1/2 (grep10.5 read13) |
 | **OVERALL** | **275,611 · 5/6** | **877,282 · 5/6** |
 
-## Verdict — map_v3 confirmed: same correctness, ~3.2x cheaper, no spirals
+## Verdict: map_v3 confirmed: same correctness, ~3.2x cheaper, no spirals
 
 1. **Equal correctness (5/6 each).** Both arms solved 2 of 3 tasks cleanly and both split
    1/2 on the hardest (the strategy task), where even map_v3 occasionally edits only one
-   of the two required files. So Scubiee is not a correctness unlock on these — a capable
+   of the two required files. So Scubiee is not a correctness unlock on these, a capable
    native agent can also get there.
 
 2. **map_v3 is ~3.2x cheaper overall (276k vs 877k mean)** and far more consistent. On
@@ -34,7 +34,7 @@ $4/cell cost cap.
    cost was a small fraction of native's even when both failed (362k vs 1.76M).
 
 3. **Native still spirals catastrophically on the hard seam.** On distinct_huge_change
-   native averaged 10.5 greps + 13 reads and hit 2.15M tokens on one cell (41 turns) — and
+   native averaged 10.5 greps + 13 reads and hit 2.15M tokens on one cell (41 turns), and
    that cell FAILED. map_v3's worst cell on the same task was 578k. The gap is the native
    grep-hunt through a call-graph contract that has no single greppable literal.
 
@@ -44,12 +44,12 @@ $4/cell cost cap.
    favorable and no fix regressed cost.
 
 ## Honest caveats
-- n=2; the strategy task is high-variance for BOTH arms (map_v3 147k–578k; native
-  1.37M–2.15M). The $4 cap truncates native's worst spirals, so native's true mean is
-  UNDER-stated — the real gap favors map_v3 more than 3.2x.
+- n=2; the strategy task is high-variance for BOTH arms (map_v3 147k, 578k; native
+  1.37M, 2.15M). The $4 cap truncates native's worst spirals, so native's true mean is
+  UNDER-stated, the real gap favors map_v3 more than 3.2x.
 - Both arms split 1/2 on distinct_huge_change_strategy. map_v3 is cheaper-when-wrong, not
   more-correct, on that one. A prompt tweak to make map_v3 reliably edit BOTH consumers on
-  the strategy seam is the remaining upside (not done — would need its own study).
+  the strategy seam is the remaining upside (not done, would need its own study).
 - The fixes (fuzzy-focus note, no-grep-wander) didn't have a clean before/after isolation
   this round; they're verified present + unit-tested, and nothing regressed. The headline
   win (cost at equal correctness) reproduces the earlier finding on a clean harness.

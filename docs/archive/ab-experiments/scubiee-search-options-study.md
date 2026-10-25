@@ -77,7 +77,7 @@ This is your query + comma-separated keywords idea, and it matches how agents al
 - Only 3 of 53 post-map greps re-searched a symbol map had returned.
 - Example: in the `dirty_files_cap` with-Scubiee run, after one map the agent ran 6 greps (`git_dirty_files\(`, `dirty_files|dirty\[:`, …), all of them looking for call sites.
 
-**Implication:** a `mode` for relations would let these follow-ups go through Scubiee in 1 call instead of chains of 2–10 greps (median chain 2, p90 4, max 10).
+**Implication:** a `mode` for relations would let these follow-ups go through Scubiee in 1 call instead of chains of 2-10 greps (median chain 2, p90 4, max 10).
 
 ### F3. A lot of search is wasted on empty or repeated results. [OBS]
 - 21.5% of greps returned nothing or almost nothing.
@@ -100,7 +100,7 @@ This is your query + comma-separated keywords idea, and it matches how agents al
 
 ### F5. Map's ranking is fine; what it returns alongside the right file is not. [OBS, n is small]
 - When the file the agent later edited appeared in the cards, it was **rank 1 every time (9 of 9)**.
-- But a median of 8 cards came back, and **50–60% of them were tests, docs or scripts**.
+- But a median of 8 cards came back, and **50-60% of them were tests, docs or scripts**.
 - The agent read the top card next in 21 of 33 responses and used the line range in 29 of 33.
 - The two biggest wasted reads in our v2/v3 runs were files map listed but that weren't part of the fix.
 
@@ -136,9 +136,9 @@ One tool (call it `search`, or keep the name `map`). Every argument is optional 
 |---|---|---|---|---|
 | `query` | str | Short intent in plain words ("where the savings summary is computed"). Drives the semantic signal. | F1: today's 21-word queries mix intent and names | required |
 | `keywords` | list[str], default `[]` | Exact identifiers or literals that must count in ranking (`["compare_queries","ArmResult","cache_read"]`). Matching is case-sensitive on identifiers. | F1: 51% of greps are keyword sets; agents already think this way | **P1** |
-| `keyword_weight` | float 0–1, default 0.6 | Balance between keyword and semantic signals. 0 = pure semantic, 1 = keyword hits first and semantic only breaks ties. One number, not a matrix. | F1; your request to weight keywords higher | **P1** |
+| `keyword_weight` | float 0-1, default 0.6 | Balance between keyword and semantic signals. 0 = pure semantic, 1 = keyword hits first and semantic only breaks ties. One number, not a matrix. | F1; your request to weight keywords higher | **P1** |
 | `mode` | `locate` (default) \| `definition` \| `usages` \| `importers` \| `related` | `locate` = where is X. `definition` = where are these keywords defined. `usages` = where they're called or referenced. `importers` = which files import this module/symbol. `related` = callers, callees and tests around one result. | F2: 26% of greps are definition/call-site/importer lookups, and they dominate after map | **P1** |
-| `scope` | `code` (default) \| `tests` \| `docs` \| `all` | Filters what kinds of files come back. | F5: 50–60% of cards are non-code | **P2** |
+| `scope` | `code` (default) \| `tests` \| `docs` \| `all` | Filters what kinds of files come back. | F5: 50-60% of cards are non-code | **P2** |
 | `paths` | list[glob], default all | Limits results to a subtree (`["packages/pipeline/**"]`). | F3: 44% of globs empty; agents use Glob to narrow scope by hand | P3 |
 | `queries` | list of {query, keywords, mode} | Several questions in one call, answered in one response. | F1: 15k multi-grep shell calls; serial calls cost a model round-trip each | P3 |
 | `k` | int, default 8 | Maximum number of results. | F7: never tuned, keep the default | keep |
@@ -173,7 +173,7 @@ Drop `file` (it's already in `loc`), `rank` (it's the position), `source` and `r
 search(query="where the token savings summary is computed",
        keywords=["tokens_saved","compare_queries"], detail="spans", budget_chars=4000)
 
-# Follow-up that used to be 3–6 greps
+# Follow-up that used to be 3-6 greps
 search(query="callers of the dirty files helper",
        keywords=["git_dirty_files"], mode="usages", detail="snippets")
 

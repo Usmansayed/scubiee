@@ -1,13 +1,13 @@
 # CBM + Context Engine hybrid (Option A)
 
 **Date:** 2026-08-11  
-**Status:** design approved — implemented (v1 facade + trial arm `cbm_ce`)  
+**Status:** design approved, implemented (v1 facade + trial arm `cbm_ce`)  
 **Upstream:** [DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) (local clone: `C:\Users\usman\Downloads\codebase-memory-mcp`)  
 **Related:** sealed nav / thrash work in `docs/superpowers/specs/2026-08-10-sealed-retrieval-nav-design.md`
 
 ## 1. Problem
 
-Context Engine’s soft search (CodeRankEmbed + FAISS) is strong at meaning locate but agents still thrash and burn tokens. CBM claims strong **graph** navigation (call paths, architecture, snippets) with far fewer tokens on structural questions, but its semantic path is a **bundled** Nomic embed compiled into C — not a plug for our stack.
+Context Engine’s soft search (CodeRankEmbed + FAISS) is strong at meaning locate but agents still thrash and burn tokens. CBM claims strong **graph** navigation (call paths, architecture, snippets) with far fewer tokens on structural questions, but its semantic path is a **bundled** Nomic embed compiled into C, not a plug for our stack.
 
 We want CBM’s graph behavior **plus** our embedding/vector stack, without a deep C fork.
 
@@ -86,10 +86,10 @@ Override host Grep/parallel defaults:
 Under context-engine (not inside the CBM clone as a submodule requirement):
 
 - `packages/hybrid_cbm/` (or `packages/pipeline/cbm_facade/`)
-  - `server.py` — FastMCP/stdio entry
-  - `proxy.py` — CBM stdio client
-  - `semantic.py` — CE search wiring
-  - `instructions.py` — short always-on card
+  - `server.py`: FastMCP/stdio entry
+  - `proxy.py`: CBM stdio client
+  - `semantic.py`: CE search wiring
+  - `instructions.py`: short always-on card
 - Trial wiring: new arm `cbm_ce` in `sdk_mcp_smoke.py` / `sdk_mcp_dev_trial.py`
 - Docs: this spec + short runbook note
 
@@ -109,7 +109,7 @@ CBM binary: install from release **or** build from local clone; path via `CBM_BI
 - Preflight: both indexes alive; soft search + one graph call.
 - Arms: `cbm_ce` vs `raw` (optional third: `ce_nav`).
 - Prompt: `thrash` (frontend profile), seal-locate, vault isolation.
-- Timeout: enough to finish (~15–20 min agent), not 5 min cancel.
+- Timeout: enough to finish (~15-20 min agent), not 5 min cancel.
 - KPIs: work_tokens, first_edit_step, pre/post_locate, seal_ok, work_complete, cross_arm_contamination=[].
 
 ## 7. Risks & mitigations
@@ -125,7 +125,7 @@ CBM binary: install from release **or** build from local clone; path via `CBM_BI
 ## 8. Implementation order
 
 1. Facade skeleton + CE `search` + `status`.
-2. CBM stdio proxy for 2–3 graph tools.
+2. CBM stdio proxy for 2-3 graph tools.
 3. Instructions + smoke tests.
 4. Trial arm `cbm_ce` + preflight.
 5. Small sealed rematch vs raw (and optional ce_nav).

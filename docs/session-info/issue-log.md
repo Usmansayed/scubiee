@@ -1,10 +1,10 @@
-# Issue log — how we worked and what we fixed
+# Issue log: how we worked and what we fixed
 
 Chronological enough to avoid repeating mistakes. Files are repo-relative.
 
 ---
 
-## Reliability (0.2.5–0.2.6, Windows worktree)
+## Reliability (0.2.5-0.2.6, Windows worktree)
 
 ### Search query treated as a repo path / mkdir pollution
 
@@ -38,13 +38,13 @@ Chronological enough to avoid repeating mistakes. Files are repo-relative.
 
 ---
 
-## Mac CoreML GPU (0.2.6–0.2.8)
+## Mac CoreML GPU (0.2.6-0.2.8)
 
 ### Dynamic shapes / E5RT / `runtime shape ({1,6,12,0})`
 
 **Symptom:** `ctx setup` died on CoreML.  
 **Cause:** Variable `batch_size=len(batch)` + CodeRank ONNX dynamic axes; CoreML hates rotary/attention with zeros.  
-**Approach:** `coreml_mac.py` — static `[batch, seq]`, pad embed batches to 20, `RequireStaticInputShapes=1`.  
+**Approach:** `coreml_mac.py`, static `[batch, seq]`, pad embed batches to 20, `RequireStaticInputShapes=1`.  
 **User:** refused `--profile cpu` as the product answer.
 
 ### Silent CPU fallback (`Unknown option: UseCPUAndGPU`)
@@ -61,7 +61,7 @@ CoreML remained too brittle. Mac agent shipped **MLX** CodeRank on Metal (`mlx_m
 
 ---
 
-## Mac MCP + daemon (0.2.11–0.2.13)
+## Mac MCP + daemon (0.2.11-0.2.13)
 
 ### `ModuleNotFoundError: pipeline` in Cursor MCP
 
@@ -100,7 +100,7 @@ CoreML remained too brittle. Mac agent shipped **MLX** CodeRank on Metal (`mlx_m
 
 ---
 
-## Windows install + DML (0.2.14–0.2.17)
+## Windows install + DML (0.2.14-0.2.17)
 
 ### Setup hung at 31% (pip PIPE deadlock)
 
@@ -128,7 +128,7 @@ CoreML remained too brittle. Mac agent shipped **MLX** CodeRank on Metal (`mlx_m
 **Symptom:** Setup OK; `ctx init` failed immediately (`[resources] index gate skipped` then hard fail).  
 **Cause:** `memory_budget.py` imported Unix-only stdlib `resource` at module level. Windows has no `resource`.  
 **Fix (0.2.17):** RSS via `psutil` first; `resource` only as Unix fallback.  
-**Verified:** `ctx init` on this worktree — 364 files, 2987 chunks, FastEmbed DML ~27 chunk/s, 100% Ready. `mlx_batch` in the log is bootstrap budget field names, not MLX backend.  
+**Verified:** `ctx init` on this worktree, 364 files, 2987 chunks, FastEmbed DML ~27 chunk/s, 100% Ready. `mlx_batch` in the log is bootstrap budget field names, not MLX backend.  
 **Files:** `packages/pipeline/memory_budget.py`, `tests/test_memory_budget.py`.  
 **PyPI:** https://pypi.org/project/scubiee/0.2.17/
 
@@ -138,7 +138,7 @@ Credential script quoting failed; twine waited for a password. Killed; retry upl
 
 ---
 
-## MCP locate honesty + recommendations (0.2.18, tree — not necessarily on PyPI yet)
+## MCP locate honesty + recommendations (0.2.18, tree: not necessarily on PyPI yet)
 
 ### Grep only searched `.py` even when glob said otherwise
 
@@ -161,7 +161,7 @@ Credential script quoting failed; twine waited for a password. Killed; retry upl
 
 ### Live reindex probe (this Windows session, CE MCP)
 
-Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw tokens immediately (live disk). `map` rank 1 on both unique symbols. Keeper incremental ~5.2s, 10 chunks upserted. Probe files removed. Hammering `map`/`locate` while measuring can delay sync (`locate_streak`) — poll grep/search, not locate, for timing tests.
+Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw tokens immediately (live disk). `map` rank 1 on both unique symbols. Keeper incremental ~5.2s, 10 chunks upserted. Probe files removed. Hammering `map`/`locate` while measuring can delay sync (`locate_streak`), poll grep/search, not locate, for timing tests.
 
 ### FP16-only embed weights (0.2.18, all OS/hardware)
 
@@ -178,7 +178,7 @@ Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw
 
 **Symptom:** `uv tool uninstall scubiee` → `Access is denied` on `...\Scripts`; partial delete → `failed to locate pyvenv.cfg`.  
 **Cause:** Cursor MCP keeps `python.exe` / `ctx-mcp` open under `%APPDATA%\uv\tools\scubiee`. `uv tool uninstall` deletes the whole venv including the interpreter; pip uninstall only removes the package.  
-**Fix:** Document one flow — `scubiee stop` (daemon + watchdog + uv-tool processes) → `scubiee wipe --all --yes --package` → reload Cursor → `uv tool uninstall` if needed. Emergency scripts: `scripts/repair-uv-scubiee.ps1`, `scripts/uninstall-uv-scubiee.ps1` when CLI broken.  
+**Fix:** Document one flow, `scubiee stop` (daemon + watchdog + uv-tool processes) → `scubiee wipe --all --yes --package` → reload Cursor → `uv tool uninstall` if needed. Emergency scripts: `scripts/repair-uv-scubiee.ps1`, `scripts/uninstall-uv-scubiee.ps1` when CLI broken.  
 **Files:** `process_control.py`, `wipe.py`, `__main__.py` (`stop`), `docs/web-info/uninstall-windows.md`.
 
 ### `scubiee setup` fails `No module named 'fastembed'` but `--repair` works
@@ -193,8 +193,8 @@ Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw
 ## Process mistakes (this Windows session)
 
 - Merged feature branch into `main` **and checked this worktree out to `main`**. User wanted Mac commits **on `feat/production-certification` in this worktree**. Undo: this worktree back on the feature branch; `main` force-updated to Mac tip `e59fb8a` (no merge commit).
-- Do not assume venv `~/.context-engine/venv` — user created **`~/scubiee`**.
-- Session-info logs were written at 0.2.13/0.2.14 and **not updated** through 0.2.15–0.2.18 until this entry. Always append here when we ship a setup/MCP fix.
+- Do not assume venv `~/.context-engine/venv`, user created **`~/scubiee`**.
+- Session-info logs were written at 0.2.13/0.2.14 and **not updated** through 0.2.15-0.2.18 until this entry. Always append here when we ship a setup/MCP fix.
 
 ---
 

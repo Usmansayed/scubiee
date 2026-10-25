@@ -1,23 +1,23 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-10T03:37:45.798513+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `complex_retrieval_pack` — complex pack/heatmap/session retrieval → single reasoning context file
+**Task:** `complex_retrieval_pack`, complex pack/heatmap/session retrieval → single reasoning context file
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Retrieval challenge — assemble a reasoning context pack (NO code changes)
+# Retrieval challenge - assemble a reasoning context pack (NO code changes)
 
 ## Mission
-You must retrieve enough multi-hop codebase context to answer a hard product question later —
+You must retrieve enough multi-hop codebase context to answer a hard product question later -
 but you will NOT implement anything. Your ONLY deliverable is one markdown file that stores
 all context needed for reasoning.
 
-## Hard question (do not answer in chat — put evidence in the file)
+## Hard question (do not answer in chat - put evidence in the file)
 Trace the Scubiee **incremental locate ladder + session isolation** end-to-end:
 1. How `map` picks / exposes a suggested seed for packing.
-2. How `pack_context` (lean / heatmap-first) is built — where the heatmap/locs come from and
+2. How `pack_context` (lean / heatmap-first) is built - where the heatmap/locs come from and
    what “no bodies by default” means in the response shape.
 3. How `expand_context` and `collect_hot_context` extend or hydrate that slice.
 4. How session identity is resolved for persisted locate/pack state, and what happens when
@@ -63,7 +63,7 @@ That file MUST contain:
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

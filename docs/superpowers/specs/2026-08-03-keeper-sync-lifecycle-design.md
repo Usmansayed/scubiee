@@ -5,7 +5,7 @@
 
 ## Problem
 
-Background sync must stay alive while a workspace session is open, stay cheap when nothing changed, and shut down cleanly when the user closes the app or switches working directory — with **one last lightweight check** so the index is not left knowingly stale.
+Background sync must stay alive while a workspace session is open, stay cheap when nothing changed, and shut down cleanly when the user closes the app or switches working directory, with **one last lightweight check** so the index is not left knowingly stale.
 
 A naive full freshness/reindex path previously walked `.venv-proof` / untracked junk and froze the host. The keeper must never do that.
 
@@ -47,7 +47,7 @@ A naive full freshness/reindex path previously walked `.venv-proof` / untracked 
    - Re-hash **indexed universe only** (mtime short-circuit; never whole-tree / venv)
    - Optionally include **newcomers under `meta.fast_roots`** (same as incremental discovery)
    - Compute `root_hash(current)` and compare to stored `root_hash`
-   - Return `{ clean: bool, root, stored_root, diff? }` — **no embed, no graphify** on clean
+   - Return `{ clean: bool, root, stored_root, diff? }`, **no embed, no graphify** on clean
 
 3. **`keeper_tick(repo)`**
    ```
@@ -91,11 +91,11 @@ process exit (atexit / KeyboardInterrupt / MCP shutdown):
 | `CTX_ALLOW_BG_FULL` | `0` | `0` |
 | `CTX_TRIGGER_WATCHER` | `1` | n/a |
 
-Implementation note: flip default **inside** MCP/`serve` start paths (set env if unset), rather than flipping the global sync_loop default for every import — keeps smoke scripts and CLI safe.
+Implementation note: flip default **inside** MCP/`serve` start paths (set env if unset), rather than flipping the global sync_loop default for every import, keeps smoke scripts and CLI safe.
 
 ### Safety invariants (hard)
 
-1. Root probe never descends into junk (`.venv*`, `site-packages`, `node_modules`, …) — reuse `is_junk_rel` / walk pruning.
+1. Root probe never descends into junk (`.venv*`, `site-packages`, `node_modules`, …), reuse `is_junk_rel` / walk pruning.
 2. Indexed-universe-only by default; newcomers only under configured `fast_roots`.
 3. `incremental_sync` still refuses `strategy=full` and oversized touch sets.
 4. Idle clean path does **not** load FastEmbed / DML.

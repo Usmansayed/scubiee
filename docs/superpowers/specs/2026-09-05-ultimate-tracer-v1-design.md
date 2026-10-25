@@ -1,7 +1,7 @@
 # Design: Ultimate Tracer v1
 
 **Date:** 2026-09-05  
-**Status:** approved — implementing  
+**Status:** approved, implementing  
 **Source:** `SCUBIEE_SEMANTIC_TRACER_RESEARCH.md` §34 + prior polytrace winner
 
 ## Goal

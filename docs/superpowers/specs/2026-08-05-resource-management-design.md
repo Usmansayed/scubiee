@@ -37,8 +37,8 @@ APIs:
 - `sample()` → metrics
 - `pressure()` → level
 - `budget(job="embed"|"index"|"sync"|"graph")` → `AdaptiveBudget(batch_size, pause_s, allow, workers)`
-- `wait_for_capacity(job, ...)` — block with backoff until `allow` or timeout
-- `run_job(job, fn)` — gate then execute
+- `wait_for_capacity(job, ...)`: block with backoff until `allow` or timeout
+- `run_job(job, fn)`: gate then execute
 - Context manager `throttle(job)` around batch loops
 
 Env overrides: `CTX_RM_DISABLE=1`, `CTX_RM_MAX_CPU`, `CTX_RM_MIN_FREE_RAM_MB`, `CTX_RM_POLL_MS`.
@@ -67,4 +67,4 @@ Prefs (optional): `resource_management` block in `prefs.json`.
 
 - Cross-process global lock across multiple MCP instances
 - NPU-specific kernels
-- OS-level process priority changes (nice) — optional later
+- OS-level process priority changes (nice), optional later

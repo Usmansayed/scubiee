@@ -1,4 +1,4 @@
-# NVIDIA Windows Laptop — Scubiee Validation Guide
+# NVIDIA Windows Laptop: Scubiee Validation Guide
 
 This document tells you exactly what to test on the NVIDIA-powered Windows laptop,
 why each test matters, how to run it, and how to fix any issues found.
@@ -148,7 +148,7 @@ ctx diagnose
 - Summary shows:
   - Acceleration: `cuda` (or `cpu` if CUDA fix pending)
   - Capabilities: `pass`
-  - Tests: `pass` (will show "skipped" since not in source repo — that's correct)
+  - Tests: `pass` (will show "skipped" since not in source repo, that's correct)
 - Log file saved with clickable `file:///` URL
 - Open the folder, share the JSON file
 

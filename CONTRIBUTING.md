@@ -1,6 +1,6 @@
 # Contributing to Scubiee
 
-Thanks for your interest in improving Scubiee — a local-first code-context engine and MCP server
+Thanks for your interest in improving Scubiee, a local-first code-context engine and MCP server
 for AI coding agents. Scubiee is maintained mainly by one person, and contributions of every size
 are welcome: bug fixes, docs, tests, and focused improvements.
 
@@ -10,7 +10,7 @@ Please follow the [code of conduct](CODE_OF_CONDUCT.md) in all project spaces.
 
 - **Search first.** Check [existing issues](https://github.com/Usmansayed/scubiee/issues) and
   [pull requests](https://github.com/Usmansayed/scubiee/pulls) to avoid duplicate work.
-- **Small changes can go straight to a PR** — typo and doc fixes, clear bug fixes, missing tests.
+- **Small changes can go straight to a PR**: typo and doc fixes, clear bug fixes, missing tests.
 - **Discuss bigger changes first.** For new features, changes to the MCP tool surface, or
   architectural changes (indexing, sync, retrieval, storage), open an issue describing the idea
   before writing a lot of code. It saves you from building something that can't be merged.
@@ -71,7 +71,7 @@ Requirements: **Python 3.11+**, [Git](https://git-scm.com/), and [uv](https://do
    ```
 
 3. Run the one-time machine setup. It detects your accelerator and downloads the embedding model
-   (~270 MB) — the only network step Scubiee needs:
+   (~270 MB). This is the only network step Scubiee needs:
 
    ```bash
    scubiee setup
@@ -89,8 +89,8 @@ The code lives under `packages/`:
 | Package | Role |
 |---|---|
 | `pipeline` | The product: CLI, MCP server, local HTTP engine, indexing, sync, embedder |
-| `conductor` | Retrieval fusion — graph + BM25 + dense into one ranked result |
-| `graphify` | The code graph — symbols, edges, near-duplicate detection (bundled; see [NOTICE](NOTICE)) |
+| `conductor` | Retrieval fusion: graph + BM25 + dense into one ranked result |
+| `graphify` | The code graph: symbols, edges, near-duplicate detection (bundled; see [NOTICE](NOTICE)) |
 | `trace_lab` | AST tracer and heatmap behind the cards `map find` / `focus` return |
 
 The authoritative MCP tool surface is `packages/pipeline/map_v3_server.py` (`map` with
@@ -130,7 +130,7 @@ Work on a focused branch with a descriptive name:
 A good pull request:
 
 - Has a clear purpose and a description of **what changed and why**.
-- Stays focused and reasonably small — one logical change per PR.
+- Stays focused and reasonably small (one logical change per PR).
 - Includes tests when it changes behavior or fixes a bug.
 - Updates docs when a command, flag, or the MCP surface changes.
 - Calls out breaking changes.
@@ -141,7 +141,7 @@ Commit subjects follow a scoped style, for example `fix(keeper): …`, `perf(war
 `docs(web-info): …`.
 
 The maintainer may ask for changes, defer a proposal, or decline a PR that doesn't fit the
-project's direction. That is never a judgment of you — thank you for contributing either way.
+project's direction. That is never a judgment of you. Thank you for contributing either way.
 
 ## Code quality
 
@@ -149,7 +149,7 @@ project's direction. That is never a judgment of you — thank you for contribut
 - Don't add dependencies unless they're clearly needed; discuss new ones in the issue first.
 - Keep existing behavior working. Gate risky new behavior behind an environment variable with a
   safe default (see the `CTX_*` conventions in [`docs/scubiee-overview.md`](docs/scubiee-overview.md)).
-- Scubiee runs on Windows, macOS, and Linux — avoid platform-specific assumptions where you can.
+- Scubiee runs on Windows, macOS, and Linux, so avoid platform-specific assumptions where you can.
 
 ## Releases
 

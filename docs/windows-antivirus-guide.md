@@ -59,5 +59,5 @@ scubiee engine stop
 scubiee engine start
 ```
 
-Then run `scubiee status` a few times — response time should be consistently
+Then run `scubiee status` a few times, response time should be consistently
 under 500ms without spikes.

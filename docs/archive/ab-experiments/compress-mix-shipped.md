@@ -3,13 +3,13 @@
 **Locked:** `CTX_COMPRESS=mix` · `CTX_COMPRESS_MAX_CHARS=512`  
 **Opt out:** `CTX_COMPRESS=off` (legacy char truncate)
 
-Do not ship size-ladder 300/350 as default — keep the normal 512 cap (speed is already fine @ seq=128/512).
+Do not ship size-ladder 300/350 as default, keep the normal 512 cap (speed is already fine @ seq=128/512).
 
 ## Which technique wins consistently?
 
 | Technique | Role | Soft / overall |
 |-----------|------|----------------|
-| **mix** | Card-labeled identity + importance/rare body fill | **Winner** — best soft R@5/MRR across bakeoffs |
+| **mix** | Card-labeled identity + importance/rare body fill | **Winner**, best soft R@5/MRR across bakeoffs |
 | budget_c | Fixed % + rare-idents | Strong hard; loses soft to mix |
 | card | Meta/intent only | Weaker soft than mix |
 | importance | Score-fill only | Trailed mix on soft expanded |

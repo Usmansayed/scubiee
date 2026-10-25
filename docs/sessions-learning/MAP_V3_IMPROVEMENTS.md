@@ -1,4 +1,4 @@
-# map_v3 improvement study — cutting API calls and tokens
+# map_v3 improvement study: cutting API calls and tokens
 
 A cell-by-cell study of the map_v3 sessions (and the broader 124-cell dataset) to find concrete
 ways to reduce API calls and save tokens. Analysis only; no Claude-token spend. Sources:

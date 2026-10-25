@@ -20,7 +20,7 @@ Scubiee must feel like “open the IDE and it just works”:
 |------|------------|------------------|-----------|
 | **MCP bridge** | `python -m pipeline.mcp_bridge` (Windows: `pythonw` + `windowsHide`) | IDE (Cursor, …) | IDE closes MCP |
 | **MCP worker** | `pipeline.mcp_locate` | Bridge (job w/ KILL_ON_JOB_CLOSE) | Bridge dies |
-| **Supervisor / watchdog** | `watchdog_loop` via `_boot_watchdog.pyw` / `_boot_supervisor.pyw` | OS (WMI / LaunchAgent / systemd / HKCU Run→pythonw) — **never MCP** | Logoff / explicit stop |
+| **Supervisor / watchdog** | `watchdog_loop` via `_boot_watchdog.pyw` / `_boot_supervisor.pyw` | OS (WMI / LaunchAgent / systemd / HKCU Run→pythonw), **never MCP** | Logoff / explicit stop |
 | **Engine** | HTTP server `:8765` | Supervisor child | Idle standby / stop / job close |
 
 **Invariant (Windows):** If the watchdog is parented by MCP, Cursor close → MCP dies → watchdog dies → job `KILL_ON_JOB_CLOSE` → **engine killed**. Orphan spawn exists to break that chain.
@@ -130,7 +130,7 @@ From MCP stdio transport spec + Python SDK + host bug trackers:
 | Event | Expected |
 |-------|----------|
 | MCP connect (repo enrolled) | Stdio tools advertised; **no** watchdog/engine spawn; **no mcp.json rewrite** |
-| Agent first `gate`/`status`/`map` | ≤1 supervisor, ≤1 engine; embedder ready (~1–4s DML cached); no console flashes |
+| Agent first `gate`/`status`/`map` | ≤1 supervisor, ≤1 engine; embedder ready (~1-4s DML cached); no console flashes |
 | Repeated tool calls | No extra engine/watchdog processes; ensure is cheap/idempotent (TTL) |
 | Second IDE same host | Coalesced MCP client; one engine |
 | MCP disconnect | Embedder demote ~10s; engine stop after ~120s debounce; RSS drops |
@@ -152,14 +152,14 @@ From MCP stdio transport spec + Python SDK + host bug trackers:
 | Demand | `desired_mode=run` **or** fresh start_request; stale request skipped | `lifecycle_runtime.engine_should_be_running`, `daemon.start_request_is_actionable` |
 | Disconnect | unregister → debounce 120s → `enter_standby(stop_engine=True)`; embedder demote ~10s | `lifecycle_runtime.apply_idle_policy`, `memory_governor.maybe_demote_idle` |
 | Silence | `CREATE_NO_WINDOW` on helpers; pythonw boot scripts; `windowsHide` on **new** Windows pins | `process_job.hidden_run`, `mcp_install.server_entry` |
-| Upgrade stamp in mcp.json | JSON patch only if `command` contains `scubiee-mcp` — pythonw pins are not rewritten | `mcp_hot_reload._patch_build_env_in_json` |
+| Upgrade stamp in mcp.json | JSON patch only if `command` contains `scubiee-mcp`, pythonw pins are not rewritten | `mcp_hot_reload._patch_build_env_in_json` |
 
 ## 9. Compatibility matrix (2026-09-12)
 
 | Environment | How verified | Result |
 |-------------|--------------|--------|
 | Windows 10/11 + installed `uv tool` 0.3.68 | Live process/log/pin snapshot; pythonw stdio pytest | Pin `needs_restore=False`; no watchdog spawn after 16:25; pythonw initialize round-trip **PASS** |
-| This Cursor workspace | `.cursor/mcp.json` is Figma-only | Scubiee MCP **not connected** — live reconnect/blink **not** re-observed here |
+| This Cursor workspace | `.cursor/mcp.json` is Figma-only | Scubiee MCP **not connected**, live reconnect/blink **not** re-observed here |
 | `claude-code-proxy` Cursor pin | File + restore classifier | Live pin is pythonw+bridge; last mcp.json write 16:25:42 (storm era); **not rewritten** by 0.3.68 install |
 | macOS LaunchAgent | `tests/test_lifecycle_runtime.py` plist/bootstrap mocks | Simulated **PASS**; no Mac host in this session |
 | Linux systemd/XDG | `test_linux_register_uses_xdg_autostart` | Simulated **PASS**; no Linux host |
@@ -168,5 +168,5 @@ From MCP stdio transport spec + Python SDK + host bug trackers:
 
 ## 10. Related docs
 
-- `docs/architecture/watchdog-root-causes.md` — diagnosed problems + evidence + verification log
-- `docs/superpowers/plans/2026-09-12-watchdog-lifecycle-hardening.md` — implementation plan
+- `docs/architecture/watchdog-root-causes.md`: diagnosed problems + evidence + verification log
+- `docs/superpowers/plans/2026-09-12-watchdog-lifecycle-hardening.md`: implementation plan

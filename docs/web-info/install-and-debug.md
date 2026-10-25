@@ -2,7 +2,7 @@
 
 Complete operator guide for **installing**, **upgrading**, and **fixing** Scubiee when something goes wrong.
 
-**Current release:** [scubiee 0.3.146](https://pypi.org/project/scubiee/0.3.146/) — live on PyPI (`uv tool install scubiee==0.3.146`).
+**Current release:** [scubiee 0.3.146](https://pypi.org/project/scubiee/0.3.146/), live on PyPI (`uv tool install scubiee==0.3.146`).
 
 **Detailed explanations:** [web-info complete fix guide](../../web-info/complete-fix-guide.md) · [how everything works](../../web-info/how-everything-works.md)
 
@@ -61,7 +61,7 @@ pip install -U scubiee==0.3.146
 scubiee setup --repair
 ```
 
-Prefer **uv tool install** on Windows — clearer upgrades and fewer PATH collisions.
+Prefer **uv tool install** on Windows, clearer upgrades and fewer PATH collisions.
 
 ### Verify
 
@@ -84,7 +84,7 @@ The MCP server key in `mcp.json` is **`scubiee`**.
 |------|---------|-------|--------|
 | Install | `uv tool install scubiee==0.3.146` | Machine | CLI + uv tool env |
 | Setup | `scubiee setup --repair` | Machine | ORT/FastEmbed extras, model, `~/.scubiee/accel.json` |
-| Init | `scubiee init .` | **This repo** | Index + `.scubiee/id.json` — **not** MCP |
+| Init | `scubiee init .` | **This repo** | Index + `.scubiee/id.json`, **not** MCP |
 | Connect | `scubiee connect --cursor` | IDE | MCP + agent rules |
 | Reload | IDE MCP refresh | Session | Agent can see the server |
 
@@ -116,7 +116,7 @@ After upgrade: **always** `setup --repair` if FastEmbed/ORT look missing, then *
 
 ## Debug map (symptom → fix)
 
-### 1) `uv tool install` → Access denied (os error 5) — Windows
+### 1) `uv tool install` → Access denied (os error 5): Windows
 
 **Symptom:**
 
@@ -139,7 +139,7 @@ scubiee connect --cursor
 
 `unlock-tool` disables MCP (so Cursor cannot respawn), stops lockers, and frees the tool directory (rename-aside if needed). Then reinstall.
 
-**Fix (CLI already broken — no `pipeline`):**
+**Fix (CLI already broken, no `pipeline`):**
 
 ```powershell
 # From a clone that has the scripts, or download them:

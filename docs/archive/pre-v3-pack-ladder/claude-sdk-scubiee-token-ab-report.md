@@ -1,4 +1,4 @@
-# Does Scubiee reduce token usage? — Claude Code SDK A/B benchmark
+# Does Scubiee reduce token usage?: Claude Code SDK A/B benchmark
 
 Model under test: **`claude-sonnet-5`** (Sonnet 5), driven through the
 **Claude Agent SDK** (`claude-agent-sdk` 0.2.161 → Claude Code CLI 2.1.283).
@@ -11,8 +11,8 @@ real per-model token accounting (`ResultMessage.model_usage`), not estimates.
 
 A new harness was built specifically for Claude Code via its SDK, reusing the
 architecture of the existing Kiro harness (`scripts/kiro_credit_harness.py` +
-`kiro_mcp_ab_dev_eval.py`) — snapshot → identical baseline → warm proof → live
-tool proof → run both arms → score → compare — but replacing that harness's
+`kiro_mcp_ab_dev_eval.py`), snapshot → identical baseline → warm proof → live
+tool proof → run both arms → score → compare, but replacing that harness's
 char/4 token *estimate* with the Claude SDK's *real* usage numbers.
 
 Files:
@@ -20,7 +20,7 @@ Files:
 | File | Role |
 |---|---|
 | `harness_core.py` | Auth, Scubiee stdio MCP config/env, isolated git snapshots, token accounting |
-| `harness_run.py` | `run_arm()` — drives `claude_agent_sdk.query`, captures usage + every tool call |
+| `harness_run.py` | `run_arm()`, drives `claude_agent_sdk.query`, captures usage + every tool call |
 | `harness_task.py` | The two benchmark scenarios, neutral prompts, and hidden pytest oracles |
 | `harness_preflight.py` | Static checks + zero-token Scubiee warm proof |
 | `run_harness.py` | Orchestrator + gates + comparison + report |
@@ -38,7 +38,7 @@ differences applied to the WITH arm are:
 `strict_mcp_config=True` guarantees the WITHOUT arm cannot see Scubiee even
 though the machine has a global Scubiee config. Scubiee's locate is pointed at
 the already-warm parent index (`CTX_REPO` = repo root, 7 869 chunks) so the
-snapshot needs no cold index build — the same technique the Kiro harness uses.
+snapshot needs no cold index build, the same technique the Kiro harness uses.
 
 **Token accounting.** For each run the harness sums `inputTokens`,
 `outputTokens`, `cacheReadInputTokens`, and `cacheCreationInputTokens` across
@@ -78,7 +78,7 @@ Scubiee MCP, rules visibility, and accurate token capture.
 conda env has a broken `opentelemetry` pytest plugin that crashes test
 collection; the oracle scorer runs with `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`.
 Also fixed: a binary `git archive` stream was being decoded as text
-(UnicodeDecodeError) — now read as bytes. These were harness bugs, not result
+(UnicodeDecodeError), now read as bytes. These were harness bugs, not result
 contamination; every reported run completed cleanly afterward.
 
 ---
@@ -87,30 +87,30 @@ contamination; every reported run completed cleanly afterward.
 
 Two scenarios, each a real coding change with a **hidden** deterministic pytest
 oracle the agent never sees. The prompts describe the *outcome and contract*
-but name **no tool, no search strategy, and no file path** — the agent decides
+but name **no tool, no search strategy, and no file path**, the agent decides
 how to find and change the code. The prompt is identical for both arms.
 
-**Scenario 1 — scoped (`packages/pipeline`, ~130 modules).** Add cache-aware
+**Scenario 1, scoped (`packages/pipeline`, ~130 modules).** Add cache-aware
 token accounting to the token-comparison module (`token_meter.py`, not named in
 the prompt): an optional `cached_tokens` field on the per-arm result dataclass,
 an `effective_tokens` property (`round((tokens-cached)+0.1*cached)`, clamped),
 `effective_saved`/`effective_pct_saved` on the comparison dataclass, and three
 new totals in the summary dict. Oracle: 7 tests.
 
-**Scenario 2 — broad (all of `packages/`, 11 packages).** Find the small
+**Scenario 2, broad (all of `packages/`, 11 packages).** Find the small
 text-density helper module (`seir/caps.py`, not named) and add a
 `truncate_middle(text, max_chars=DEFAULT_MAX_CHARS)` that keeps both ends and
 elides the middle to an exact length with a specified head/tail split. Oracle:
 6 tests. This scenario deliberately makes naive grep noisy ("truncate",
 "token", "chars" appear across many modules).
 
-Fairness: the Scubiee arm receives **no** extra task information — only the
+Fairness: the Scubiee arm receives **no** extra task information, only the
 Scubiee tooling and its standard GATE rules. Same prompt, same starting tree,
 same model, same permission mode (`acceptEdits`), WITHOUT run first each time.
 
 ---
 
-## 4. Baseline results (Run A — no Scubiee)
+## 4. Baseline results (Run A: no Scubiee)
 
 Per run, total tokens (real, all models), tool calls, success:
 
@@ -118,9 +118,9 @@ Per run, total tokens (real, all models), tool calls, success:
 |---|---|---:|---:|---:|---:|---|
 | 233502Z | 1 | 252,761 | 5,454 | 306,853 | 7 | 7/7 ✅ |
 | 234149Z | 1 | 251,564 | 4,792 | 231,270 | 7 | 7/7 ✅ |
-| 234440Z | 1 | 216,186 | — | — | 6 | 7/7 ✅ |
+| 234440Z | 1 | 216,186 | - | - | 6 | 7/7 ✅ |
 | 233940Z | 2 | 190,835 | 1,957 | 179,902 | 6 | 6/6 ✅ |
-| 234657Z | 2 | 161,671 | — | — | 5 | 6/6 ✅ |
+| 234657Z | 2 | 161,671 | - | - | 5 | 6/6 ✅ |
 
 Baseline behaviour was consistent: a precise `Grep` (e.g. `class.*Comparison|tokens_saved`,
 `def truncate\(`), one `Read`, one or two `Edit`s, and a `Bash` test run.
@@ -128,20 +128,20 @@ Baseline behaviour was consistent: a precise `Grep` (e.g. `class.*Comparison|tok
 
 ---
 
-## 5. Scubiee results (Run B — Scubiee enabled)
+## 5. Scubiee results (Run B: Scubiee enabled)
 
 | Run | Scenario | Total tokens | Output | Cache-read | Tool calls | Scubiee calls | Oracle |
 |---|---|---:|---:|---:|---:|---:|---|
 | 233502Z | 1 | 352,289 | 5,935 | 365,538 | 9 | **0** | 7/7 ✅ |
 | 234149Z | 1 | 402,339 | 6,284 | 372,865 | 12 | **4** (gate, map×2, status) | 7/7 ✅ |
-| 234440Z | 1 | 310,634 | — | — | 8 | **0** | 7/7 ✅ |
+| 234440Z | 1 | 310,634 | - | - | 8 | **0** | 7/7 ✅ |
 | 233940Z | 2 | 115,474 | 1,326 | 104,470 | 3 | **0** | 6/6 ✅ |
-| 234657Z | 2 | 177,716 | — | — | 5 | **0** | 6/6 ✅ |
+| 234657Z | 2 | 177,716 | - | - | 5 | **0** | 6/6 ✅ |
 
 **Scubiee-arm success: 5/5.** Critically, **the agent invoked Scubiee in only
 1 of 5 runs.** In that one run it called `gate` + `map`×2 + `status` (after a
 `ToolSearch`) and then **still ran `Grep` twice and `Read` to actually locate
-and verify the code** — Scubiee was used *in addition to* grep, not instead.
+and verify the code**, Scubiee was used *in addition to* grep, not instead.
 
 ---
 
@@ -167,7 +167,7 @@ Per run:
 
 ## 7. Percentage token change
 
-- **Aggregate: +26.6%** — the Scubiee arm used **26.6% MORE** tokens overall.
+- **Aggregate: +26.6%**: the Scubiee arm used **26.6% MORE** tokens overall.
 - Scenario 1 (scoped): mean **+47.7%** (n=3, range +39.4%…+59.9%).
 - Scenario 2 (broad): mean **−14.8%** (n=2, range −39.5%…+9.9%).
 - The Scubiee arm used **more** tokens in **4 of 5** runs.
@@ -175,7 +175,7 @@ Per run:
 The single "saving" (−39.5%, run 233940Z) did **not** come from Scubiee: the
 Scubiee arm never called Scubiee there and simply happened to converge in 3
 tool calls vs the baseline's 6. That is run-to-run exploration variance, not a
-Scubiee effect — the token total is dominated by `cache-read`, which scales
+Scubiee effect, the token total is dominated by `cache-read`, which scales
 with the number of turns (each turn re-sends prior context from cache).
 
 **No measured saving is attributable to Scubiee.**
@@ -212,7 +212,7 @@ with the number of turns (each turn re-sends prior context from cache).
   behavioural finding, but it means these tasks do **not** exercise Scubiee's
   intended value path (large, ambiguous, cross-module discovery).
 - **Internal Haiku usage:** every run also billed a small amount of
-  `claude-haiku-4-5` (~1.3–1.5k tokens) for Claude Code's internal bookkeeping.
+  `claude-haiku-4-5` (~1.3-1.5k tokens) for Claude Code's internal bookkeeping.
   It is included in the totals and is ~equal across arms, so it does not bias
   the comparison.
 - **Harness bugs found and fixed before trusting results:** (a) missing `os`
@@ -220,7 +220,7 @@ with the number of turns (each turn re-sends prior context from cache).
   the broken `opentelemetry` pytest plugin. Runs reported here all completed
   after these fixes; earlier crashed attempts were discarded.
 - **Variance is large** relative to any Scubiee signal: baseline totals ranged
-  161k–253k for the same tasks. With n=5 (1 Scubiee-active), this benchmark can
+  161k, 253k for the same tasks. With n=5 (1 Scubiee-active), this benchmark can
   say Scubiee did not *save* tokens here, but cannot precisely quantify a
   small effect in either direction.
 
@@ -228,7 +228,7 @@ with the number of turns (each turn re-sends prior context from cache).
 
 ## 10. Conclusion (strictly from measured results)
 
-**On this benchmark, Scubiee did not reduce token usage — it increased it by
+**On this benchmark, Scubiee did not reduce token usage, it increased it by
 ~26.6% in aggregate and in 4 of 5 runs, while task success was identical (5/5
 both arms).**
 
@@ -240,7 +240,7 @@ grep rather than replacing it, making that run the most expensive of all.
 
 Important scope limits on this conclusion:
 
-- It holds for **well-specified changes to a single, findable module** — the
+- It holds for **well-specified changes to a single, findable module**, the
   regime where grep is already cheap and effective. It is **not** evidence
   about Scubiee's behaviour on large, vague, cross-repo discovery tasks where
   reading many wrong files would dominate the baseline; those tasks were not

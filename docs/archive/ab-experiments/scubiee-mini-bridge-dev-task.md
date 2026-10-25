@@ -1,14 +1,14 @@
-# Mini MCP bridge (map/gate/status only) — one real dev task, WITHOUT vs mini
+# Mini MCP bridge (map/gate/status only): one real dev task, WITHOUT vs mini
 
 Run: `.ab_workspaces/claude_sdk_harness/20260930T193909Z_devmini/` (2 cells, n=1).
-Task: `cache_aware_savings` — one vague, human-sounding request (make the
+Task: `cache_aware_savings`, one vague, human-sounding request (make the
 token-savings comparison cache-aware), hidden name-agnostic oracle, gold file
 `packages/pipeline/token_meter.py`. The agent had to actually EDIT code.
 Model `claude-sonnet-5`, max 40 turns.
 
 ## The mini bridge
 
-`scripts/claude_sdk_harness/mini_mcp_bridge.py` — a standalone JSON-RPC-over-stdio
+`scripts/claude_sdk_harness/mini_mcp_bridge.py`: a standalone JSON-RPC-over-stdio
 MCP server that exposes exactly three tools and talks to the already-running
 Scubiee **engine** over its plain HTTP API (`/v1/search`, `/health`). It imports
 nothing from Scubiee's own `mcp_*` modules, so it does **not** touch main Scubiee
@@ -52,7 +52,7 @@ consistent with everything measured before.
 - **Fewer model calls: 19 vs 32.** Since cost ≈ context × calls, cutting 13
   round-trips is most of the saving. mini reached the fix in 24 turns; without
   took 32.
-- Total tool-result payload: without **67,685** chars vs mini **31,713** — the
+- Total tool-result payload: without **67,685** chars vs mini **31,713**, the
   ~2× payload ratio tracks the ~2× token ratio, exactly as the cache-read model
   predicts.
 
@@ -60,7 +60,7 @@ consistent with everything measured before.
 
 One map, query `"tokens saved retrieval benchmark grep baseline comparison
 summary"`, returned 12 cards with `token_meter.py` at rank 1 (score 29.9). The
-agent read that file's span and edited it. No second map, no disconnect — the
+agent read that file's span and edited it. No second map, no disconnect, the
 mini bridge's internal retry-once and single-repo scoping avoided the
 first-call failure the full bridge showed in every prior run.
 
@@ -72,7 +72,7 @@ first-call failure the full bridge showed in every prior run.
 2. **On a real edit task with a fair (full-repo) workspace, map roughly halved
    token cost** while matching correctness. The earlier "Scubiee costs more"
    results were dominated by (a) the packages-only snapshot confound and (b) the
-   first-call disconnect — both absent here.
+   first-call disconnect, both absent here.
 3. The saving is the same mechanism seen throughout: **fewer whole-file reads and
    fewer model round-trips**, not fewer greps (mini actually grepped more: 9 vs
    7).
@@ -91,7 +91,7 @@ first-call failure the full bridge showed in every prior run.
 
 ---
 
-## Consistency check — a SECOND, independent dev task
+## Consistency check: a SECOND, independent dev task
 
 Run: `.ab_workspaces/claude_sdk_harness/…_devmini_dirty_files_cap/` (2 cells, n=1).
 Different task, different module, different oracle, so the mini arm cannot be
@@ -102,7 +102,7 @@ Different task, different module, different oracle, so the mini arm cannot be
   from the same baseline commit, `git reset --hard` + `clean -fd` before the run
   and `rmtree` after. The arms never share a directory, so the second arm cannot
   see or copy the first arm's edits.
-- Task 1 baseline sha `084451a…`; task 2 baseline sha `3ba9743…` — different
+- Task 1 baseline sha `084451a…`; task 2 baseline sha `3ba9743…`, different
   trees (task 2's baseline is a fresh snapshot), confirming a clean, separate run.
 - Both arms start from the identical baseline; the ONLY difference between arms is
   native-only vs native+mini-bridge (+ the two_layer_v2 rule).
@@ -130,13 +130,13 @@ unmodified tree (2 of 3 checks fail on baseline).
 | dirty_files_cap (freshness) | 610,091 | 354,847 | **−42%** | ✅ |
 
 The direction and rough magnitude repeat on a completely separate task:
-**mini cuts tokens 40–50% and matches correctness.** The mechanism repeats too:
+**mini cuts tokens 40-50% and matches correctness.** The mechanism repeats too:
 - **Fewer model round-trips** (task2: 11 vs 18; task1: 19 vs 32). This is the
   dominant term since cost ≈ context × calls.
 - **Less native flailing.** In task2 the without arm ran **13 greps** (13,934
   chars of grep output) to find `freshness.py`; mini used **1 map** (3,565 chars)
   + 6 greps and got there in fewer turns. Grep count is again *higher or equal*
-  on the winning arm's cheaper runs is not the driver — round-trips and total
+  on the winning arm's cheaper runs is not the driver, round-trips and total
   carried context are.
 - **Smaller total payload** (task2: 12,711 vs 21,834 chars), tracking the token
   ratio.
@@ -151,7 +151,7 @@ The direction and rough magnitude repeat on a completely separate task:
 
 ---
 
-## Third task + within-arm repeats — DON'T declare a win yet
+## Third task + within-arm repeats: DON'T declare a win yet
 
 Run: `…_devmini_health_reason_flag/` (4 cells: 2 arms × 2 repeats). Third
 independent task/module (`install_health.py`, add an opt-in bool detail flag to a
@@ -168,7 +168,7 @@ This is the first run with **repeats per arm**, and it changes the conclusion.
 - **within-`without` swing: 275,670 → 1,861,476 tokens on the SAME task = 6.75×.**
 - within-`mini` swing: 456,232 → 829,146 = 1.8×.
 - median tokens: without 1,068,573 vs mini 642,689 (mini lower), but the without
-  median is meaningless — it's the midpoint of a lucky run and a blown run.
+  median is meaningless, it's the midpoint of a lucky run and a blown run.
 
 ### What this tells us (the honest read)
 
@@ -177,12 +177,12 @@ This is the first run with **repeats per arm**, and it changes the conclusion.
    turn cap. The earlier "mini −52% / −42%" wins were each a single sample; this
    shows a single sample can land anywhere across a ~7× range.
 2. **The real, repeatable effect is variance reduction, not a fixed % saving.**
-   Both mini runs landed in a tight 456k–829k band; both succeeded. The without
+   Both mini runs landed in a tight 456k, 829k band; both succeeded. The without
    arm is bimodal: cheap when it guesses the file fast, catastrophic when it
    grep/Bash-walks (rep2: 23 Bash calls, 40 turns, cap-fail). map's contribution
-   is pulling the agent onto the right file early, which **cuts the tail** — the
-   expensive/failing runs — more than it lowers the median.
-3. **mini did not fail once across 6 runs (tasks 1–3); without failed 1 of 4.**
+   is pulling the agent onto the right file early, which **cuts the tail**, the
+   expensive/failing runs, more than it lowers the median.
+3. **mini did not fail once across 6 runs (tasks 1-3); without failed 1 of 4.**
    Small n, but the direction (map improves worst-case reliability) is consistent
    with every trace: the failures are always grep/whole-file/Bash walks.
 
@@ -204,22 +204,22 @@ failed while without failed once by grep/Bash-walking into the turn cap.
 - But **within-arm variance is huge** (without: 6.75× on one task), so the exact
   % saving is not trustworthy at these sample sizes, and any single head-to-head
   can flip. **Do not declare a fixed win.**
-- The most defensible claim so far: *map tends to reduce the expensive tail —
-  the grep/Bash-walk blowups — which lowers mean cost and improves worst-case
+- The most defensible claim so far: *map tends to reduce the expensive tail
+  the grep/Bash-walk blowups, which lowers mean cost and improves worst-case
   reliability*, rather than guaranteeing a lower cost on every run.
 
 ### To actually prove it
 - n≥5 per (arm, task) on all three tasks → report median + IQR + fail rate, not a
-  single number. ~30 runs; sizeable token spend — get scope approval first.
+  single number. ~30 runs; sizeable token spend, get scope approval first.
 - Add the full-`scubiee` (two_layer_v2) arm so we separate "map helps" from "mini
   bridge dodges the full bridge's first-call disconnect".
 
 
 ---
 
-## Clean re-run — no self-testing, no Bash (removes the run-3a confound)
+## Clean re-run: no self-testing, no Bash (removes the run-3a confound)
 
-Change: the agent is told to make the edit and STOP — do not run tests/build/
+Change: the agent is told to make the edit and STOP, do not run tests/build/
 verification. Bash was also removed from the allowed tools, so it cannot spiral
 on shell/pytest at all. The harness's hidden oracle verifies the change
 afterward. This isolates LOCATE+EDIT (what Scubiee affects) from test-runner
@@ -247,23 +247,23 @@ Trajectories (clean):
    `health_reason_flag` task went 275k/1.86M (without) and 829k/456k (with) WITH
    Bash+self-testing; with that removed it's **204k vs 173k**, both fast, both
    passing. Run 3a's 829k was ~10k chars of Bash + a 12.5k-char conftest read
-   after the edit was already done — pure verification flailing.
+   after the edit was already done, pure verification flailing.
 2. **On locate+edit alone, the arms are close, and Scubiee is at worst a tie:**
    - `dirty_files_cap`: essentially identical (205k vs 208k). The with-arm's own
      rule (v2) correctly sent it to **grep** (map=0) for this keyword-friendly
-     query — so "with Scubiee" here just means "same as native," which is the
+     query, so "with Scubiee" here just means "same as native," which is the
      right behavior, not a loss.
    - `health_reason_flag`: with-Scubiee −15% (173k vs 204k). One map call, one
-     grep, edit at turn 6 — the tightest run of the pair.
+     grep, edit at turn 6, the tightest run of the pair.
 3. **Variance collapsed** once Bash/self-testing was gone: all four clean runs
-   are 173k–208k (1.2× spread), versus the earlier 276k–1.86M (6.8×) with Bash.
+   are 173k, 208k (1.2× spread), versus the earlier 276k, 1.86M (6.8×) with Bash.
    Most of the "Scubiee variance" we were chasing was actually test-runner noise
    hitting both arms.
 
 ### Honest standing after the clean runs
 - On pure locate+edit, **Scubiee ties on a keyword query and wins modestly (−15%)
   on a conceptual one.** No blowups on either side once verification is removed.
-- The earlier dramatic 40–52% "wins" were inflated by the without arm's
+- The earlier dramatic 40-52% "wins" were inflated by the without arm's
   test-running blowups; the clean, like-for-like locate+edit gap is smaller.
 - Correctness: 4/4 both arms in the clean runs.
 - This is the fair comparison for *retrieval*: when the query is keyword-friendly,
@@ -290,10 +290,10 @@ bars on the tie-vs-modest-win picture.
 
 ## Substantial dev task, CLEAN conditions (no self-test, no Bash)
 
-Task: `cache_aware_savings` — the multi-module one (make the token-savings
+Task: `cache_aware_savings`, the multi-module one (make the token-savings
 comparison cache-aware; target `token_meter.py` buried among many token/estimate
 modules; the change touches the per-arm result + the comparison surface). This is
-the biggest task in the suite; under Bash+self-test it ran 834k–1.72M. Re-run
+the biggest task in the suite; under Bash+self-test it ran 834k, 1.72M. Re-run
 here clean so it measures locate+understand+edit, capped well under 2M.
 
 | Arm | tokens | cache_read | output | turns | calls | map | grep | read | edit | result chars | oracle | success |
@@ -305,15 +305,15 @@ here clean so it measures locate+understand+edit, capped well under 2M.
 
 Why with-Scubiee cost a bit more here (from the trace):
 - **map added a whole extra read.** without read 2 spans (7,753 + 12,142 =
-  19,895 chars). with read 3 spans (7,753 + 16,734 + 11,330 = 35,817 chars) —
+  19,895 chars). with read 3 spans (7,753 + 16,734 + 11,330 = 35,817 chars)
   map surfaced an additional relevant card, and the agent read it too. Plus the
   map payload itself (4,230 chars). So with-Scubiee pulled **48,082** result
-  chars into context vs without's **27,580** — ~20k more, carried across ~14
+  chars into context vs without's **27,580**, ~20k more, carried across ~14
   calls ≈ the ~83k token difference.
 - Both found `token_meter.py` and both made the same 4 edits and passed. The
   extra map-surfaced read didn't change the outcome; it was extra context the
   agent chose to read.
-- One map call (not two) — the first-call disconnect did NOT happen (mini
+- One map call (not two), the first-call disconnect did NOT happen (mini
   bridge's single-repo scoping + retry-once working as intended).
 
 ### The honest picture across ALL clean runs (no Bash / no self-test)
@@ -330,7 +330,7 @@ Why with-Scubiee cost a bit more here (from the trace):
   without arm's Bash/self-test blowups, NOT from better retrieval. With that
   confound gone, the two arms cost about the same.
 - Where map can cost MORE: it surfaces an extra relevant card, and the agent
-  reads it — good for thoroughness/precision, but extra context tokens on an
+  reads it, good for thoroughness/precision, but extra context tokens on an
   easy-to-locate target. This is the "map earns its keep only when it prevents a
   bigger read/walk" point, now seen from the other side.
 
@@ -351,7 +351,7 @@ task, clean conditions, reporting median/IQR/fail-rate.
 
 ---
 
-## v3 STRICT rule — fixes the two waste patterns; Scubiee wins clean
+## v3 STRICT rule: fixes the two waste patterns; Scubiee wins clean
 
 ### Why v2 was drawing (root cause from the clean traces)
 
@@ -361,13 +361,13 @@ agent then **wasted tokens two specific ways** the soft v2 wording didn't stop:
    still ran 3 greps (`token_meter|ArmResult|QueryCompare`, `from pipeline…
    import`, `ArmResult\(|…`). map had already located it.
 2. **Read an unrelated file map surfaced:** it read `harness_task.py` (16,734
-   chars — a test/benchmark file, not the fix). That single read was ~most of the
+   chars, a test/benchmark file, not the fix). That single read was ~most of the
    83k it lost to the without arm.
 
 v2 said "don't re-search / read spans not whole files" as a *soft default*, so the
 model overrode it. The fix is to make those two things **hard prohibitions**.
 
-### v3 rule (strict) — RULES 151 tok, INSTRUCTIONS 565 tok
+### v3 rule (strict): RULES 151 tok, INSTRUCTIONS 565 tok
 
 Adds explicit **MUST / MUST NOT** language on exactly the observed failures:
 - If location unknown → you MUST `map` first (no grep-to-discover).
@@ -377,7 +377,7 @@ Adds explicit **MUST / MUST NOT** language on exactly the observed failures:
 - Read spans not whole files; batch reads; one map is enough; stop and edit.
 - Keyword/literal you already know → still Grep (no forced map).
 
-### Result — same substantial task, v3 vs without
+### Result: same substantial task, v3 vs without
 
 | Arm | tokens | turns | calls | map | grep | read | result chars | oracle | success |
 |---|---:|---:|---:|---:|---:|---:|---:|:--:|:--:|
@@ -385,7 +385,7 @@ Adds explicit **MUST / MUST NOT** language on exactly the observed failures:
 | **with (v3)** | **392,246** | **10** | **10** | 1 | **0** | 1 | **13,795** | 1.0 | ✅ |
 
 With-Scubiee v3 used ~51% fewer tokens than the without arm in THIS run and both
-passed — BUT read the caveat: the two rule versions were measured against
+passed, BUT read the caveat: the two rule versions were measured against
 DIFFERENT without baselines (v2's run had without=529k; v3's run had without=795k),
 and the without arm is noisy (529k↔795k on the same task). So the honest,
 apples-to-apples signal is NOT "v3 saves 51% vs native"; it is the **rule-vs-rule**
@@ -407,7 +407,7 @@ saving.
 
 v3 trace was textbook: `map → Read token_meter.py span → 6 Edits → stop`.
 **grep=0, read=1, no unrelated files.** The strict "MUST NOT grep after map" and
-"don't read files map only listed as related" both held — result-chars dropped
+"don't read files map only listed as related" both held, result-chars dropped
 from v2's 48,082 to **13,795**.
 
 ### Rule version comparison on `cache_aware_savings` (clean, no Bash/self-test)
@@ -417,7 +417,7 @@ from v2's 48,082 to **13,795**.
 | v2 (soft) | 612,483 | 1 | 3 | yes (harness_task 16.7k) | +14% (lost) |
 | **v3 (strict)** | **392,246** | 1 | **0** | **no** | **−51% (won)** |
 
-Same task, same bridge — only the rule text changed. Tightening the two clauses
+Same task, same bridge, only the rule text changed. Tightening the two clauses
 to MUST/MUST NOT turned a 14% loss into a 51% win by eliminating 3 greps and one
 16.7k-char irrelevant read.
 
@@ -434,7 +434,7 @@ to MUST/MUST NOT turned a 14% loss into a 51% win by eliminating 3 greps and one
 ### Standing
 - **v3 is the new lead rule.** On the hardest (multi-module) task it converted a
   draw/loss into a clean 51% win by forbidding post-map grep and unrelated reads.
-- Keyword tasks (`dirty_files_cap`) will still tie — correct, since v3 sends known
+- Keyword tasks (`dirty_files_cap`) will still tie, correct, since v3 sends known
   literals to grep.
 - Confirm with n≥3 on v3 for the multi-module task + one keyword task to bound the
   win and check the strict rule never hurts correctness (still 1.0 here).
@@ -442,7 +442,7 @@ to MUST/MUST NOT turned a 14% loss into a 51% win by eliminating 3 greps and one
 
 ---
 
-## v3 vs without — n=2 on the substantial task (proper size, clean conditions)
+## v3 vs without: n=2 on the substantial task (proper size, clean conditions)
 
 Run: `20260930T213705Z_devmini_cache_aware_savings`. Task `cache_aware_savings`
 (multi-module: target buried among many token/estimate modules). Clean conditions
@@ -462,18 +462,18 @@ and both individual runs beat without's mean.
 ### Honest read
 - **v3 won both repeats vs without's mean, and won 4/4 of the individual
   head-to-head pairings** (476k & 786k both < 826k & 998k). This is the first
-  properly-sized (0.8–1.0M without) task with repeats, and v3 is consistently
+  properly-sized (0.8-1.0M without) task with repeats, and v3 is consistently
   cheaper.
 - **But v3 is not yet fully consistent internally.** rep1 was textbook (map →
   1 read → edit, 3 greps, 13.7k result-chars). rep2 slipped: **11 greps**, read
-  `harness_task.py` (16,734 chars — the exact unrelated-file mistake v3's rule
+  `harness_task.py` (16,734 chars, the exact unrelated-file mistake v3's rule
   forbids), 46.7k result-chars. The strict rule reduced but did not eliminate the
   two waste patterns on the harder rep.
 - Why rep2 slipped (from the trace): after map + reading `token_meter.py`, the
   agent went hunting for how cache tokens are represented elsewhere
   (`cache_read|cache_creation|prompt_cache` greps, read `harness_core.py`, a
   report .md, and finally `harness_task.py`). It was over-researching the cache
-  concept, not the target file — the rule says don't read unrelated files map
+  concept, not the target file, the rule says don't read unrelated files map
   surfaced, but the agent reached them via its own greps, which the rule allows
   when "you need a specific literal you know". That loophole let it wander.
 
@@ -492,6 +492,6 @@ and both individual runs beat without's mean.
   rep1 (13.7k result-chars) and partly slipped on rep2 (46.7k) via self-directed
   cache greps + one unrelated read. To close that, v3 needs one more clause:
   after the target file is open, do NOT grep the wider codebase to research a
-  concept — read only what's needed to edit the target. (candidate v4.)
+  concept, read only what's needed to edit the target. (candidate v4.)
 - Still n=2; the ~31% mean is directional. But every single run favored v3, and
   the mechanism (fewer greps, smaller carried context) is visible in the traces.

@@ -34,7 +34,7 @@ What we actually store:
 | Share sitting on the cap | ~42% |
 
 So for **~58% of chunks**, the model already sees essentially the whole (short) span.  
-Only the long ones lose the **tail** of the function body — not a random mid-file slice.
+Only the long ones lose the **tail** of the function body, not a random mid-file slice.
 
 `seq=128` then means: embed about the first **128 tokens** of that already-small text.
 
@@ -76,9 +76,9 @@ Bi-encoders like CodeRankEmbed are tuned so **names and signatures** dominate si
 |----------|------|
 | Soft query, meaning buried mid-function | Higher miss rate |
 | Two similar helpers, differ only in the long body | More confusion |
-| “Explain this algorithm” from the vector alone | Thin — must read full span |
+| “Explain this algorithm” from the vector alone | Thin, must read full span |
 
-That’s why **seq=256/512** is better for max quality, and **128** is a speed trade for laptop indexing — not because search is magic, but because **locate ≠ compress the whole function into one vector**.
+That’s why **seq=256/512** is better for max quality, and **128** is a speed trade for laptop indexing, not because search is magic, but because **locate ≠ compress the whole function into one vector**.
 
 ---
 

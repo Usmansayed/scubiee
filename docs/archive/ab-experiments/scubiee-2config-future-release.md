@@ -1,4 +1,4 @@
-# 2-config map surface — DEFERRED to a future release (not in this ship)
+# 2-config map surface: DEFERRED to a future release (not in this ship)
 
 ## Decision (ship day, v0.3.140)
 Ship the **4-config** map surface (`find | focus | related | graph`) that production already runs.
@@ -18,7 +18,7 @@ Do NOT convert to 2-config in this release.
 ## What we learned (carry into the future-release change)
 - `related` is near-dead in real usage (~2% of map calls across all sessions); `graph` ~5%.
   `find`+`focus` are ~92% of usage. A 2-config surface loses almost nothing.
-- Best 2-config RULE (from the Kiro rule search): **k_2cfg_decomp** — the find|focus decision table
+- Best 2-config RULE (from the Kiro rule search): **k_2cfg_decomp**, the find|focus decision table
   PLUS query-decomposition discipline ("one target per query; known name → focus first; don't bundle
   two targets into one broad query"). It won the complex-task tiebreak (3.39 vs 4.04 credits, lower
   native_ops) and tied/led on the integration task. k_2cfg_lean (minimal) was weakest.

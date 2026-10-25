@@ -12,7 +12,7 @@ This note explains what happened in ordinary language. No product jargon require
 
 | | Context Engine (`ce_nav`) | Normal Cursor (`raw`) |
 |---|---:|---:|
-| Finished the task? | Yes | Yes (see §3 — not a fair finish) |
+| Finished the task? | Yes | Yes (see §3, not a fair finish) |
 | Work tokens (input + output) | about **4.9 million** | about **0.62 million** |
 | Wall time | about **10 minutes** | about **3 minutes** |
 | Used Grep / Glob / native Read? | **No** (0 times) | Yes (many times) |
@@ -55,7 +55,7 @@ That means:
 
 - Same files changed on both arms (18 source files, same test file, same docs)
 - Same diff size (~66 KB)
-- Raw conversation has **no edit tools** — only grep/glob/read/shell
+- Raw conversation has **no edit tools**, only grep/glob/read/shell
 - Raw finished in ~3 minutes because copying is fast
 
 **Conclusion for fairness:** you cannot use this run’s +691% as proof that sealed CE is “worse than Grep forever.” Raw was not doing the same job.
@@ -71,10 +71,10 @@ From the CE conversation (cleaner view than the noisy event stream):
 | Action | Count (approx.) |
 |---|---:|
 | `search` | 65 |
-| — soft (meaning search) | 13 |
-| — exact (literal string search) | **52** |
+| - soft (meaning search) | 13 |
+| - exact (literal string search) | **52** |
 | `read` | 96 |
-| — of which came back “already seen / unchanged” | **84** |
+| - of which came back “already seen / unchanged” | **84** |
 | `files` | 14 |
 | `expand` | 3 |
 | `recall` | **0** |
@@ -84,7 +84,7 @@ From the CE conversation (cleaner view than the noisy event stream):
 
 In plain English:
 
-1. It searched a lot — especially tiny exact strings (`code_graph`, `TODO`, `_ENABLED`, `degraded`, …).
+1. It searched a lot, especially tiny exact strings (`code_graph`, `TODO`, `_ENABLED`, `degraded`, …).
 2. It opened the same files over and over.
 3. Our system often answered: “you already have this; don’t re-read it.”
 4. The agent **kept calling `read` anyway** (84 times got that stub).
@@ -128,7 +128,7 @@ CE also *wrote more* (longer planning / more edit chatter), not only read more.
 Seal said: no Grep.  
 We gave: `search(mode=exact)`.
 
-The agent used exact search **52 times** — often for one short token at a time.
+The agent used exact search **52 times**, often for one short token at a time.
 
 That is the same *habit* as Grep thrash, just through our door.
 
@@ -157,7 +157,7 @@ So half the design (don’t re-pay for old context) only works if the agent stop
 In the conversation, first edit is around step **154**.  
 Buckets show roughly:
 
-- Steps 1–150: almost only search/read/files  
+- Steps 1-150: almost only search/read/files  
 - Steps 151+: edits begin, but search/read continue  
 
 Raw’s cheap path (copying aside) shows a short locate phase is enough for this task shape. CE spent a long time collecting before changing code, then kept collecting.

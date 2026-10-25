@@ -1,4 +1,4 @@
-# Semantic tracer v1 bakeoff — `verify_prod.json`
+# Semantic tracer v1 bakeoff: `verify_prod.json`
 
 Cases: 10 · 14.05s · `real:fastembed`
 
@@ -17,4 +17,4 @@ Cases: 10 · 14.05s · `real:fastembed`
 
 ## Cycle 2 recommendation
 
-Cycle 1 comparator helped ranking/must@10 — proceed to Cycle 2 (trace centroid + strict teleport).
+Cycle 1 comparator helped ranking/must@10, proceed to Cycle 2 (trace centroid + strict teleport).

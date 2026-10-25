@@ -1,4 +1,4 @@
-# Tech summary — how we do things
+# Tech summary: how we do things
 
 As of **scubiee 0.2.33**. This replaces `docs/engineering/` (deleted).
 
@@ -18,9 +18,9 @@ mcp_locate.py  ────────►  server.py  :8765
 
 Three long-lived pieces when fully running:
 
-1. **Engine daemon** — HTTP + warm engine. Lock: `~/.context-engine/engine.lock`.
-2. **Watchdog sidecar** — polls `/health`, restarts on death (`CTX_WATCHDOG=0` to disable).
-3. **Keeper thread** — inside the engine; cheap Merkle probe; incremental sync + **publish**.
+1. **Engine daemon**: HTTP + warm engine. Lock: `~/.context-engine/engine.lock`.
+2. **Watchdog sidecar**: polls `/health`, restarts on death (`CTX_WATCHDOG=0` to disable).
+3. **Keeper thread**: inside the engine; cheap Merkle probe; incremental sync + **publish**.
 
 Managers (product language): **RuntimeManager**, **IndexManager**, **ResourceManager**. Watchdog is not a manager.
 
@@ -36,19 +36,19 @@ Packages: `pipeline` (engine), `graphify` (tree-sitter + NetworkX), `conductor` 
 
 ## Indexing pipeline (disk → searchable)
 
-1. **Merkle** (`merkle.py`) — SHA-256 per indexable extension; skip `.venv`, `node_modules`, etc. `diff_hashes` → added/modified/removed.
-2. **Graphify** — tree-sitter nodes/edges (calls, imports, inherits, …).
-3. **RepoIR** — canonical symbols + edges (`parse_harness`).
-4. **Chunk** — slice at callable symbol lines (`enrich`).
-5. **Metadata headers** — module/file/imports prepended (`metadata`).
-6. **Compress `mix`** — ≤512 chars high-signal text (`CTX_COMPRESS=off` to skip). Locked default.
-7. **Embed** — CodeRankEmbed dim 768, L2-normalized. **FP16 weights only** on every OS/hardware path (no FP32 production option).
+1. **Merkle** (`merkle.py`): SHA-256 per indexable extension; skip `.venv`, `node_modules`, etc. `diff_hashes` → added/modified/removed.
+2. **Graphify**: tree-sitter nodes/edges (calls, imports, inherits, …).
+3. **RepoIR**: canonical symbols + edges (`parse_harness`).
+4. **Chunk**: slice at callable symbol lines (`enrich`).
+5. **Metadata headers**: module/file/imports prepended (`metadata`).
+6. **Compress `mix`**: ≤512 chars high-signal text (`CTX_COMPRESS=off` to skip). Locked default.
+7. **Embed**: CodeRankEmbed dim 768, L2-normalized. **FP16 weights only** on every OS/hardware path (no FP32 production option).
    - Apple Silicon: **MLX FP16** (`mlx_mac.py`; `CTX_MLX_DTYPE` is forced to float16).
    - Else: FastEmbed + ORT (CUDA / DML / CoreML / CPU) loading `onnx/model_fp16.onnx`.
 8. **TurboQuant** uint8 + **FAISS** IndexFlatIP.
 9. Persist under `~/.context-engine/projects/ce_<hash>/` (chunks, merkle, graph, caches).
 
-Incremental: only dirty files; after sync the **running daemon must `/v1/publish`** so `WarmSearchEngine` generation increments. CLI `ctx sync` prefers daemon `/v1/sync` (0.2.11). Only **code extensions** index — a `.txt` probe never appears.
+Incremental: only dirty files; after sync the **running daemon must `/v1/publish`** so `WarmSearchEngine` generation increments. CLI `ctx sync` prefers daemon `/v1/sync` (0.2.11). Only **code extensions** index, a `.txt` probe never appears.
 
 ## Query path
 
@@ -63,17 +63,17 @@ Incremental: only dirty files; after sync the **running daemon must `/v1/publish
 
 `packages/pipeline/mcp_locate.py`. Default `CTX_MCP_SURFACE=phase`.
 
-- `map` — ranked cards, no bodies. Payload `ranked_only` / `scope=indexed_chunks`. A miss is not “not in the repo”.
-- `focus` — outline / span / neighbors; already-in-session is **advisory**. Span may set `truncated`. Outline may set `language_unsupported` (Python AST only).
-- `grep` / `glob` — live disk. Grep honors `glob` (default `*.py`; pass `*` / `*.ts`). Both return `truncated` / `has_more`. Empty + not truncated = absence for that glob/pattern only.
-- `workspace` — pin / show / clear.
-- `status` — health; tool list must include all six.
+- `map`: ranked cards, no bodies. Payload `ranked_only` / `scope=indexed_chunks`. A miss is not “not in the repo”.
+- `focus`: outline / span / neighbors; already-in-session is **advisory**. Span may set `truncated`. Outline may set `language_unsupported` (Python AST only).
+- `grep` / `glob`, live disk. Grep honors `glob` (default `*.py`; pass `*` / `*.ts`). Both return `truncated` / `has_more`. Empty + not truncated = absence for that glob/pattern only.
+- `workspace`: pin / show / clear.
+- `status`: health; tool list must include all six.
 
 **No hard session caps** on map/search/focus. Duplicates → `usage_hint` only. Payload `max_chars` still applies.
 
 Cursor rule shipped at `packages/pipeline/templates/context-agent.mdc`. `ctx setup` copies it to `.cursor/rules/context-agent.mdc` (`.cursor/` is gitignored). **Short + strict:** native Grep/Glob/search banned for discovery; CE MCP only. Exception: MCP missing or `status()` unhealthy. How to pick map vs grep vs glob is still recommended in MCP instructions.
 
-MCP Python on Darwin: **do not** `Path(sys.executable).resolve()` — venv `bin/python` is a Homebrew Cellar symlink. Use `CTX_PYTHON` or `sys.prefix/bin/python` (`mcp_install.py`).
+MCP Python on Darwin: **do not** `Path(sys.executable).resolve()`, venv `bin/python` is a Homebrew Cellar symlink. Use `CTX_PYTHON` or `sys.prefix/bin/python` (`mcp_install.py`).
 
 ## Acceleration
 
@@ -87,9 +87,9 @@ MCP Python on Darwin: **do not** `Path(sys.executable).resolve()` — venv `bin/
 | `coreml` | Intel Mac / explicit CoreML; static ONNX helper in `coreml_mac.py` |
 | `cpu` | Last resort |
 
-Mac CoreML lessons (0.2.6–0.2.8): dynamic batch/shapes crash E5RT; invalid options `UseCPUAndGPU` / `CreateMLProgram` cause **silent CPU fallback**. Production Mac path is MLX. CoreML still refuses CPU fallback in `accel._refuse_coreml_cpu_fallback` when profile is coreml.
+Mac CoreML lessons (0.2.6-0.2.8): dynamic batch/shapes crash E5RT; invalid options `UseCPUAndGPU` / `CreateMLProgram` cause **silent CPU fallback**. Production Mac path is MLX. CoreML still refuses CPU fallback in `accel._refuse_coreml_cpu_fallback` when profile is coreml.
 
-MLX ≥0.31: GPU streams are **thread-local**. `mlx_thread_stream()` + lock around eval; per-thread model in `threading.local()`. Daemon worker sync failed while CLI main-thread sync worked — test **both**.
+MLX ≥0.31: GPU streams are **thread-local**. `mlx_thread_stream()` + lock around eval; per-thread model in `threading.local()`. Daemon worker sync failed while CLI main-thread sync worked, test **both**.
 
 Resource manager (`resources.py`): pause only if free RAM is near empty (default ~256 MB). Does not stop on CPU spikes or Windows “RAM % used” (file cache).
 
@@ -97,8 +97,8 @@ Resource manager (`resources.py`): pause only if free RAM is near empty (default
 
 - `accel.json`, `hardware.json`, `engine.lock` / `engine.pid` / `engine.log`
 - `registry.json`, `prefs.json`
-- `vectordb/collections/<name>/` — faiss, turboquant, ids
-- `projects/ce_<hash>/` — merkle, chunks, graph, embed cache
+- `vectordb/collections/<name>/`: faiss, turboquant, ids
+- `projects/ce_<hash>/`: merkle, chunks, graph, embed cache
 - Session: `<repo>/.context-engine/session_store.json`
 
 User **venv** on the MacBook: `~/scubiee`. That is **not** this directory.
@@ -117,13 +117,13 @@ ctx resources [--refresh]
 
 ## Tests that guard this design
 
-- `tests/test_mcp_locate.py` / `test_mcp_lean.py` / `test_session_store.py` — phase tool set
-- `tests/test_grep_glob_scope.py` — grep glob + `**` + truncated
-- `tests/test_hybrid_cbm.py` — duplicate search advises, does not block
-- `tests/test_runtime_publish.py` — publish-after-sync
+- `tests/test_mcp_locate.py` / `test_mcp_lean.py` / `test_session_store.py`, phase tool set
+- `tests/test_grep_glob_scope.py`: grep glob + `**` + truncated
+- `tests/test_hybrid_cbm.py`: duplicate search advises, does not block
+- `tests/test_runtime_publish.py`: publish-after-sync
 - `tests/test_mlx_mac.py` / `test_mlx_backend.py` / `test_coreml_mac.py`
-- `tests/test_memory_budget.py` — Windows RSS without `resource`
-- `tests/test_accel_pip_drain.py` — pip stdout drain
+- `tests/test_memory_budget.py`: Windows RSS without `resource`
+- `tests/test_accel_pip_drain.py`: pip stdout drain
 
 ## Do not regress
 

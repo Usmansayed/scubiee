@@ -2,11 +2,11 @@
 
 **Date:** 2026-09-15  
 **Install:** `uv tool install --force .` (source tree with serious fixes)  
-**Harness:** real `scubiee` CLI, `mcp_host_sim.py`, `warm_contract_acceptance.py`, `scubiee_mcp_ship_check.py`, `run_cli_combination_tests.py`, curated e2e via uv-tool python — **not** in-process unit mocks for ship decision.
+**Harness:** real `scubiee` CLI, `mcp_host_sim.py`, `warm_contract_acceptance.py`, `scubiee_mcp_ship_check.py`, `run_cli_combination_tests.py`, curated e2e via uv-tool python, **not** in-process unit mocks for ship decision.
 
 ## Verdict
 
-**Windows soft-path ship: READY (conditional)** — Gates **A–D** green on real CLI/sim after reinstall.  
+**Windows soft-path ship: READY (conditional)**: Gates **A, D** green on real CLI/sim after reinstall.  
 Not unconditional cross-platform production: Gate **E** still advisory; Gate **M** (macOS) not run; live Cursor smoke (Gate Task 7) not re-timed in this pass.
 
 | Gate | Result | Evidence |
@@ -30,6 +30,6 @@ Not unconditional cross-platform production: Gate **E** still advisory; Gate **M
 
 ## Notes
 
-- Before reinstall, installed uv-tool package **lacked** the Codex/TOML, bridge-verify, WinError-193, setup-dedup fixes — unit tests against `packages/` were green but **production binary was stale**. Always reinstall before claiming ship.
-- `binaries_match: false` when PATH hits `.local\bin\scubiee` vs `Scripts\scubiee.exe` (or `.exe` suffix compare) — prefer invoking `...\Scripts\scubiee.exe` for Gate A doctor cleanliness.
+- Before reinstall, installed uv-tool package **lacked** the Codex/TOML, bridge-verify, WinError-193, setup-dedup fixes, unit tests against `packages/` were green but **production binary was stale**. Always reinstall before claiming ship.
+- `binaries_match: false` when PATH hits `.local\bin\scubiee` vs `Scripts\scubiee.exe` (or `.exe` suffix compare), prefer invoking `...\Scripts\scubiee.exe` for Gate A doctor cleanliness.
 - CLI combo stops the engine; re-`engine ensure` before claiming soft-ready.

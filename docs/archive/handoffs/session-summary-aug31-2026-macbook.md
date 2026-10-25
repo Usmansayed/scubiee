@@ -17,11 +17,11 @@ Re-ran `tests/_e2e_run_cmds.sh` after the `wipe --all --keep-package` regression
 | Phase | Steps | Result |
 |-------|-------|--------|
 | Baseline | B1, B3, B5, B7, B8, B10 | OK |
-| Global stop / halt | G1–G18, H1–H2 | OK (G3 blocked while stopped — expected) |
+| Global stop / halt | G1, G18, H1, H2 | OK (G3 blocked while stopped, expected) |
 | Repo wipe | W1, W1b, W2 | OK |
-| Full wipe keep-package | G16 (confirm required), G16b | OK — **`scubiee` stayed on PATH** |
+| Full wipe keep-package | G16 (confirm required), G16b | OK, **`scubiee` stayed on PATH** |
 | Post-wipe recovery | P1 setup, P2 init, P3 status | OK (was broken before fix) |
-| Read-only | R1–R4 help/list | OK |
+| Read-only | R1, R4 help/list | OK |
 | Connect dry-run | C1, C2 | OK |
 
 **Log:** `tests/_e2e_cmd_results.txt`  
@@ -33,7 +33,7 @@ Re-ran `tests/_e2e_run_cmds.sh` after the `wipe --all --keep-package` regression
 
 ### 2. `wipe --all --keep-package` must not remove CLI (critical)
 
-**Symptom:** After G16b, `scubiee: command not found`; P1–R4 failed with exit 127.
+**Symptom:** After G16b, `scubiee: command not found`; P1, R4 failed with exit 127.
 
 **Cause:** `remove_tool_shims()` ran unconditionally in `wipe_all()` even when `package=False`.
 
@@ -50,13 +50,13 @@ Re-ran `tests/_e2e_run_cmds.sh` after the `wipe --all --keep-package` regression
 Scubiee previously wrote OpenCode **v1** flat shape (`mcp.scubiee` with `enabled`). OpenCode **v2** uses `mcp.servers.{name}` with `disabled`.
 
 **Fix (`packages/pipeline/rules_installer.py`):**
-- `_write_mcp_opencode` — detect v1 vs v2; fresh files default to v2; migrate flat neighbors into `mcp.servers` when upgrading.
-- `_remove_mcp_opencode` — remove from both v1 flat and v2 `servers` bucket.
+- `_write_mcp_opencode`: detect v1 vs v2; fresh files default to v2; migrate flat neighbors into `mcp.servers` when upgrading.
+- `_remove_mcp_opencode`: remove from both v1 flat and v2 `servers` bucket.
 - `write_mcp_config` / `remove_mcp_config` / `verify_mcp_configs` routed through opencode helpers.
 
 **Tests:**
-- `tests/test_mcp_config_merge.py` — v1 roundtrip, v2 roundtrip, fresh-file v2
-- `tests/test_stop_all_tools.py` — v2 neighbor preservation on disconnect
+- `tests/test_mcp_config_merge.py`: v1 roundtrip, v2 roundtrip, fresh-file v2
+- `tests/test_stop_all_tools.py`: v2 neighbor preservation on disconnect
 
 **MCP merge experiment:** `python tests/_e2e_mcp_merge_experiment.py` → **13/13 passed** (all tools including opencode).
 
@@ -126,10 +126,10 @@ All of these invoke the **`scubiee` binary** on PATH (`~/.local/bin/scubiee`), n
 
 | Script | What it runs | Result (Aug 31 Mac) |
 |--------|----------------|---------------------|
-| `bash tests/_e2e_run_cmds.sh` | Full lifecycle: setup, init, stop, halt, wipe, resume, post-wipe recovery, connect dry-run | **PASS** (~6.5 min) — log: `tests/_e2e_cmd_results.txt` |
-| `bash tests/_e2e_run_connect.sh` | Connect/disconnect dry-run + help for all tools | **PASS** — log: `tests/_connect_e2e_results.txt` |
-| `bash tests/_e2e_mcp_merge_experiment.sh` | Real `scubiee connect` / `disconnect` for cursor, claude-code, codex, opencode with Figma neighbor | **PASS** — log: `tests/_mcp_merge_experiment.txt` |
-| `uv run python tests/_e2e_mcp_merge_experiment.py` | Same merge safety for **all 13 tools** via `subprocess` → `scubiee` | **13/13 PASS** — log: `tests/_mcp_merge_cli_results.txt` |
+| `bash tests/_e2e_run_cmds.sh` | Full lifecycle: setup, init, stop, halt, wipe, resume, post-wipe recovery, connect dry-run | **PASS** (~6.5 min), log: `tests/_e2e_cmd_results.txt` |
+| `bash tests/_e2e_run_connect.sh` | Connect/disconnect dry-run + help for all tools | **PASS**, log: `tests/_connect_e2e_results.txt` |
+| `bash tests/_e2e_mcp_merge_experiment.sh` | Real `scubiee connect` / `disconnect` for cursor, claude-code, codex, opencode with Figma neighbor | **PASS**, log: `tests/_mcp_merge_experiment.txt` |
+| `uv run python tests/_e2e_mcp_merge_experiment.py` | Same merge safety for **all 13 tools** via `subprocess` → `scubiee` | **13/13 PASS**, log: `tests/_mcp_merge_cli_results.txt` |
 | `uv run python scripts/run_cli_combination_tests.py --quick` | 22 isolated `CTX_HOME` scenarios (stop/halt/resume/connect/init) | **22/22 PASS** (~2 min) |
 
 **Note:** `run_cli_combination_tests.py --quick` skips slow full-wipe scenarios. For wipe matrix use full run (destructive, ~10+ min).
@@ -145,7 +145,7 @@ git pull upstream main
 uv tool install --force .
 export PATH="$HOME/.local/bin:$PATH"
 
-# Lifecycle E2E (~6–35 min depending on indexing)
+# Lifecycle E2E (~6-35 min depending on indexing)
 bash tests/_e2e_run_cmds.sh
 
 # MCP merge (13 tools, ~7s)

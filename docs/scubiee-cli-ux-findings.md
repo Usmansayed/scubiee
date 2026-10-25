@@ -1,7 +1,7 @@
-# Scubiee CLI UX audit — command-combination findings
+# Scubiee CLI UX audit: command-combination findings
 
 _Audited on Windows against installed scubiee 0.3.149. Focus: the class of issue
-where a plausible user command combination produces a bad experience — a raw
+where a plausible user command combination produces a bad experience, a raw
 Python traceback, a wrong exit code, a leaked internal error, a hang, or a
 confusing message. Destructive-command guards and most error paths are solid;
 the findings below are the exceptions worth fixing._
@@ -22,7 +22,7 @@ auto-start cleanly when the engine is down.
 
 ---
 
-## Finding #1 — No top-level exception handler → raw tracebacks (HIGH, systemic)
+## Finding #1: No top-level exception handler → raw tracebacks (HIGH, systemic)
 
 **This is the root cause of the whole class the user keeps hitting** (the `init
 C:\typo` traceback was one instance; it was patched inside `cmd_init`, but the
@@ -70,12 +70,12 @@ that doesn't exist. Any future handler that raises will do the same.
 
 This gives every command a clean error + exit 1 by default, with the full
 traceback still available via `CTX_DEBUG=1` for debugging. It does not replace
-good per-command messages (e.g. `init`'s "not a directory") — it's the safety net
+good per-command messages (e.g. `init`'s "not a directory"), it's the safety net
 beneath them.
 
 ---
 
-## Finding #2 — `map` CLI fails ugly when the engine is down (MED)
+## Finding #2: `map` CLI fails ugly when the engine is down (MED)
 
 Every other engine-dependent command either **auto-starts** the engine
 (`search`) or **degrades cleanly** (`sync`, `status`, `gate`, `dashboard`). The
@@ -86,7 +86,7 @@ Every other engine-dependent command either **auto-starts** the engine
 map find failed: RuntimeError: engine /v1/search failed: URLError: <urlopen error [WinError 10061] ...>
 ```
 - **Exit code is 0** on a clear failure.
-- The message leaks `RuntimeError` / `URLError` / `WinError 10061` — raw
+- The message leaks `RuntimeError` / `URLError` / `WinError 10061`, raw
   internals, not a user action.
 
 Root cause, `cmd_map` in `__main__.py`:
@@ -102,14 +102,14 @@ heuristic returns **0**. And `cmd_map` never ensures the daemon (unlike the
 **Fix:**
 1. Ensure the daemon before the call (match `search`: `ensure_daemon(repo)` /
    warm wait), **or** detect the engine-down message and print a friendly line:
-   `engine not running — run 'scubiee engine start' (or just retry; your IDE's
+   `engine not running, run 'scubiee engine start' (or just retry; your IDE's
    MCP client keeps it warm)`.
 2. Fix the exit code: return non-zero whenever the text indicates a failure
    (`failed:` / `error:` / `could not`), not only when it starts with `error:`.
 
 ---
 
-## Finding #3 — `map --names foo "trailing query"` hangs (MED)
+## Finding #3: `map --names foo "trailing query"` hangs (MED)
 
 **Reproduced:** `scubiee map --config focus --names foo "and a query too"` hung
 (killed at 40s). Mixing `--names` (focus) with a trailing positional query puts
@@ -117,13 +117,13 @@ heuristic returns **0**. And `cmd_map` never ensures the daemon (unlike the
 when the engine isn't immediately answering.
 
 A plausible user mistake must never hang. **Fix:** bound the engine call in the
-`map` CLI with a timeout (e.g. 10–15s) so it fails fast with Finding #2's
+`map` CLI with a timeout (e.g. 10-15s) so it fails fast with Finding #2's
 friendly message; optionally warn when both `--names` and a positional `query`
-are given for `focus` (ambiguous — focus uses names, find uses query).
+are given for `focus` (ambiguous, focus uses names, find uses query).
 
 ---
 
-## Finding #4 — stale `map` CLI docstring (LOW)
+## Finding #4: stale `map` CLI docstring (LOW)
 
 `cmd_map` docstring: *"One tool, four configs: find | focus | related | graph."*
 The shipped surface is **two configs (find | focus)** since v0.3.142. Harmless at
@@ -133,15 +133,15 @@ runtime but drifts from reality. **Fix:** update to "two configs: find | focus".
 
 ## What is already good (verified, no change needed)
 
-- **Argparse mistakes** — bad flag/value/subcommand/action (`map --k abc`,
+- **Argparse mistakes**: bad flag/value/subcommand/action (`map --k abc`,
   `connect cursor` positional, `setup --frobnicate`, `engine frobnicate`,
   `--unknown`) all exit 2 with a usage message. Clean.
 - **`-h` / `--help`** on every subcommand exits 0 with usage.
-- **Destructive guards** — `wipe` and `wipe --all` without `--confirm` refuse
+- **Destructive guards**: `wipe` and `wipe --all` without `--confirm` refuse
   with `confirm_required` (exit 2); non-TTY never deletes without the flag.
-- **Engine-down resilience** — `search` auto-starts the engine; `sync` degrades
+- **Engine-down resilience**: `search` auto-starts the engine; `sync` degrades
   to no-op; `status`/`gate` are local-only; `dashboard --status` reports cleanly.
-- **Too-broad path guard** — `init`/`never-index` on `C:\`, home, Documents,
+- **Too-broad path guard**: `init`/`never-index` on `C:\`, home, Documents,
   `..\..\..` refuse with `path_too_broad` (the traceback only appears on a
   *deep nonexistent* path that reaches `resolve_project`, which Finding #1 covers).
 
@@ -149,12 +149,12 @@ runtime but drifts from reality. **Fix:** update to "two configs: find | focus".
 
 ## Recommended fix order
 
-1. **#1 first** — the top-level try/except is one small change that eliminates the
+1. **#1 first**: the top-level try/except is one small change that eliminates the
    entire raw-traceback class across all 41 commands (and makes any future
    command safe by default). Highest leverage.
-2. **#2 + #3** — the `map` CLI engine-down behavior (exit code, friendly message,
+2. **#2 + #3**: the `map` CLI engine-down behavior (exit code, friendly message,
    bounded timeout). Same file, related.
-3. **#4** — docstring one-liner, fold into the #2/#3 change.
+3. **#4**: docstring one-liner, fold into the #2/#3 change.
 
 All four are small, localized to `__main__.py` (+ the map call path), and
 testable with the probes used in this audit.

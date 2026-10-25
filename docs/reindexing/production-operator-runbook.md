@@ -1,4 +1,4 @@
-# Production Context Engine — Operator Runbook
+# Production Context Engine: Operator Runbook
 
 ## Is CE ready?
 
@@ -38,10 +38,10 @@ npm install -g scubiee
 Then `ctx init [path]`. `ctx setup` still does **not** start the GPU engine.
 
 1. `pip install -e .`
-2. `ctx setup` — one machine command: detect CPU/DML/CUDA, install the matching
+2. `ctx setup`: one machine command: detect CPU/DML/CUDA, install the matching
    runtime, download the model, calibrate batch size, register a **logon
    supervisor** (no GPU at boot or logon), write Cursor MCP.
-3. `ctx init [path]` — put that codebase under management, index it, and start
+3. `ctx init [path]`: put that codebase under management, index it, and start
    the engine on demand.
 4. After that, watching/sync plus idle-stop/sleep-wake keep it managed.
 
@@ -60,7 +60,7 @@ Power behavior:
 - Unregister: `ctx engine autostart --off`.
 - **macOS runtime** uses CoreML (`CoreMLExecutionProvider`) so embeddings run on
   Metal GPU and, on Apple Silicon, the Neural Engine. `onnxruntime` macOS wheels
-  already ship this provider — no CUDA/DirectML package. If CoreML cannot warm
+  already ship this provider, no CUDA/DirectML package. If CoreML cannot warm
   the model, CE falls back to CPU for that process without changing the saved
   preference. Force CPU with `ctx setup --profile cpu --repair`.
 

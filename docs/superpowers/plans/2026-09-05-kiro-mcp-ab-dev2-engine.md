@@ -1,23 +1,23 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-05T12:10:02.445926+00:00
 **Model:** `auto` · **Effort:** `medium`
-**Task:** `engine_visibility` — pack tracer-engine visibility + broad-escape honesty
+**Task:** `engine_visibility`, pack tracer-engine visibility + broad-escape honesty
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Development task — make pack results honest about which tracer ran
+# Development task - make pack results honest about which tracer ran
 
 ## Problem
-Operators and agents cannot tell, from a pack/locate response alone, which tracing engine actually built the heatmap — especially when a "broad" / escape path temporarily switches engines and then restores the default. That opacity makes debugging bad packs and measuring product behavior hard.
+Operators and agents cannot tell, from a pack/locate response alone, which tracing engine actually built the heatmap - especially when a "broad" / escape path temporarily switches engines and then restores the default. That opacity makes debugging bad packs and measuring product behavior hard.
 
 ## Desired outcome
 Every successful pack-style context response must expose a clear structured field naming the tracer engine that produced the slice (for example the production default vs an escape engine). When a temporary broad/escape switch was used for that call, the response must also say so in a structured way (that an escape happened, and what was restored), without breaking existing fields clients already read.
 
 ## Requirements
 1. Happy-path default packs report the active production tracer engine in a stable structured key.
-2. Broad/escape packs report both the engine that ran for the slice and that an escape/switch occurred (and restoration), in structured fields — not only buried in free-text guide strings.
+2. Broad/escape packs report both the engine that ran for the slice and that an escape/switch occurred (and restoration), in structured fields - not only buried in free-text guide strings.
 3. Automated tests cover:
    - default path reports the expected production engine identity
    - broad/escape path reports escape + the engine used for that call
@@ -27,7 +27,7 @@ Every successful pack-style context response must expose a clear structured fiel
 ## Constraints
 - In-process only; no new network services.
 - Small, reviewable change.
-- Explore the codebase yourself to find where pack builds its return payload and where broad/escape temporarily changes engines — the prompt will not name files or functions.
+- Explore the codebase yourself to find where pack builds its return payload and where broad/escape temporarily changes engines - the prompt will not name files or functions.
 - Do not commit or push. Local tests are fine.
 
 ## Success criteria

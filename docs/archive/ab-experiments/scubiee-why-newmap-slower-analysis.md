@@ -68,9 +68,9 @@ Fix #1 is the real lever: it attacks the structural reason (span precision vs mu
 
 ---
 
-# Resolution (follow-up): multi-body `find` fixed it — newmap now wins this task
+# Resolution (follow-up): multi-body `find` fixed it: newmap now wins this task
 
-The fix followed directly from the root cause above: the old map accidentally won by dumping the whole file in one read, so the agent saw every symbol at once. The new `find` was too precise — it returned the top span only, forcing follow-up calls to see the other three edit sites.
+The fix followed directly from the root cause above: the old map accidentally won by dumping the whole file in one read, so the agent saw every symbol at once. The new `find` was too precise, it returned the top span only, forcing follow-up calls to see the other three edit sites.
 
 So `find` was changed to do deliberately what the old map did accidentally, but scoped: when the top in-scope hits cluster in one file, return **all** of their bodies in a single call (not just the top one). This gives the agent the whole relevant region in one response without dumping unrelated file content.
 

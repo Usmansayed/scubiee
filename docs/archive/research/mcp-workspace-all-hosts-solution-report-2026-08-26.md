@@ -1,4 +1,4 @@
-# All-hosts MCP workspace resolution — solution report
+# All-hosts MCP workspace resolution: solution report
 
 **Date:** 2026-08-26  
 **Status:** Wave 1 implemented in **0.2.83** (project MCP pins for Cursor/Codex/Continue/OpenCode/Amp/Pi + `WORKSPACE_FOLDER_PATHS`). Windsurf / Roots still deferred.  
@@ -35,7 +35,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 | **P2** | Config interpolation `${workspaceFolder}` | Host expands it **in that config scope** |
 | **P3** | Explicit `cwd` in MCP config | Host supports `cwd` (absolute or expanded) |
 | **P4** | **Project MCP file + absolute `CTX_REPO` (+ `CTX_PROJECT_ID`)** | Global cannot bind workspace (special-4 today) |
-| **P5** | MCP `roots/list` | Protocol follow-up after P1–P4 |
+| **P5** | MCP `roots/list` | Protocol follow-up after P1, P4 |
 | **P6** | Read host-injected multi-path env (`WORKSPACE_FOLDER_PATHS`) | Cursor (and similar) inject without config tokens |
 
 **Hard rule:** Never put an **absolute** `CTX_REPO` in a **user-global** MCP file that applies to every workspace (poisons other folders). Absolute pins belong in **project** files only.
@@ -64,14 +64,14 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ## 4. Per-tool research + recommended Scubiee connect behavior
 
-### 4.1 Cursor (`cursor`) — **change required**
+### 4.1 Cursor (`cursor`): **change required**
 
 **Evidence**
 
 - Live Mac (2026-08-26): global `CTX_REPO=${workspaceFolder}` left **literal**; MCP cwd `$HOME`; `status.managed=false`.
 - Official docs: `${workspaceFolder}` = *“project root (the folder that contains `.cursor/mcp.json`”* → implies **project** config, not `~/.cursor/mcp.json`.
 - VS Code user MCP: variables do not resolve in user-level config ([#245905](https://github.com/microsoft/vscode/issues/245905)).
-- Ecosystem: [Gortex #19](https://github.com/zzet/gortex/issues/19) — global MCP cwd=`~/`; **project** `.cursor/mcp.json` works; global often wins unless disabled.
+- Ecosystem: [Gortex #19](https://github.com/zzet/gortex/issues/19), global MCP cwd=`~/`; **project** `.cursor/mcp.json` works; global often wins unless disabled.
 - Forum: wrong MCP cwd; staff mention **`WORKSPACE_FOLDER_PATHS`** ([forum](https://forum.cursor.com/t/workspace-level-mcp-json-execution-context/98599)).
 
 **Not Mac-only:** same Cursor model on Windows; wrong-cwd reports exist on Windows too.
@@ -88,7 +88,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.2 Claude Code (`claude-code`) — **mostly done**
+### 4.2 Claude Code (`claude-code`): **mostly done**
 
 **Evidence**
 
@@ -104,7 +104,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.3 Codex (`codex`) — **change required for IDE/Desktop**
+### 4.3 Codex (`codex`): **change required for IDE/Desktop**
 
 **Evidence**
 
@@ -116,12 +116,12 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 1. On `connect --codex` in a repo: write **project** `.codex/config.toml` with absolute `cwd` + `env.CTX_REPO` / `CTX_PROJECT_ID`.
 2. Global TOML: no absolute pin; do not depend on `${workspaceFolder}` in global (IDE-only / unreliable).
-3. Resolver already lists `CODEX_WORKSPACE_ROOT` — keep.
+3. Resolver already lists `CODEX_WORKSPACE_ROOT`, keep.
 4. UX: trust project for Desktop; CLI may work from cwd.
 
 ---
 
-### 4.4 Kiro (`kiro`) — **keep special-4**
+### 4.4 Kiro (`kiro`): **keep special-4**
 
 **Evidence**
 
@@ -137,7 +137,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.5 Windsurf (`windsurf`) — **hardest; no project MCP**
+### 4.5 Windsurf (`windsurf`): **hardest; no project MCP**
 
 **Evidence**
 
@@ -153,11 +153,11 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 | **B.** Launcher script that discovers “active” Windsurf project | Multi-repo safer | Fragile / host-private |
 | **C.** Document “one Scubiee-active repo; re-run connect when switching” | Honest | UX friction |
 
-**Recommendation:** **C + A** — on `connect --windsurf` pin absolute `CTX_REPO` in global **and** print a clear warning that Windsurf is global-only; re-run connect when switching projects. Optional smoke for `${workspaceFolder}` later; do not ship tokens as primary.
+**Recommendation:** **C + A**, on `connect --windsurf` pin absolute `CTX_REPO` in global **and** print a clear warning that Windsurf is global-only; re-run connect when switching projects. Optional smoke for `${workspaceFolder}` later; do not ship tokens as primary.
 
 ---
 
-### 4.6 VS Code / Copilot (`copilot`) — **keep special-4**
+### 4.6 VS Code / Copilot (`copilot`): **keep special-4**
 
 **Evidence**
 
@@ -171,7 +171,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.7 Cline (`cline`) — **keep special-4**
+### 4.7 Cline (`cline`): **keep special-4**
 
 **Evidence**
 
@@ -185,7 +185,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.8 Roo Code (`roo-code`) — **keep special-4**
+### 4.8 Roo Code (`roo-code`): **keep special-4**
 
 **Evidence**
 
@@ -199,7 +199,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.9 Continue (`continue`) — **add project MCP block**
+### 4.9 Continue (`continue`): **add project MCP block**
 
 **Evidence**
 
@@ -215,11 +215,11 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.10 Zed (`zed`) — **low urgency**
+### 4.10 Zed (`zed`): **low urgency**
 
 **Evidence**
 
-- Context servers default **cwd = project root** ([#35354](https://github.com/zed-industries/zed/issues/35354) — request for override; maintainers note default is project root).
+- Context servers default **cwd = project root** ([#35354](https://github.com/zed-industries/zed/issues/35354), request for override; maintainers note default is project root).
 - Remote SSH has separate spawn bugs (local process + remote path).
 
 **Scubiee solution**
@@ -230,7 +230,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.11 OpenCode (`opencode`) — **add project config**
+### 4.11 OpenCode (`opencode`): **add project config**
 
 **Evidence**
 
@@ -241,11 +241,11 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 1. On `connect --opencode` in a repo: merge into **project** `opencode.json` with `environment.CTX_REPO` / `CTX_PROJECT_ID` absolute, and `cwd` = project root (or `.`).
 2. Global file: command only, no absolute pin.
-3. Resolver already has `OPENCODE_DEFAULT_PROJECT` — keep for any host-injected hint.
+3. Resolver already has `OPENCODE_DEFAULT_PROJECT`, keep for any host-injected hint.
 
 ---
 
-### 4.12 Amp (`amp`) — **add workspace settings**
+### 4.12 Amp (`amp`): **add workspace settings**
 
 **Evidence**
 
@@ -261,7 +261,7 @@ Scubiee resolver order (`mcp_locate`): IDE env → `CTX_PROJECT_ID` → cwd walk
 
 ---
 
-### 4.13 Pi (`pi`) — **add project `.mcp.json` / `.pi/mcp.json`**
+### 4.13 Pi (`pi`): **add project `.mcp.json` / `.pi/mcp.json`**
 
 **Evidence**
 
@@ -294,7 +294,7 @@ Follow-up wave: MCP **Roots** client for Claude Code + Cursor (both claim Roots)
 
 ## 6. Recommended implementation waves
 
-### Wave 1 — unblock Mac Cursor + align non–special-4 that have project files
+### Wave 1: unblock Mac Cursor + align non, special-4 that have project files
 
 1. Cursor → project `.cursor/mcp.json` absolute pin (promote toward special-4 behavior for MCP only).
 2. Resolver: `WORKSPACE_FOLDER_PATHS`.
@@ -304,13 +304,13 @@ Follow-up wave: MCP **Roots** client for Claude Code + Cursor (both claim Roots)
 6. Amp → `.amp/settings.json` + approve hint.
 7. Pi → project `.mcp.json`.
 
-### Wave 2 — Windsurf policy + polish
+### Wave 2: Windsurf policy + polish
 
 1. Windsurf global absolute pin + loud “reconnect on switch” warning (or wrapper spike).
 2. Cline/Roo optional `cwd` tokens.
 3. Docs: connect matrix in web-info.
 
-### Wave 3 — protocol
+### Wave 3: protocol
 
 1. MCP Roots consumption.
 2. Live smoke matrix Mac+Win for every slug.
@@ -366,9 +366,9 @@ Windsurf: document expected “must reconnect” if using global absolute pin.
 
 ## 10. Bottom line
 
-- **Not a MacBook-only bug** — host MCP spawn/config scope.
-- **Special-4 (Kiro, Copilot, Cline, Roo) already have the right shape** — keep.
+- **Not a MacBook-only bug**: host MCP spawn/config scope.
+- **Special-4 (Kiro, Copilot, Cline, Roo) already have the right shape**: keep.
 - **Cursor’s real fix matches special-4 MCP (project file + absolute pin)**, not global tokens.
-- **Claude Code** is the good citizen (host env) — resolver-first.
+- **Claude Code** is the good citizen (host env), resolver-first.
 - **Windsurf** cannot do true multi-repo project MCP; product must warn + reconnect.
 - Extend project-MCP writes to **Cursor, Codex, Continue, OpenCode, Amp, Pi** in Wave 1.

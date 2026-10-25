@@ -1,4 +1,4 @@
-# Mac GPU Install Handoff — Context for Cursor on MacBook
+# Mac GPU Install Handoff: Context for Cursor on MacBook
 
 > **Purpose:** Pull this repo on Apple Silicon Mac, read this file first, then fix/verify CoreML GPU path for `scubiee` / Context Engine.
 >
@@ -7,11 +7,11 @@
 > - Hidden handoff: `https://github.com/Usmansayed/hidden-context-engine-.git`
 > - Branch: `feat/production-certification` (as of 2026-08-19)
 >
-> **Cursor agent — user's Python venv:** The user created a venv named **`scubiee`** at **`~/scubiee`**, **not** `~/.context-engine/venv`. Always activate **`~/scubiee`** before pip/ctx commands. Runtime state (accel.json, model markers) still lives under **`~/.context-engine/`** — that is separate from the venv path.
+> **Cursor agent, user's Python venv:** The user created a venv named **`scubiee`** at **`~/scubiee`**, **not** `~/.context-engine/venv`. Always activate **`~/scubiee`** before pip/ctx commands. Runtime state (accel.json, model markers) still lives under **`~/.context-engine/`**, that is separate from the venv path.
 
 ---
 
-## TL;DR — What is broken
+## TL;DR: What is broken
 
 **User goal:** Install `scubiee` on MacBook Air (Apple Silicon, Python 3.12 venv) and run embeddings on **GPU (Metal via CoreML)**, not CPU.
 
@@ -52,7 +52,7 @@ Valid ORT CoreML options (see [ORT CoreML EP docs](https://onnxruntime.ai/docs/e
 
 ## Full conversation arc (Windows dev → Mac trial)
 
-### Phase 1 — Reliability & publish (0.2.5 → 0.2.6)
+### Phase 1: Reliability & publish (0.2.5 → 0.2.6)
 
 Work on `feat/production-certification` / merged to `main`:
 
@@ -61,22 +61,22 @@ Work on `feat/production-certification` / merged to `main`:
 - Doctor exit 0 when index OK but daemon unbound; init `--fast` / `--roots`
 - Mac npm installer venv + git pip fallback
 - **PyPI 0.2.6 published** manually; tags `v0.2.5`, `v0.2.6`
-- **npm `scubiee` NOT published** (404 — needs NPM_TOKEN)
+- **npm `scubiee` NOT published** (404, needs NPM_TOKEN)
 
-### Phase 2 — Mac user install journey
+### Phase 2: Mac user install journey
 
 Environment: MacBook Air, Apple Silicon, Python 3.12.
 
-**User's Python venv:** `~/scubiee` (named `scubiee` — **not** the default `~/.context-engine/venv` from docs/npm installer).
+**User's Python venv:** `~/scubiee` (named `scubiee`, **not** the default `~/.context-engine/venv` from docs/npm installer).
 
 | Step | Result |
 |------|--------|
 | `pip install scubiee` (0.2.6) | OK |
-| `ctx setup` | **FAILED** — CoreML EP errors |
+| `ctx setup` | **FAILED**, CoreML EP errors |
 | CoreML errors | `E5RT`, dynamic shapes, `runtime shape ({1,6,12,0}) has zero elements` |
-| Workaround advised | `ctx setup --profile cpu --repair` — user **rejected** CPU-only path |
+| Workaround advised | `ctx setup --profile cpu --repair`, user **rejected** CPU-only path |
 
-### Phase 3 — Mac GPU research & 0.2.7 implementation
+### Phase 3: Mac GPU research & 0.2.7 implementation
 
 **Research conclusion:** Mac has no CUDA. GPU path = **ONNX Runtime CoreML EP** → Metal GPU.
 
@@ -86,14 +86,14 @@ Requirements for transformer ONNX on Apple Silicon:
 2. **Fixed batch size** at runtime (pad batches; never `batch_size=len(batch)` on CoreML)
 3. **Patch CodeRank ONNX** from dynamic axes to fixed `[batch, 512]`
 4. **`MLComputeUnits=CPUAndGPU`** for Metal GPU (not ANE-only)
-5. **GPU-only sessions** via `CTX_MAC_GPU_ONLY=1` (default) — exclude CPU EP from provider list
+5. **GPU-only sessions** via `CTX_MAC_GPU_ONLY=1` (default), exclude CPU EP from provider list
 
 **New module:** `packages/pipeline/coreml_mac.py`  
 **Updated:** `packages/pipeline/accel.py`, `packages/pipeline/embedder.py`  
 **Tests:** `tests/test_coreml_mac.py`  
 **Published:** scubiee **0.2.7** to PyPI (2026-08-19)
 
-### Phase 4 — 0.2.7 still broken on real Mac (this handoff)
+### Phase 4: 0.2.7 still broken on real Mac (this handoff)
 
 User ran on Mac:
 
@@ -102,9 +102,9 @@ pip install -U "scubiee[coreml]==0.2.7"
 ctx setup --repair
 ```
 
-Output: model downloaded (~549MB), then **UseCPUAndGPU** error, CPU fallback, calibration `21.58 t/s`, printed `Ready` — **misleading success on CPU**.
+Output: model downloaded (~549MB), then **UseCPUAndGPU** error, CPU fallback, calibration `21.58 t/s`, printed `Ready`, **misleading success on CPU**.
 
-User wants GPU-only, bug-free Mac path — not CPU workaround.
+User wants GPU-only, bug-free Mac path, not CPU workaround.
 
 ---
 
@@ -137,7 +137,7 @@ embedder (runtime)
 | `packages/pipeline/preflight.py` | Validates saved provider can warm model |
 | `packages/pipeline/doctor.py` | Diagnostics; hints `setup --repair` |
 
-**Persisted config (runtime data — not the venv):** `~/.context-engine/accel.json`  
+**Persisted config (runtime data, not the venv):** `~/.context-engine/accel.json`  
 **Static model marker:** `~/.context-engine/coderank_coreml_static.json`
 
 ---
@@ -146,11 +146,11 @@ embedder (runtime)
 
 | Path | What it is |
 |------|------------|
-| **`~/scubiee`** | User's **Python virtualenv** — activate this for `pip`, `python`, `ctx` |
+| **`~/scubiee`** | User's **Python virtualenv**, activate this for `pip`, `python`, `ctx` |
 | `~/scubiee/bin/activate` | Activation script (zsh/bash) |
 | `~/.context-engine/accel.json` | Saved GPU profile after `ctx setup` (created at runtime) |
 | `~/.context-engine/coderank_coreml_static.json` | Marker for static CoreML ONNX model |
-| `~/.context-engine/venv` | Default venv from npm/mac-install.sh — **user did NOT use this** |
+| `~/.context-engine/venv` | Default venv from npm/mac-install.sh, **user did NOT use this** |
 
 **Cursor agent rule:** Do not assume `~/.context-engine/venv`. Always use:
 
@@ -177,7 +177,7 @@ Set `CTX_MAC_GPU_ONLY=0` only for debugging CPU fallback.
 ## Commands for Mac verification (after fix)
 
 ```bash
-# 1. venv — USER USES ~/scubiee (NOT ~/.context-engine/venv)
+# 1. venv - USER USES ~/scubiee (NOT ~/.context-engine/venv)
 source ~/scubiee/bin/activate
 export PATH="$HOME/scubiee/bin:$PATH"
 which python && which ctx
@@ -194,7 +194,7 @@ rm -f ~/.context-engine/accel.json
 export CTX_MAC_GPU_ONLY=1
 export CTX_COREML_UNITS=CPUAndGPU
 
-# 5. Repair setup — MUST NOT show "Unknown option" or "Falling back to CPU"
+# 5. Repair setup - MUST NOT show "Unknown option" or "Falling back to CPU"
 ctx setup --repair 2>&1 | tee ~/ce-setup.log
 
 # 6. Verify profile
@@ -225,17 +225,17 @@ ctx search "test query"
 
 Next likely issues (in order):
 
-1. **ONNX patch failed** — check HF cache for `model.coreml_b20_s512.onnx`; if missing, debug `prepare_coderank_onnx_for_coreml()`.
+1. **ONNX patch failed**: check HF cache for `model.coreml_b20_s512.onnx`; if missing, debug `prepare_coderank_onnx_for_coreml()`.
 
-2. **Dynamic shape still in graph** — may need to fix more input names or output shapes; inspect ONNX with `onnx` CLI.
+2. **Dynamic shape still in graph**: may need to fix more input names or output shapes; inspect ONNX with `onnx` CLI.
 
-3. **Sequence length** — CodeRank may need different `CTX_COREML_STATIC_SEQ` if 512 wrong for model.
+3. **Sequence length**: CodeRank may need different `CTX_COREML_STATIC_SEQ` if 512 wrong for model.
 
-4. **ORT version** — `pip show onnxruntime`; CoreML EP requires macOS 10.15+; Apple Silicon recommended.
+4. **ORT version**: `pip show onnxruntime`; CoreML EP requires macOS 10.15+; Apple Silicon recommended.
 
-5. **FastEmbed internal CPU fallback** — even with gpu_only providers, ORT may retry CPU on session error; setup must **fail loudly** instead of silent fallback (consider hard-fail in `accel.calibrate_batch` when CoreML requested but CPU used).
+5. **FastEmbed internal CPU fallback**: even with gpu_only providers, ORT may retry CPU on session error; setup must **fail loudly** instead of silent fallback (consider hard-fail in `accel.calibrate_batch` when CoreML requested but CPU used).
 
-6. **`accel.py` sets `coreml_compute_units: ALL` on Apple Silicon** (line ~421) — may prefer ANE over GPU; consider forcing `CPUAndGPU` for explicit Metal.
+6. **`accel.py` sets `coreml_compute_units: ALL` on Apple Silicon** (line ~421): may prefer ANE over GPU; consider forcing `CPUAndGPU` for explicit Metal.
 
 ---
 
@@ -255,17 +255,17 @@ Next likely issues (in order):
 ```
 Read docs/mac-gpu-install-handoff.md first.
 
-We need Mac CoreML GPU working on Apple Silicon — NOT CPU fallback.
+We need Mac CoreML GPU working on Apple Silicon - NOT CPU fallback.
 
-IMPORTANT — user's Python venv is named scubiee at ~/scubiee
+IMPORTANT - user's Python venv is named scubiee at ~/scubiee
 (NOT ~/.context-engine/venv). Always run:
   source ~/scubiee/bin/activate
   export PATH="$HOME/scubiee/bin:$PATH"
 Runtime data (accel.json etc.) is still under ~/.context-engine/
 
 Known bugs in 0.2.7 (may already be fixed on branch):
-1. packages/pipeline/coreml_mac.py — remove invalid ORT options UseCPUAndGPU and CreateMLProgram
-2. Same file — shape = [batch, seq] in prepare_coderank_onnx_for_coreml()
+1. packages/pipeline/coreml_mac.py - remove invalid ORT options UseCPUAndGPU and CreateMLProgram
+2. Same file - shape = [batch, seq] in prepare_coderank_onnx_for_coreml()
 
 After fix:
 - rm ~/.context-engine/accel.json
@@ -291,10 +291,10 @@ User machine: MacBook Air, Apple Silicon, Python 3.12, venv ~/scubiee
 
 ## Related docs in repo
 
-- `README.md` — install overview
-- `docs/publish-setup.md` — PyPI/npm publish
-- `scripts/mac-install.sh` — venv + git pip fallback
-- `docs/reindexing/` — live reindexing (separate from Mac GPU issue)
+- `README.md`: install overview
+- `docs/publish-setup.md`: PyPI/npm publish
+- `scripts/mac-install.sh`: venv + git pip fallback
+- `docs/reindexing/`: live reindexing (separate from Mac GPU issue)
 
 ---
 

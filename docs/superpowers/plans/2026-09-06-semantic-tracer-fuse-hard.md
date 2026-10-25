@@ -1,4 +1,4 @@
-# Semantic tracer fuse bakeoff — `verify_hard.json`
+# Semantic tracer fuse bakeoff: `verify_hard.json`
 
 Cases: 50 · 16.57s · `real:fastembed`
 
@@ -30,7 +30,7 @@ Cases: 50 · 16.57s · `real:fastembed`
 
 ## Recommendation
 
-Fuse **with teleport** hurts F1/prec — do not ship that variant.
+Fuse **with teleport** hurts F1/prec, do not ship that variant.
 
 The **good research composite** is comparator + path polish + trace centroid/hub + info-gain (**teleport off**), matching `semantic_tracer_v1` / default `semantic_tracer_fuse`.
 
@@ -38,7 +38,7 @@ See [`2026-09-06-semantic-tracer-rnd-synthesis.md`](2026-09-06-semantic-tracer-r
 
 ### Fusion contents
 
-- Cycle 1: edge/node comparator best-first + path polish — **KEEP**
-- Cycle 2: live trace centroid — **KEEP**; strict teleport — **ablation only**
-- Cycle 3 lite: hub penalty + info-gain skip — **KEEP**
-- Spine: composite membership + DFG/sink rank — **KEEP**
+- Cycle 1: edge/node comparator best-first + path polish, **KEEP**
+- Cycle 2: live trace centroid, **KEEP**; strict teleport, **ablation only**
+- Cycle 3 lite: hub penalty + info-gain skip, **KEEP**
+- Spine: composite membership + DFG/sink rank, **KEEP**

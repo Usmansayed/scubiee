@@ -32,7 +32,7 @@
 
 ## Real comparison verdict
 
-1. **Hard symbol locate does not need 450** — flat across sizes.
+1. **Hard symbol locate does not need 450**: flat across sizes.
 2. Under **difficult macro**, **mix@350 ≈ best**; mix@300 is within −0.02 of 450 → still holds.
 3. Soft-52 still prefers 450; hard/adversarial are the stress tests.
 4. **Practical ship:** `MAX_CHARS=300` or **350** for a safer middle (won difficult macro).

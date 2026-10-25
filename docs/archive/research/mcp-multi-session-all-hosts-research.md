@@ -1,4 +1,4 @@
-# Multi-session MCP isolation — all-hosts research
+# Multi-session MCP isolation: all-hosts research
 
 **Date:** 2026-08-28  
 **Scope:** Every slug in `pipeline.tool_registry.TOOLS`  
@@ -14,11 +14,11 @@
 |-------|---------|
 | Hosts spawn **one stdio MCP process per server config**, shared across chats | **True** for most (Cursor, Copilot, Claude Code, Kiro, Cline, Roo, …) |
 | Hosts pass **conversation/chat id** in MCP subprocess env | **Only Claude Code** documents `CLAUDE_CODE_SESSION_ID` ([env-vars](https://code.claude.com/docs/en/env-vars)) |
-| MCP `_meta` carries a standard chat/session id | **No** — 2026-07-28 spec removed protocol sessions; `_meta` has `clientInfo`, not conversation id ([changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)) |
-| FastMCP `ctx.client_id` isolates parallel chats | **Unknown** — host-dependent; must be live-tested per host |
-| `{host}@proc-{pid}` isolates parallel chats in one MCP process | **No** — same process ⇒ same fallback session |
-| Explicit tool `session_id` or `CTX_MCP_SESSION_ID` in MCP env | **Yes** — always works when caller sets it |
-| **Pi** spawns fresh MCP per Pi session | **Yes** ([pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter)) — process boundary, not per chat |
+| MCP `_meta` carries a standard chat/session id | **No**, 2026-07-28 spec removed protocol sessions; `_meta` has `clientInfo`, not conversation id ([changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog)) |
+| FastMCP `ctx.client_id` isolates parallel chats | **Unknown**, host-dependent; must be live-tested per host |
+| `{host}@proc-{pid}` isolates parallel chats in one MCP process | **No**, same process ⇒ same fallback session |
+| Explicit tool `session_id` or `CTX_MCP_SESSION_ID` in MCP env | **Yes**, always works when caller sets it |
+| **Pi** spawns fresh MCP per Pi session | **Yes** ([pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter)), process boundary, not per chat |
 
 **Bottom line:** Multi-chat isolation inside **one shared MCP process** is **not guaranteed** on Cursor, Copilot, Codex, etc. Scubiee’s honest guarantees are:
 
@@ -37,7 +37,7 @@
 2. Request ContextVar (bound per call)
 3. FastMCP transport (`client_id` or `conn-{id}`) when inside a live MCP request
 4. Host env: `CTX_MCP_SESSION_ID`, then **`CLAUDE_CODE_SESSION_ID`**
-5. Best-effort env (`CONVERSATION_ID`, `CHAT_ID`, …) — **unverified** on listed hosts
+5. Best-effort env (`CONVERSATION_ID`, `CHAT_ID`, …), **unverified** on listed hosts
 6. Fallback: `{host}@proc-{pid}` when `CTX_MCP_SESSION_ISOLATE=1`
 
 Connect writes `CTX_MCP_CLIENT=<slug>` and `CTX_MCP_SESSION_ISOLATE=1` for every tool.
@@ -71,12 +71,12 @@ Legend: **Process** = one MCP stdio child per server entry. **Session env** = ch
 ### Cursor
 
 - **Evidence:** [cursor.com/docs/mcp](https://cursor.com/docs/mcp); live Mac session in [`cursor-mcp-workspace-resolution-research.md`](./cursor-mcp-workspace-resolution-research.md); forum reports of orphan MCP processes per server config.
-- **Session:** No documented chat env. Cursor may inject `WORKSPACE_FOLDER_PATHS` (forum/staff mention) — workspace only, not session.
+- **Session:** No documented chat env. Cursor may inject `WORKSPACE_FOLDER_PATHS` (forum/staff mention), workspace only, not session.
 - **Multi-chat:** Multiple Composer tabs typically share one `scubiee-mcp` process → **shared Scubiee session** unless user sets `CTX_MCP_SESSION_ID` per chat (manual) or FastMCP `client_id` differs (unverified).
 
 ### Claude Code
 
-- **Evidence:** [env-vars — `CLAUDE_CODE_SESSION_ID`](https://code.claude.com/docs/en/env-vars); MCP subprocess is long-lived ([`CLAUDE_CODE_CHILD_SESSION`](https://code.claude.com/docs/en/env-vars) not set for stdio MCP).
+- **Evidence:** [env-vars, `CLAUDE_CODE_SESSION_ID`](https://code.claude.com/docs/en/env-vars); MCP subprocess is long-lived ([`CLAUDE_CODE_CHILD_SESSION`](https://code.claude.com/docs/en/env-vars) not set for stdio MCP).
 - **Caveats:**
   - MCP retains **spawn-time** id; `/clear` updates hooks/Bash but not necessarily MCP env ([#64412](https://github.com/anthropics/claude-code/issues/64412)).
   - Plugin-bundled MCP may lack session id ([#61752](https://github.com/anthropics/claude-code/issues/61752)).
@@ -92,7 +92,7 @@ Legend: **Process** = one MCP stdio child per server entry. **Session env** = ch
 ### VS Code / Copilot
 
 - **Evidence:** [MCP configuration](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration); user `mcp.json` does not expand `${workspaceFolder}` ([#245905](https://github.com/microsoft/vscode/issues/245905)).
-- **Session:** Monitoring docs mention `gen_ai.conversation.id` in OTel — **not** passed to MCP child env.
+- **Session:** Monitoring docs mention `gen_ai.conversation.id` in OTel, **not** passed to MCP child env.
 - **Multi-chat:** Multiple Copilot chats in one window share MCP → **shared session**.
 
 ### Kiro, Cline, Roo Code
@@ -115,7 +115,7 @@ Legend: **Process** = one MCP stdio child per server entry. **Session env** = ch
 
 ### Pi
 
-- **Evidence:** [pi-mcp-adapter README](https://github.com/nicobailon/pi-mcp-adapter) — MCP processes are **not** shared across Pi sessions.
+- **Evidence:** [pi-mcp-adapter README](https://github.com/nicobailon/pi-mcp-adapter), MCP processes are **not** shared across Pi sessions.
 - **Session:** Extension events `session_start` / `session_shutdown`; not MCP env.
 - **Multi-chat:** New Pi session ⇒ new MCP process ⇒ natural `{pi}@proc-{pid}` isolation. Parallel chats **within** one Pi session: **shared**.
 
@@ -132,14 +132,14 @@ Legend: **Process** = one MCP stdio child per server entry. **Session env** = ch
 
 **Does not work (without workarounds):**
 
-- “Every Cursor chat gets its own recall/handles automatically” — **not proven**; likely **shared** one MCP process.
-- Relying on `CONVERSATION_ID` / `CHAT_ID` env — **no host documents these** for MCP children.
-- MCP protocol session headers — **removed** in 2026-07-28 spec.
+- “Every Cursor chat gets its own recall/handles automatically”, **not proven**; likely **shared** one MCP process.
+- Relying on `CONVERSATION_ID` / `CHAT_ID` env, **no host documents these** for MCP children.
+- MCP protocol session headers, **removed** in 2026-07-28 spec.
 
 **Recommended workarounds for parallel chats (Cursor/Copilot/etc.):**
 
-1. Set **`CTX_MCP_SESSION_ID`** in project MCP env to a value the host can vary (if host supports per-chat env — **rare**).
-2. Teach agent rules: pass **`session_id`** on first Scubiee tool call per chat (host would need to inject chat id into rules — product-specific).
+1. Set **`CTX_MCP_SESSION_ID`** in project MCP env to a value the host can vary (if host supports per-chat env, **rare**).
+2. Teach agent rules: pass **`session_id`** on first Scubiee tool call per chat (host would need to inject chat id into rules, product-specific).
 3. Accept **process-level** isolation only until hosts expose chat ids or spawn MCP per chat.
 
 ---
@@ -151,9 +151,9 @@ Scubiee maximizes isolation without per-host QA:
 1. **Verified env:** `CLAUDE_CODE_SESSION_ID` (official Claude Code).
 2. **Dynamic env scan:** re-reads `CURSOR_*`, `VSCODE_*`, etc. session-like vars every tool call.
 3. **Transport binding:** FastMCP `client_id` or connection id when inside a live MCP request.
-4. **Process fallback:** `{host}@proc-{pid}` when isolate is on — safe for one-chat-per-process.
+4. **Process fallback:** `{host}@proc-{pid}` when isolate is on, safe for one-chat-per-process.
 5. **Session echo:** every tool JSON includes `session_id`, `session_source`, and `session_hint`; agents pass `session_id` back for recall/expand continuity.
-6. **Explicit override:** tool arg `session_id` or MCP env `CTX_MCP_SESSION_ID` — works on **any** host.
+6. **Explicit override:** tool arg `session_id` or MCP env `CTX_MCP_SESSION_ID`, works on **any** host.
 7. **Honest warnings:** `session_shared_risk: true` when on process fallback for Cursor/Copilot/etc.
 
 **Agent protocol (works without host chat ids):** use `session_id="auth-refactor"` vs `session_id="billing-bug"` for parallel tasks in the same repo.
@@ -174,5 +174,5 @@ Scubiee maximizes isolation without per-host QA:
 
 ## Test coverage
 
-- `tests/test_session_isolation.py` — store isolation, proc fallback, `CLAUDE_CODE_SESSION_ID`, host detection.
+- `tests/test_session_isolation.py`: store isolation, proc fallback, `CLAUDE_CODE_SESSION_ID`, host detection.
 - Does **not** substitute for live dual-chat tests on each IDE.

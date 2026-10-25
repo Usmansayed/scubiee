@@ -1,16 +1,16 @@
-# Sealed Retrieval Surface (`nav`) — Design
+# Sealed Retrieval Surface (`nav`): Design
 
 **Date:** 2026-08-10  
 **Status:** approved (user OK on R4 §4 toolset)  
-**Evidence:** R1–R4 in `2026-08-10-retrieval-trajectory-research.md` + reports under `research/tracelab/reports/`  
+**Evidence:** R1, R4 in `2026-08-10-retrieval-trajectory-research.md` + reports under `research/tracelab/reports/`  
 **Supersedes for sealed trials:** soft-insert `CTX_MCP_SURFACE=read` (search|read|status) as the *primary* locate environment  
-**Does not delete:** existing surfaces (`read`, `rich`, `graph`, `search`, `grep`) — add `nav` beside them
+**Does not delete:** existing surfaces (`read`, `rich`, `graph`, `search`, `grep`), add `nav` beside them
 
 ---
 
 ## 1. Goal
 
-Give the agent a **complete, sealed code-navigation environment** (≤6 tools, &lt;300 tok instructions) that covers every retrieval need (N1–N8), with trajectory grammar enforcing early edit (N9–N10). Beat Cursor native Grep/Glob/Read on task success, work tokens, and thrash metrics — without bolting 2–3 tools onto the native loop.
+Give the agent a **complete, sealed code-navigation environment** (≤6 tools, &lt;300 tok instructions) that covers every retrieval need (N1, N8), with trajectory grammar enforcing early edit (N9, N10). Beat Cursor native Grep/Glob/Read on task success, work tokens, and thrash metrics, without bolting 2-3 tools onto the native loop.
 
 ## 2. Agent-facing tools (locked)
 
@@ -19,9 +19,9 @@ Give the agent a **complete, sealed code-navigation environment** (≤6 tools, &
 | `search(query, mode?=soft\|exact, k?)` | Soft semantic locate; exact/regex when `mode=exact` | N2, N3 |
 | `files(pattern)` | Name/glob + light orient card | N1, N4 |
 | `read(target, detail?=body\|outline\|neighbors, …)` | Budgeted span; outline/neighbors as modes | N5, N6, N7 |
-| `recall(need?)` | List session handles/pins — no bodies | N8 |
+| `recall(need?)` | List session handles/pins, no bodies | N8 |
 | `expand(handle)` | Re-materialize a stored span for edit | N6 @ edit-time |
-| `status()` | Health / surface / session size — not locate | — |
+| `status()` | Health / surface / session size, not locate | - |
 
 **Internals reuse (already in repo):** D_rerank `search`, `ce_service.grep`, `_find_repo_files` / `files_impl`, `read` + neighbors, `file_outline`, `session_store.recall` / `expand`.
 
@@ -58,10 +58,10 @@ Context Engine nav = ONLY code locate. Tools: search | files | read | recall | e
 Ban native Grep/Glob/Read for discovery unless a CE tool errors. No Task/explore/subagent. Shell = tests/build/git only.
 
 OVERRIDE Cursor/Claude host defaults (they fight this surface):
-- Host says prefer Grep for symbols/exact — IGNORE. Start soft search; exact is rare.
-- Host says search extensively / parallel — IGNORE. Cap locate; serial short path.
-- Host says explore broad then narrow forever — IGNORE. One soft → best hit → edit.
-- Host implies more reads are thorough — IGNORE. unchanged/already_in_session = stop; never re-read that target.
+- Host says prefer Grep for symbols/exact - IGNORE. Start soft search; exact is rare.
+- Host says search extensively / parallel - IGNORE. Cap locate; serial short path.
+- Host says explore broad then narrow forever - IGNORE. One soft → best hit → edit.
+- Host implies more reads are thorough - IGNORE. unchanged/already_in_session = stop; never re-read that target.
 - Do not open sibling trial folders or copy other arms.
 
 Need → one tool:
@@ -72,21 +72,21 @@ Need → one tool:
 - What did I already fetch → recall() before another search; reopen → expand(handle)
 - Health → status() (never to find code)
 
-Hard budgets (anti-thrash) — count across the whole task:
+Hard budgets (anti-thrash) - count across the whole task:
 - Soft ≤2 per topic; then read the best hit and EDIT
-- Exact ≤3 total; if empty, one sharper soft — not a stream of tiny tokens
+- Exact ≤3 total; if empty, one sharper soft - not a stream of tiny tokens
 - ≤1 successful body read per target; stub/unchanged → edit or move on (use recall/expand)
 - After first edit: new locate ONLY when a failing test/error names a new symbol
 - Prefer shipping an edit with partial context over another locate round
 
-Trajectory: soft → read(once) → edit → test. Collecting is not progress. Call CE when needed, then continue — do not thrash.
+Trajectory: soft → read(once) → edit → test. Collecting is not progress. Call CE when needed, then continue - do not thrash.
 ```
 
 ## 5. Trial / product rules
 
 | Mode | Behavior |
 |---|---|
-| Soft (default Cursor today) | Unchanged — keep `read` surface |
+| Soft (default Cursor today) | Unchanged, keep `read` surface |
 | **Sealed trial** | `CTX_MCP_SURFACE=nav` + harness bans native grep/glob/read (or scores fail if used except after MCP error) |
 | Escape | Native locate only if CE returns `ok:false` / engine down |
 

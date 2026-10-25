@@ -7,7 +7,7 @@
 ## Fairness / isolation
 
 - Same cwd, model, effort, trust-all-tools
-- Sequential (not parallel) — shared machine resources
+- Sequential (not parallel), shared machine resources
 - Agents: `ab_with_scubiee` vs `ab_without_scubiee`
 - `includeMcpJson=false` on both; agent owns MCP surface
 - User + project `mcp.json` neutralized during the suite (restored after)

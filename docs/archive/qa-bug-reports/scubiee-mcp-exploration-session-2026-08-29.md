@@ -1,11 +1,11 @@
-# Scubiee MCP Exploration Session — Agent Experience Log
+# Scubiee MCP Exploration Session: Agent Experience Log
 
 **Date:** 2026-08-29  
 **Evaluator:** Cursor agent (Composer)  
 **Surface:** `phase` (`map | focus | grep | glob | workspace | expand | gate | status`)  
 **Repo:** `context-engine` (managed, `ce_9d8eb3aef9a744c5ef479299c6666aa5`)  
 **Session ID:** `cursor@conn-f312b0`  
-**Method:** Broad exploratory locate — random topic sampling, deep focus reads, grep/glob edge cases, then on-disk log verification
+**Method:** Broad exploratory locate, random topic sampling, deep focus reads, grep/glob edge cases, then on-disk log verification
 
 ---
 
@@ -15,11 +15,11 @@ Scubiee MCP is **highly effective for repo understanding** when the agent follow
 
 Main friction points:
 
-1. **Daemon dropped once** during a parallel map batch (`Remote end closed connection`) — no auto-retry.
-2. **`glob` silently ignores wrong param names** — passing `glob:` instead of `pattern:` falls back to `**/*` with no error.
-3. **`status()` readiness is ambiguous** — `healthy: true` coexists with `ready: false`, `syncing: true`.
-4. **Nonsense map queries still return 8 cards** — no low-confidence or empty-state signal.
-5. **Keeper never converges** on 5 AGENTS.md variant paths — sync stuck in `processing` all session.
+1. **Daemon dropped once** during a parallel map batch (`Remote end closed connection`), no auto-retry.
+2. **`glob` silently ignores wrong param names**: passing `glob:` instead of `pattern:` falls back to `**/*` with no error.
+3. **`status()` readiness is ambiguous**: `healthy: true` coexists with `ready: false`, `syncing: true`.
+4. **Nonsense map queries still return 8 cards**: no low-confidence or empty-state signal.
+5. **Keeper never converges** on 5 AGENTS.md variant paths, sync stuck in `processing` all session.
 
 ---
 
@@ -60,7 +60,7 @@ Files → Merkle diff → Graphify AST → enrich → compress → embed (CodeRa
 | **IndexManager** | `packages/pipeline/index_manager.py` | Merkle probe, full index, incremental sync |
 | **ResourceManager** | `packages/pipeline/resources.py` | CPU/RAM admission and embed batching |
 
-Watchdog sidecar: `packages/pipeline/watchdog.py` — polls `/health`, calls `force_restart_daemon`. Disable with `CTX_WATCHDOG=0`.
+Watchdog sidecar: `packages/pipeline/watchdog.py`, polls `/health`, calls `force_restart_daemon`. Disable with `CTX_WATCHDOG=0`.
 
 ### Key packages discovered
 
@@ -69,7 +69,7 @@ Watchdog sidecar: `packages/pipeline/watchdog.py` — polls `/health`, calls `fo
 | `packages/pipeline/` | Daemon, MCP server (`mcp_locate.py`), indexing, session store |
 | `packages/graphify/` | AST parsing, repo IR, graph extraction, entity dedup |
 | `packages/conductor/` | Fused retrieval (Graphify + BM25 + dense RRF) |
-| `packages/hybrid_cbm/` | CBM–CE hybrid facade |
+| `packages/hybrid_cbm/` | CBM, CE hybrid facade |
 | `packages/enrich/` | Chunk metadata injection without second AST parse |
 | `packages/parse_harness/` | AST bake-off harness (Graphify vs alternatives) |
 
@@ -118,34 +118,34 @@ Default surface after setup: `CTX_MCP_SURFACE=phase`.
 ### `gate()`
 
 - Returns minimal project ID: `1:ce_9d8eb3aef9a744c5ef479299c6666aa5`
-- Fast, ~5 tokens — works as intended
+- Fast, ~5 tokens, works as intended
 
 ### `status()`
 
 - Rich health payload: chunks, embed model, keeper state, dirty paths, session ledger
-- **Issue:** contradictory flags — see P1 below
+- **Issue:** contradictory flags, see P1 below
 - Useful fields: `engine.healthy`, `session.n_spans`, `session.ledger.approx_prompt_tokens`
 
 ### `map()`
 
-- **Best tool for cold start** — code-vocabulary queries (20–60 tokens) consistently hit relevant modules
+- **Best tool for cold start**: code-vocabulary queries (20-60 tokens) consistently hit relevant modules
 - Cards include `rank`, `file`, `start_line`, `end_line`, `score`, `why`, optional `span_hint`
 - **Duplicate detection:** re-running same query returns `usage_hint: Advisory: this map query already ran` but still executes
 - **Failure:** one call failed mid-batch with daemon connection drop; retry succeeded
-- **Null line ranges:** some top cards have `start_line: null` — requires extra `focus(outline)` step
+- **Null line ranges:** some top cards have `start_line: null`, requires extra `focus(outline)` step
 - **BOM artifacts:** `\ufeff` prefix visible in `why` snippets for some indexed files
 - **`facade_hint`:** useful on thin wrapper files (e.g. `context_agent/tools.py` → grep for real impl)
 
 ### `focus(outline)`
 
 - Excellent on Python files: `mcp_locate.py` (60/71 symbols), `capability.py` (32), `locate.py` (23)
-- Markdown files: returns `language_unsupported: true` with clear note — wastes one call if agent doesn't know
+- Markdown files: returns `language_unsupported: true` with clear note, wastes one call if agent doesn't know
 
 ### `focus(span)`
 
 - Returns `handle`, line ranges, code body, `truncated` + `next_start_line` when capped
 - **Dedup works:** re-fetch returns `status: already_in_session`, empty `code`, preserved handle
-- **Symbol query inside file works:** `focus(target="incremental.py", query="ensure_fresh_for_search")` → lines 766–883
+- **Symbol query inside file works:** `focus(target="incremental.py", query="ensure_fresh_for_search")` → lines 766-883
 
 ### `focus(neighbors)`
 
@@ -160,7 +160,7 @@ Default surface after setup: `CTX_MCP_SURFACE=phase`.
 ### `glob()`
 
 - Works when `pattern` param is used correctly
-- **Critical bug:** passing `glob:` (mirroring grep's param name) silently defaults to `**/*` — no error
+- **Critical bug:** passing `glob:` (mirroring grep's param name) silently defaults to `**/*`, no error
 - `packages/*` returned 0 files; `packages/pipeline/*.py` returned 30 (truncated)
 - `packages/graphify/**/*.py` returned 15 files correctly
 
@@ -185,25 +185,25 @@ Logs checked at: `.scubiee/sessions/cursor@conn-f312b0/`
 
 - Stores **full span text** server-side (not just handles/excerpts)
 - Each span: `content_hash`, `serve_count`, `created_ts`, `last_served_ts`, `source: "read"`
-- README span served 3× — dedup confirmed in disk log (`serve_count: 3`)
+- README span served 3×, dedup confirmed in disk log (`serve_count: 3`)
 - Topic field tracks last focus target
 - **Concern:** disk growth on long sessions; sensitive code persisted locally
 
 ### `work_session.json`
 
 - Per-file heatmap with hit counts, roles, and full query attribution
-- Example: `mcp_locate.py` — 7 hits, 5 distinct map queries recorded
+- Example: `mcp_locate.py`, 7 hits, 5 distinct map queries recorded
 - Map query history preserved for session replay / debugging
 
 ### Other session dirs observed
 
-- `cursor@conn-d612b0`, `cursor@chat-2`, `scubiee-eval-3` — parallel sessions exist
+- `cursor@conn-d612b0`, `cursor@chat-2`, `scubiee-eval-3`, parallel sessions exist
 
 ---
 
 ## Issues and recommendations
 
-### P0 — Daemon dropped mid-batch
+### P0: Daemon dropped mid-batch
 
 **Observed:**
 
@@ -222,7 +222,7 @@ During parallel `map()` calls. Retry succeeded immediately. Likely daemon restar
 
 ---
 
-### P0 — `glob` silent parameter mismatch
+### P0: `glob` silent parameter mismatch
 
 **Observed:** Passing `glob: "packages/*"` instead of `pattern: "packages/*"` silently falls back to `pattern: "**/*"`. Returns root-level files (`.env`, `uv.lock`) with no warning.
 
@@ -232,7 +232,7 @@ During parallel `map()` calls. Retry succeeded immediately. Likely daemon restar
 
 ---
 
-### P1 — `status()` contradictory readiness
+### P1: `status()` contradictory readiness
 
 **Observed at session end:**
 
@@ -251,7 +251,7 @@ During parallel `map()` calls. Retry succeeded immediately. Likely daemon restar
 
 ---
 
-### P1 — Nonsense queries return ranked cards
+### P1: Nonsense queries return ranked cards
 
 **Query:** `nonexistent_module_xyz_foo_bar baz qux handler`
 
@@ -263,7 +263,7 @@ During parallel `map()` calls. Retry succeeded immediately. Likely daemon restar
 
 ---
 
-### P1 — Documentation vs live tool names
+### P1: Documentation vs live tool names
 
 `docs/context-engine-mcp.md` documents `search`, `read`, `outline`. Live `phase` surface exposes `map`, `focus`, `grep`, `glob`.
 
@@ -273,7 +273,7 @@ During parallel `map()` calls. Retry succeeded immediately. Likely daemon restar
 
 ---
 
-### P2 — Duplicate map query still executes
+### P2: Duplicate map query still executes
 
 Re-running lifecycle query returned same cards plus advisory hint but still hit the daemon.
 
@@ -281,7 +281,7 @@ Re-running lifecycle query returned same cards plus advisory hint but still hit 
 
 ---
 
-### P2 — Map cards with null line ranges
+### P2: Map cards with null line ranges
 
 Top cards for `mcp_server.py`, `server.py`, `capability.py` sometimes have `start_line: null, end_line: null`.
 
@@ -289,7 +289,7 @@ Top cards for `mcp_server.py`, `server.py`, `capability.py` sometimes have `star
 
 ---
 
-### P2 — BOM in indexed snippets
+### P2: BOM in indexed snippets
 
 Map `why` fields show `\ufeff` prefix on `mcp_locate.py`, `client.py`, `test_mcp_locate.py`.
 
@@ -297,7 +297,7 @@ Map `why` fields show `\ufeff` prefix on `mcp_locate.py`, `client.py`, `test_mcp
 
 ---
 
-### P2 — `glob("packages/*")` returns empty
+### P2: `glob("packages/*")` returns empty
 
 Even with correct `pattern` param. `packages/graphify/**/*.py` works.
 
@@ -305,7 +305,7 @@ Even with correct `pattern` param. `packages/graphify/**/*.py` works.
 
 ---
 
-### P3 — Keeper stuck on AGENTS.md variants
+### P3: Keeper stuck on AGENTS.md variants
 
 Whole session: 5 paths permanently dirty/processing with `chunks_upserted: 0`:
 
@@ -321,7 +321,7 @@ Merkle root hash never converges (`clean: false`). Map still worked but may expl
 
 ---
 
-### P3 — Session isolation warning
+### P3: Session isolation warning
 
 Every response includes hint that `cursor@conn-f312b0` may be shared across parallel Cursor chats.
 
@@ -331,15 +331,15 @@ Every response includes hint that `cursor@conn-f312b0` may be shared across para
 
 ## What worked well (keep)
 
-1. **Code-vocabulary map queries** — 15/15 topic areas returned relevant top-3 hits
-2. **`focus(outline)`** on Python — exact line ranges for symbols
-3. **`focus(neighbors)`** — instant import graph for wiring discovery
-4. **`grep` with glob filter** — precise literal search every time
-5. **`workspace(show)` heatmap** — best session reorientation; matches disk logs
-6. **Session dedup** — `already_in_session` + incrementing `serve_count` in API and disk
-7. **Truncation hints** — `next_start_line` and explicit follow-up focus suggestion
-8. **`facade_hint` on map cards** — guides agent away from thin wrappers
-9. **Symbol-resolving focus** — `focus(target=path, query=symbol)` inside known file
+1. **Code-vocabulary map queries**: 15/15 topic areas returned relevant top-3 hits
+2. **`focus(outline)`** on Python, exact line ranges for symbols
+3. **`focus(neighbors)`**: instant import graph for wiring discovery
+4. **`grep` with glob filter**: precise literal search every time
+5. **`workspace(show)` heatmap**: best session reorientation; matches disk logs
+6. **Session dedup**: `already_in_session` + incrementing `serve_count` in API and disk
+7. **Truncation hints**: `next_start_line` and explicit follow-up focus suggestion
+8. **`facade_hint` on map cards**: guides agent away from thin wrappers
+9. **Symbol-resolving focus**: `focus(target=path, query=symbol)` inside known file
 
 ---
 
@@ -363,14 +363,14 @@ expand(handle)                  → re-materialize when body needed again
 
 Based on this session, add automated checks for:
 
-1. Parallel 8× `map()` — no unhandled daemon drops (or auto-retry works)
-2. `glob` with wrong param name — must error, not default silently
-3. Nonsense map query — expect `confidence: low` or fewer than 3 cards
-4. Duplicate map query — return cached cards without HTTP round-trip
-5. `status()` — assert single unambiguous readiness field
-6. Long session — `session_store.json` size stays under budget
-7. Keeper convergence — AGENTS.md variant paths don't block `clean: true` forever
-8. Re-fetch span — returns `already_in_session` with empty body and valid handle
+1. Parallel 8× `map()`, no unhandled daemon drops (or auto-retry works)
+2. `glob` with wrong param name, must error, not default silently
+3. Nonsense map query, expect `confidence: low` or fewer than 3 cards
+4. Duplicate map query, return cached cards without HTTP round-trip
+5. `status()`: assert single unambiguous readiness field
+6. Long session, `session_store.json` size stays under budget
+7. Keeper convergence, AGENTS.md variant paths don't block `clean: true` forever
+8. Re-fetch span, returns `already_in_session` with empty body and valid handle
 
 ---
 
@@ -378,20 +378,20 @@ Based on this session, add automated checks for:
 
 | Handle | File | Lines | Serve count |
 |--------|------|-------|-------------|
-| `sp_0001_96a58f` | `README.md` | 1–80 | 3 |
-| `sp_0002_2ffab6` | `packages/pipeline/mcp_locate.py` | 1–67 | 2 |
-| `sp_0003_ae447b` | `docs/context-engine-mcp.md` | 1–120 | 1 |
-| `sp_0004_c168b5` | `packages/pipeline/session_store.py` | 266–389 | 1 |
-| `sp_0005_62fcaf` | `packages/conductor/conductor.py` | 1–53 | 1 |
-| `sp_0006_2fa555` | `packages/pipeline/watchdog.py` | 1–26 | 1 |
-| `sp_0007_f8bd47` | `packages/pipeline/merkle.py` | 1–88 | 1 |
-| `sp_0008_d4b6bf` | `packages/pipeline/project_id.py` | 1–50 | 1 |
-| `sp_0009_8d799f` | `packages/pipeline/host_workspace.py` | 1–158 | 1 |
-| `sp_0010_1049b8` | `packages/pipeline/locate.py` | 419–618 | 1 |
-| `sp_0011_9a0de3` | `packages/graphify/dedup.py` | 1–18 | 1 |
-| `sp_0012_0ec0cb` | `packages/pipeline/memory_budget.py` | 1–44 | 1 |
-| `sp_0013_a1051e` | `packages/pipeline/incremental.py` | 766–883 | 1 |
-| `sp_0014_30fae2` | `tests/_mcp_resilience_exp.py` | 1–38 | 1 |
+| `sp_0001_96a58f` | `README.md` | 1-80 | 3 |
+| `sp_0002_2ffab6` | `packages/pipeline/mcp_locate.py` | 1-67 | 2 |
+| `sp_0003_ae447b` | `docs/context-engine-mcp.md` | 1-120 | 1 |
+| `sp_0004_c168b5` | `packages/pipeline/session_store.py` | 266-389 | 1 |
+| `sp_0005_62fcaf` | `packages/conductor/conductor.py` | 1-53 | 1 |
+| `sp_0006_2fa555` | `packages/pipeline/watchdog.py` | 1-26 | 1 |
+| `sp_0007_f8bd47` | `packages/pipeline/merkle.py` | 1-88 | 1 |
+| `sp_0008_d4b6bf` | `packages/pipeline/project_id.py` | 1-50 | 1 |
+| `sp_0009_8d799f` | `packages/pipeline/host_workspace.py` | 1-158 | 1 |
+| `sp_0010_1049b8` | `packages/pipeline/locate.py` | 419-618 | 1 |
+| `sp_0011_9a0de3` | `packages/graphify/dedup.py` | 1-18 | 1 |
+| `sp_0012_0ec0cb` | `packages/pipeline/memory_budget.py` | 1-44 | 1 |
+| `sp_0013_a1051e` | `packages/pipeline/incremental.py` | 766-883 | 1 |
+| `sp_0014_30fae2` | `tests/_mcp_resilience_exp.py` | 1-38 | 1 |
 
 ---
 

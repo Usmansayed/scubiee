@@ -4,7 +4,7 @@
 
 **Goal:** Add genuinely new tracing algorithms to the trace-lab simulator, score them on the gold heatmaps, and keep any method that beats lexical search without exploding into hubs.
 
-**Architecture:** Research-inspired tracers live in `packages/trace_lab/novel.py` and register through `default_tracers()`. They consume the existing AST graph + BM25 index. No LLM, no embeddings, no daemon — the sim stays deterministic.
+**Architecture:** Research-inspired tracers live in `packages/trace_lab/novel.py` and register through `default_tracers()`. They consume the existing AST graph + BM25 index. No LLM, no embeddings, no daemon, the sim stays deterministic.
 
 **Tech Stack:** Python 3.10+, numpy, existing `trace_lab` corpus/graph/metrics, `conductor.fusion_math.fuse_combmnz`.
 
@@ -28,7 +28,7 @@ Coding agents fail at *completeness under a budget*, not at search. The useful p
 
 2. **Make the walk query-aware.** QASA (2026) and spreading-activation Graph-RAG show that query-blind traversal is the main precision leak: the question picks seeds, then structure walks everywhere. A per-neighbor semantic gate (even lexical cosine) prunes junk *during* expansion. SeedER's k-hop-with-filtering keeps only the top-b neighbors per hop.
 
-3. **Slice, don't retrieve.** Weiser (1984) and Horwitz–Reps–Binkley system dependence graphs: a slice is the statements that *affect* or *are affected by* a criterion. Forward slice = callees/data-out; backward slice = callers. GraphCoder (2024) adds decay-with-distance on control/data edges. RepoGraph (2024) does line-level def/ref ego-graphs for SWE-bench. RANGER (2025) explores the graph with MCTS when the name is known and falls back to embeddings when it isn't.
+3. **Slice, don't retrieve.** Weiser (1984) and Horwitz, Reps, Binkley system dependence graphs: a slice is the statements that *affect* or *are affected by* a criterion. Forward slice = callees/data-out; backward slice = callers. GraphCoder (2024) adds decay-with-distance on control/data edges. RepoGraph (2024) does line-level def/ref ego-graphs for SWE-bench. RANGER (2025) explores the graph with MCTS when the name is known and falls back to embeddings when it isn't.
 
 4. **Minimal sufficient subgraph.** Information-bottleneck GraphRAG and COSMOS (ACL 2026) treat retrieval as "smallest connected subgraph that still explains the query." Path-consensus / Steiner bridges promote generic-named intermediates that sit on the route between the seed and a lexical island.
 
@@ -38,7 +38,7 @@ What current Scubiee `map` does: BM25+dense ranking plus 1-hop neighbors. What t
 
 The product question is: *from this seed, what else must the agent read?* That is closer to a **demand-driven resolver** than to search.
 
-**ObligationTrace (new).** Treat the seed like a compiler. Unresolved names in the seed (`JwtService`, `extract_bearer`) are *obligations*. Satisfying them opens a node and emits new obligations (`decode`, `TOKEN_TTL`, `resolve`). Side-effect names (`log`, `track`, `get`) are *effects* and are followed only if the query names them. No query-mix on the main path — generic names are the point. Intent only changes which obligation kinds are live (FLOW vs CONFIG vs SITE).
+**ObligationTrace (new).** Treat the seed like a compiler. Unresolved names in the seed (`JwtService`, `extract_bearer`) are *obligations*. Satisfying them opens a node and emits new obligations (`decode`, `TOKEN_TTL`, `resolve`). Side-effect names (`log`, `track`, `get`) are *effects* and are followed only if the query names them. No query-mix on the main path, generic names are the point. Intent only changes which obligation kinds are live (FLOW vs CONFIG vs SITE).
 
 **HubShadow (new).** Two PPRs: one personalized on the seed, one personalized on high-degree infrastructure. Heat = `relu(PPR_seed − λ PPR_hubs)`. Hubs that the query explicitly names are removed from the shadow set. This is contrastive gravity, not a hop cap.
 
@@ -69,11 +69,11 @@ Success on the existing gold board:
 
 ## Files
 
-- Create: `packages/trace_lab/novel.py` — all new tracers
-- Create: `tests/test_trace_lab_novel.py` — gold assertions for new methods
-- Modify: `packages/trace_lab/retrieve.py` — add `query_intent()`
-- Modify: `packages/trace_lab/strategies.py` — register novel tracers in `default_tracers()`
-- Modify: `docs/superpowers/plans/2026-09-04-trace-lab-novel-strategies.md` — this plan
+- Create: `packages/trace_lab/novel.py`, all new tracers
+- Create: `tests/test_trace_lab_novel.py`, gold assertions for new methods
+- Modify: `packages/trace_lab/retrieve.py`, add `query_intent()`
+- Modify: `packages/trace_lab/strategies.py`, register novel tracers in `default_tracers()`
+- Modify: `docs/superpowers/plans/2026-09-04-trace-lab-novel-strategies.md`, this plan
 
 ---
 
@@ -103,7 +103,7 @@ Success on the existing gold board:
 ### Task 3: Run and keep winners
 
 - [ ] Run the sim, record the table in the plan's Results section
-- [ ] If a novel method is dominated on every metric by `ast_propagate`, leave it registered anyway — the point of the board is to *see* the miss
+- [ ] If a novel method is dominated on every metric by `ast_propagate`, leave it registered anyway, the point of the board is to *see* the miss
 
 ---
 

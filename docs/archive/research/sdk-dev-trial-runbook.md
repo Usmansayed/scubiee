@@ -1,21 +1,21 @@
 # SDK Dev-Trial Runbook (Context Engine vs Graphify)
 
 How the Cursor SDK development trial works, how we rank the arms, the preflight
-gate, and every failure we already paid to learn — so we never repeat them.
+gate, and every failure we already paid to learn, so we never repeat them.
 
 Scripts:
-- `scripts/experiments/sdk_mcp_dev_trial.py` — the harness (arms, observe_run,
+- `scripts/experiments/sdk_mcp_dev_trial.py`: the harness (arms, observe_run,
   evaluate, report).
-- `scripts/experiments/sdk_mcp_smoke.py` — MCP config, rule staging,
+- `scripts/experiments/sdk_mcp_smoke.py`: MCP config, rule staging,
   `ensure_engine_repo`, message normalization.
-- `scripts/experiments/_run_trial_unfix.py` — driver: runs `--preflight`, cleans
+- `scripts/experiments/_run_trial_unfix.py`: driver: runs `--preflight`, cleans
   stale engines, verifies the live MCP `search` tool, runs the paid trial.
-  (Name is historical — it no longer "un-fixes" anything; the task is a clean
+  (Name is historical, it no longer "un-fixes" anything; the task is a clean
   feature build.)
 
 ---
 
-## 0. TL;DR — always do this order
+## 0. TL;DR: always do this order
 
 1. **Preflight first (free, no API):** run the entire non-agent path for both
    arms. Never launch a paid run until this is green **twice**.
@@ -85,11 +85,11 @@ Consequence: **`status` is usually `cancelled` even for successful arms.** This
 is expected and benign. Rank by `work_complete`, never by `status` (see §4).
 
 Constants (`sdk_mcp_dev_trial.py` top):
-- `IDLE_TIMEOUT_S = 120` — idle-finalize window.
-- `TERMINAL_POLL_S = 6` — `get_run` poll interval.
-- `WAIT_GRACE_S = 60` — bound on the final `wait_live_run`/`run.wait`.
-- `CANCEL_DRAIN_GRACE_S = 60` — stream drain grace after a cancel.
-- `CONVERSATION_GRACE_S = 45` — bound on conversation capture.
+- `IDLE_TIMEOUT_S = 120`: idle-finalize window.
+- `TERMINAL_POLL_S = 6`: `get_run` poll interval.
+- `WAIT_GRACE_S = 60`: bound on the final `wait_live_run`/`run.wait`.
+- `CANCEL_DRAIN_GRACE_S = 60`: stream drain grace after a cancel.
+- `CONVERSATION_GRACE_S = 45`: bound on conversation capture.
 - Per-arm ceiling via `--timeout` (default 900s). Idle-finalize ends healthy
   arms ~120s after the agent stops, well under the ceiling.
 
@@ -112,11 +112,11 @@ squatter it doesn't track, so it raises on the re-check.
 ### Fix (auto, at trial/preflight start)
 `_run_trial_unfix.py :: kill_stale_trial_engines()`:
 - Kills python procs whose command line matches `pipeline (engine|.mcp_locate)`
-  **and** references `ce_dev_trial` (trial workspaces only — Cursor's own
+  **and** references `ce_dev_trial` (trial workspaces only, Cursor's own
   main-repo MCP is left untouched).
 - Calls `pipeline.daemon.stop_daemon()` so `ensure_engine_repo` starts clean.
 
-Do NOT blanket-kill `python` or all `pipeline.mcp_locate` — you'll take down
+Do NOT blanket-kill `python` or all `pipeline.mcp_locate`, you'll take down
 Cursor's chat MCP and `navigation.mcp`.
 
 Manual inspection when debugging:
@@ -132,18 +132,18 @@ The engine's served repo: `python -c "from pipeline.client import EngineClient; 
 ## 3b. The empty-index confound (the silent tie-maker)
 
 **Symptom:** the Context Engine arm "works" but makes many grep calls and its MCP
-results are thin — the two arms come out a near-tie. `status()` for the workspace
+results are thin, the two arms come out a near-tie. `status()` for the workspace
 shows `warm_state: error`, `warm_error: "No index found"`; a live `search`/`map`
 returns `0` hits; `pipeline index` prints `graphify-files:0`, `chunks: 0`.
 
 **Root cause:** `graphify.extract.collect_files()` returns `[]` when **any path
 component of the scanned root is a noise dir** (`_SKIP_DIRS`: `out`, `dist`,
 `build`, `target`, `.venv`, ...). The old trial output lived at
-`ROOT/out/experiments/sdk_mcp_dev_trial/<ts>/<arm>_workspace` — the `out`
+`ROOT/out/experiments/sdk_mcp_dev_trial/<ts>/<arm>_workspace`: the `out`
 component alone makes `collect_files` skip the **entire** workspace. So the CE
 index is built over **zero files**, `map`/`focus`/`search` return nothing, and
 the agent silently falls back to grep. The arm was never actually exercising
-semantic retrieval — every prior "tie" was measuring grep-vs-graph, not
+semantic retrieval, every prior "tie" was measuring grep-vs-graph, not
 search-vs-graph.
 
 **Fix:** `_default_output()` now places workspaces in the **system temp dir**
@@ -198,10 +198,10 @@ python scripts/experiments/_compare_tokens.py   # point it at the run dir
 
 The trial task is a **human-style, vague** feature request (`SHARED_PROMPT`): the
 user complains that code search is dumb about terse/abbreviated queries
-("auth cfg", "db conn", "getUserConfig") and asks for **query expansion** — a way
+("auth cfg", "db conn", "getUserConfig") and asks for **query expansion**, a way
 to turn it off, tests, and a short doc. Crucially it names **no files and no
 private symbols**. The agent has to *discover* where a query is tokenised before
-retrieval and wire the feature in there — which is exactly the work the MCP is
+retrieval and wire the feature in there, which is exactly the work the MCP is
 meant to accelerate. Spoon-feeding paths (the previous version) removed all
 discovery and let an arm win while ignoring its MCP entirely.
 
@@ -217,7 +217,7 @@ exact paths:
   reported for context.
 - `work_complete` additionally requires the arm to **actually use its MCP at
   least once** (`expected_provider in providers`), a captured usage record, and
-  passing tests — an arm that ignores its tool cannot pass.
+  passing tests, an arm that ignores its tool cannot pass.
 - `run_post_tests` runs the agent's new tests **plus** the regression module
   (`tests/test_mcp_locate.py`, minus the flaky live flow); all must pass.
 - Baseline is green on the clean copy; the agent's own new tests must pass
@@ -225,7 +225,7 @@ exact paths:
 
 ---
 
-## 6. Preflight — the free gate (run this, always)
+## 6. Preflight: the free gate (run this, always)
 
 `_run_trial_unfix.py :: preflight()` runs, per arm, with **no `agent.send`**:
 `kill stale engines → copy + un-fix → baseline hash parity → index → (CE)
@@ -240,7 +240,7 @@ k=5)` against the freshly-pointed engine and requires non-empty `results`. A
 stale/broken MCP fails here for $0 instead of mid-run.
 
 This exercises the exact daemon + `run_post_tests` path that kept failing. If it
-passes twice, the paid run's setup is proven. Cost: $0, ~40–70s.
+passes twice, the paid run's setup is proven. Cost: $0, ~40-70s.
 
 ```
 python scripts/experiments/_run_trial_unfix.py --preflight --arms context_engine,graphify
@@ -263,7 +263,7 @@ MCP as the first move for discovery** and are symmetric, each with an explicit
   is a fallback *after* the graph comes up empty.
 
 Neither rule bans Grep, but both explicitly say **don't lead with a blind grep to
-locate unfamiliar code — that's what the MCP is for**. Shell for tests/build/git
+locate unfamiliar code, that's what the MCP is for**. Shell for tests/build/git
 is explicitly allowed (not "discovery"). The same when-to-use guidance is
 mirrored in the CE MCP `SERVER_INSTRUCTIONS` so it reaches the agent even without
 the rule.
@@ -273,10 +273,10 @@ the rule.
 ## 8. Known-benign noise
 
 - Trailing `Exception ignored in: <_ProactorBasePipeTransport.__del__> ... I/O
-  operation on closed pipe` on process exit — harmless Windows asyncio teardown.
+  operation on closed pipe` on process exit, harmless Windows asyncio teardown.
 - `logfire-plugin ... ImportError: cannot import name 'LogData'` on every python
-  start — unrelated pydantic/otel plugin warning.
-- `status=cancelled` on successful arms — see §2.
+  start, unrelated pydantic/otel plugin warning.
+- `status=cancelled` on successful arms, see §2.
 
 ---
 
@@ -302,23 +302,23 @@ If you change `observe_run`, these must stay green before any paid run.
 
 ## 10. MCP tool surface (current)
 
-The Context Engine MCP ships **exactly three tools** — data-backed from ~200
+The Context Engine MCP ships **exactly three tools**, data-backed from ~200
 TraceLab sessions where locate+read are ~46% of all agent tool calls and the
 dominant waste is redundant/duplicate reads:
 
-- **`search(query, k, fetch, max_chars)`** — semantic search fused from
+- **`search(query, k, fetch, max_chars)`**: semantic search fused from
   embeddings + BM25 + graph. `k` = how many hits (r5/r10...), `fetch=true` inlines
   code bodies. The encouraged default for soft/new queries. Kills redundant
   *locate*.
-- **`read(target, path, query, handle, neighbors, max_chars)`** — open the right
+- **`read(target, path, query, handle, neighbors, max_chars)`**: open the right
   span **once**. `target=` a symbol/phrase/path, or `path=`(+`query=`) to pick the
   span, or `handle=` to re-open a prior span. `neighbors=true` attaches capped
   1-hop callers/callees (the graph) with small bodies. **Session-deduped:**
   re-reading the same span returns an `unchanged` stub (no resend). Folds the old
   `focus`/`expand`/`recall` and kills redundant *read*.
-- **`status`** — engine health + session size + tool list.
+- **`status`**: engine health + session size + tool list.
 
-Retired: `map`, `focus`, `workspace`, `recall`, `expand` — their value is folded
+Retired: `map`, `focus`, `workspace`, `recall`, `expand`, their value is folded
 into `search` (cold-start) and `read` (span reuse + graph neighbors). Fewer tools
 = less choice overhead and less context per call for the same coverage.
 

@@ -1,4 +1,4 @@
-# Cursor-open production battery — 0.3.95
+# Cursor-open production battery: 0.3.95
 
 **Date:** 2026-09-16 04:30:59
 **Harness:** cold kill → Cursor-client Lane A settle → warm_contract → ship_check → mcp.json pins

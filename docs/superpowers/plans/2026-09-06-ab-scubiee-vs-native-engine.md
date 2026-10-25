@@ -23,13 +23,13 @@ Raw totals favor Scubiee less than prior trials once map/pack JSON is counted; n
 | `start_daemon` → `engine run` + sets `CTX_ENGINE_URL` | yes | yes | **PASS** `daemon.py:270+` |
 | Watchdog polls `/health`, 2 fails → `force_restart_daemon` | yes | yes | **PASS** `watchdog.py` |
 | Idle unload ≠ watchdog (`apply_idle_policy`) | partial | yes (explicit) | **PASS** native clearer; Scubiee under-emphasized |
-| `search_repo` only uses server if env/`server_url` set (no silent DEFAULT_URL) | **yes (called out)** | yes (inventory) | **PASS** `searcher.py:132-134` — important nuance both got |
+| `search_repo` only uses server if env/`server_url` set (no silent DEFAULT_URL) | **yes (called out)** | yes (inventory) | **PASS** `searcher.py:132-134`, important nuance both got |
 | `EngineClient` defaults to `:8765` | yes | yes | **PASS** |
 | `POST /v1/search` | yes | yes | **PASS** `server.py:340` |
 | `WarmSearchEngine.search` / `RuntimeManager` | weak | yes | Native deeper on in-process path |
 | CLI `engine start` → daemon + watchdog | yes | yes | **PASS** |
 
-### Context quality score (0–5)
+### Context quality score (0-5)
 
 | Dimension | Scubiee | Native |
 |---|---|---|
@@ -49,4 +49,4 @@ Raw totals favor Scubiee less than prior trials once map/pack JSON is counted; n
 | 2 session | ~28k | ~38k | Scubiee ~1.4× |
 | 3 engine | ~118k* | ~185k* | Scubiee on raw; closer on span-only |
 
-\*Trial 3 includes locate JSON / Grep noise — compare context quality above, not raw chars alone.
+\*Trial 3 includes locate JSON / Grep noise, compare context quality above, not raw chars alone.

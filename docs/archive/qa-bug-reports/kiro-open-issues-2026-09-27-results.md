@@ -9,16 +9,16 @@ Final build: **0.3.132** (`pyproject.toml`, `npm/package.json`, release note
 `dist/scubiee-0.3.132-py3-none-any.whl`, `dist/scubiee-0.3.132.tar.gz`. Installed in the
 uv tool; `/health` reports `version=0.3.132`.
 
-## Summary (live, 0.3.132, 2026-09-28 02:29–03:17)
+## Summary (live, 0.3.132, 2026-09-28 02:29-03:17)
 
 | Issue | Pass check | Result |
 |---|---|---|
-| 1 stale map | 5/5 fresh within 1s of the bump, repeat = cache hit | **5/5** (fresh 176–207ms, repeat server 2.9–4.0ms) |
+| 1 stale map | 5/5 fresh within 1s of the bump, repeat = cache hit | **5/5** (fresh 176-207ms, repeat server 2.9-4.0ms) |
 | 2 engine dies | no unexplained PID change, kill recovers, no APPCRASH | **pass**: kill→health 7.0s; 10/10 stop/ensure; 0 APPCRASH; every PID change has a `[stop]` line |
-| 3 RAM guard / commit | no `embed waiting pressure=critical`; private bytes down | **pass**: 0 lines; median private 3724–3882MB → 1697MB, max 4209 → 1719MB |
-| 4 save → searchable | 21/21 ≤5s, small steps ≤3s p95 | **18/21**; small steps max 2.75s; `new_big` (60 new chunks) 6.3–7.2s **still fails** |
+| 3 RAM guard / commit | no `embed waiting pressure=critical`; private bytes down | **pass**: 0 lines; median private 3724-3882MB → 1697MB, max 4209 → 1719MB |
+| 4 save → searchable | 21/21 ≤5s, small steps ≤3s p95 | **18/21**; small steps max 2.75s; `new_big` (60 new chunks) 6.3-7.2s **still fails** |
 | 5 first edit re-embeds | `[embed] N/N new` ≤3 | **1/1 new** (94-chunk module, engine restarted first) |
-| 6 graph catch-up blocks saves | B searchable ≤5s during A's catch-up | **3/3** (3.2–3.3s; was 15.0–17.1s, 0/3) |
+| 6 graph catch-up blocks saves | B searchable ≤5s during A's catch-up | **3/3** (3.2-3.3s; was 15.0-17.1s, 0/3) |
 | 7 reinstall breaks MCP | next call in the same session succeeds | **pass**: gate #2 ok (6.3s, worker respawned on new code) |
 | 8 traceback spam | 0 `ConnectionAbortedError` tracebacks | **pass**: 0 tracebacks, 460 one-line notes |
 | 9 failing tests | both fixed; full suite run | both fixed; full-suite list below |
@@ -33,16 +33,16 @@ save (issues 4 and 6), not the cache.**
 ### Sources
 
 - Elasticsearch shard request cache: cached results are invalidated on every shard
-  refresh, so the cache never returns results that differ from an uncached search —
+  refresh, so the cache never returns results that differ from an uncached search
   https://www.elastic.co/docs/deploy-manage/distributed-architecture/shard-request-cache
 - Blanco et al., "Caching search engine results over incremental indices" (SIGIR 2010):
   index updates are what makes result caches stale; flushing on update is the
-  simple-but-correct baseline — http://www.dc.fi.udc.es/~roi/publications/sigir2010b.pdf
+  simple-but-correct baseline, http://www.dc.fi.udc.es/~roi/publications/sigir2010b.pdf
 - Alici et al., "Timestamp-based result cache invalidation" (SIGIR 2011): compare the
-  generation time of a cached result with index update times —
+  generation time of a cached result with index update times
   http://www.cs.bilkent.edu.tr/~oulusoy/sigir11_1.pdf
 - Generational (version-stamped) invalidation: tag each entry with the counter it was
-  built on; a counter bump makes old entries unreachable —
+  built on; a counter bump makes old entries unreachable
   https://www.emergentmind.com/topics/generational-invalidation-scheme
 
 For a single-user local engine the "invalidate on refresh" model (Elasticsearch) is the
@@ -85,7 +85,7 @@ caches on it.
 
 Cost of the fast path (installed interpreter, 2000 reads of the real stamp):
 `p50=0.346ms p95=0.530ms p99=0.608ms max=0.891ms`. Repeat-map server time with the check:
-2.7–3.9ms (outliers 13.9 / 29.0 / 996ms while the keeper was busy, see below).
+2.7-3.9ms (outliers 13.9 / 29.0 / 996ms while the keeper was busy, see below).
 
 ### Tests
 
@@ -104,7 +104,7 @@ Cost of the fast path (installed interpreter, 2000 reads of the real stamp):
   tests/test_mcp_response_lean.py`: 90 passed, 1 failed
   (`test_client_retries_transient_url_error`: it patches `urllib.request.urlopen` but the
   client reached the live engine on :8765; unrelated to this change, listed under issue 9).
-- Standard loop (10 files): 267 passed, 2 failed — `test_final_check_forces_held_publish`
+- Standard loop (10 files): 267 passed, 2 failed, `test_final_check_forces_held_publish`
   (known, issue 9) and `test_watcher_recovery.py::test_5000_event_storm_processes_only_configured_batch`,
   which passes alone and with `test_live_reindexing.py` (order-dependent env leak; issue 9).
 
@@ -143,7 +143,7 @@ run=1,2          no bump carrying the edit within 120s
 SUMMARY 0/3
 ```
 
-The stale answers came back in 70–77ms (a cache hit; a real map is 230ms+) while
+The stale answers came back in 70-77ms (a cache hit; a real map is 230ms+) while
 `/v1/search` on the same engine already returned the edit.
 
 ### After the fix (3 × 5 runs, engine pid 15468 stable across all 15)
@@ -192,7 +192,7 @@ Typical hot sync lines for the probe edits (after the fix):
 [keeper] hot sync path=packages/pipeline/zz_mapstale_1790508504.py debounce_ms=9824 ... sync_ms=1718 ... invalidate_ms=109 ... total_ms=12024 upserted=2 removed=1 publish=patch pid=15468
 ```
 
-Monitor (`engine_mem_monitor.py`, 16:29–17:08, 851 samples): min free RAM 1696MB, max
+Monitor (`engine_mem_monitor.py`, 16:29-17:08, 851 samples): min free RAM 1696MB, max
 engine private 4209MB, max RSS 1328MB, 49 health-error samples. **PID not stable over the
 whole window**: 32072 → 26988 (16:33) → 27840 (16:37) → 21960 (16:47) → 15468 (16:56);
 stable for all 15 counted runs. The restarts are issue 2 (watchdog "force heal hung engine"
@@ -210,7 +210,7 @@ SUMMARY 5/5 fresh within 1000ms of the generation bump, repeat = cache hit
   run 4: edit->bump 3262 ms  fresh 178.6 ms (cache=miss)  repeat 83.7 ms server 4.0 ms cache=last  same_pid=True ok=True
 ```
 
-edit→bump fell from 9–29s to 2.1–3.3s and every fresh map is under 210ms.
+edit→bump fell from 9-29s to 2.1-3.3s and every fresh map is under 210ms.
 
 ### Still open for issue 1
 - `pipeline.locate._CACHE` (`locate()` / `related()` cards, 600s TTL, no generation) has
@@ -226,14 +226,14 @@ edit→bump fell from 9–29s to 2.1–3.3s and every fresh map is under 210ms.
 
 - Job objects: a process in a `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` job dies when the last
   job handle closes; children inherit the job unless created with
-  `CREATE_BREAKAWAY_FROM_JOB` (needs `JOB_OBJECT_LIMIT_BREAKAWAY_OK`) —
+  `CREATE_BREAKAWAY_FROM_JOB` (needs `JOB_OBJECT_LIMIT_BREAKAWAY_OK`)
   https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects
 - `Win32_Process.Create` starts a process whose parent is WmiPrvSE, outside the caller's
-  job and tree — https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
-- `faulthandler` for native crash tracebacks — https://docs.python.org/3/library/faulthandler.html
-- WER LocalDumps (full dumps of a crashing process) —
+  job and tree, https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/create-method-in-class-win32-process
+- `faulthandler` for native crash tracebacks, https://docs.python.org/3/library/faulthandler.html
+- WER LocalDumps (full dumps of a crashing process)
   https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps
-- Windows delete/rename vs open handles (sharing violation, `ERROR_SHARING_VIOLATION` 32) —
+- Windows delete/rename vs open handles (sharing violation, `ERROR_SHARING_VIOLATION` 32)
   https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-deletefilew
 
 ### Root causes (each proven with a `[stop]` audit line or a probe)
@@ -250,7 +250,7 @@ edit→bump fell from 9–29s to 2.1–3.3s and every fresh map is under 210ms.
 4. **Stale prewarm markers (0.3.132 battery).** `_mark_prewarm_busy(False)` and
    `set_phase(dense)` swallowed WinError 32/5 when the watchdog or a bridge had the file
    open, leaving "prewarm" on disk; 3 minutes later the watchdog restarted a healthy engine
-   as a hung prewarm (`health ok but hung prewarm — falling through to restart path`).
+   as a hung prewarm (`health ok but hung prewarm - falling through to restart path`).
    Reproduced with the installed old code: `hung_prewarm_should_abort = True` and disk
    phase `prewarm` after both "clears".
 5. **The test suite.** `tests/test_wipe.py::test_wipe_repo_halts_before_removal` opts out
@@ -289,12 +289,12 @@ watchdog does not restart when the embedder is loaded).
 
 ```
 engine_kill_recover_probe --budget-s 120:  kill_to_health_s 7.0  kill_to_soft_ready_s 7.0  ok true
-  watchdog: engine dead with MCP demand clients=2 — recover now … restart result=True
-10 x stop/ensure: stop 2638–2884ms, ensure 4390–5398ms, warm=ready every cycle
+  watchdog: engine dead with MCP demand clients=2 - recover now … restart result=True
+10 x stop/ensure: stop 2638-2884ms, ensure 4390-5398ms, warm=ready every cycle
 APPCRASH (Application log 1000/1001/1002/1026, python) since 03:15:02: none
 ```
 
-Every PID change in the 02:29–03:17 window has a matching `[stop]` line (user stop,
+Every PID change in the 02:29-03:17 window has a matching `[stop]` line (user stop,
 `idle_standby` with no clients, or the kill probe). Monitor: 1282 samples, min free RAM
 732MB (full test suite running for part of it), max engine private 1719MB.
 
@@ -306,9 +306,9 @@ Every PID change in the 02:29–03:17 window has a matching `[stop]` line (user 
 
 ### Sources
 
-- OpenBLAS allocates a buffer per thread (`OPENBLAS_NUM_THREADS`) —
+- OpenBLAS allocates a buffer per thread (`OPENBLAS_NUM_THREADS`)
   https://github.com/OpenMathLib/OpenBLAS/wiki/faq#multi-threaded
-- numpy / threadpoolctl on BLAS thread pools — https://numpy.org/doc/stable/reference/global_state.html
+- numpy / threadpoolctl on BLAS thread pools, https://numpy.org/doc/stable/reference/global_state.html
 
 ### Root cause
 
@@ -340,26 +340,26 @@ Tests: `tests/test_hot_lane_ram_guard.py`.
 ## 4. Save → searchable
 
 **Status: small files fixed (≤2.75s every sample). The 60-chunk `new_big` step still
-misses 5s: 6.3–7.2s, of which the DirectML embed alone is ~3.1s.**
+misses 5s: 6.3-7.2s, of which the DirectML embed alone is ~3.1s.**
 
 ### Sources
 
 - GIL convoy effect: a thread that releases the GIL for a short syscall waits a full
-  switch interval to get it back from a CPU-bound thread — https://bugs.python.org/issue7946,
+  switch interval to get it back from a CPU-bound thread, https://bugs.python.org/issue7946,
   https://github.com/python/cpython/issues/89977, David Beazley,
   http://www.dabeaz.com/blog/2010/02/revisiting-thread-priorities-and-new.html
-- `ctypes.PyDLL` keeps the GIL held for the foreign call —
+- `ctypes.PyDLL` keeps the GIL held for the foreign call
   https://docs.python.org/3/library/ctypes.html#ctypes.PyDLL
-- `GetFileAttributesExW` — https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw
+- `GetFileAttributesExW`: https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfileattributesexw
 
 ### Root causes
 
 1. BM25 lagged one generation on hot patches (edit steps TIMEOUT).
 2. Per-save fixed costs: reconcile ~500ms, merkle ~500ms (ignore rules reloaded per file,
    300ms), a git subprocess per `PipelineStore`, keepalive full reloads after
-   `clear_engines`, a duplicate prewarm binder, manifest re-checksums (385–2049ms).
+   `clear_engines`, a duplicate prewarm binder, manifest re-checksums (385-2049ms).
 3. **GIL convoy in the change poll** (found with `scripts/keeper_stack_logger.py`: the
-   keeper sat 6–11s in `root_probe._rebuild_universe` → `stat`). Each `os.stat` /
+   keeper sat 6-11s in `root_probe._rebuild_universe` → `stat`). Each `os.stat` /
    `Path.resolve` / file read releases the GIL; with a `/v1/search` running, each one waits
    ~15ms to get it back. `scripts/root_probe_convoy_bench.py`: stat loop over 1167 indexed
    files **78ms idle, 18,325ms with one busy thread**; the full poll 3,075ms (1.8s of it
@@ -393,7 +393,7 @@ Bench after: stat loop with one busy thread 18,325 → 167ms; full poll 3,075 �
 
 `tests/test_bm25_append.py`, `tests/test_manifest_reuse.py`, `tests/test_fast_stat.py`
 (matches `os.stat` incl. the float mtime; missing paths; env off; **400-file stat loop
-<1s with a busy thread — fails at 5.96s with `CTX_FAST_STAT=0`**; mention cache sees a new
+<1s with a busy thread, fails at 5.96s with `CTX_FAST_STAT=0`**; mention cache sees a new
 span; `count_chunks_per_file` vs escaped quotes in text; probe-input cache sees a
 rewritten merkle), `tests/test_graph_catchup_async.py::test_new_file_after_deleting_the_newest_file_does_not_compact`
 (fails without the fix: `compacts == [1]`).
@@ -408,7 +408,7 @@ SUMMARY 18/21 within 5s     same_pid=True on all 21
 ```
 
 Small-file steps (new_file, edit_small, new_subdir, delete): max **2747ms** (p95 ≤3s met).
-Earlier today on the pre-convoy-fix build: 5/21 and 6/21 with steps of 8–56s.
+Earlier today on the pre-convoy-fix build: 5/21 and 6/21 with steps of 8-56s.
 
 Matching hot sync lines (round 0):
 
@@ -424,8 +424,8 @@ hot sync path=…/zz_dsbig_…    debounce_ms=451 parse_ms=1334 embed_ms=- merkl
 
 ### Still failing
 
-`new_big` (60 new chunks): embed 3.1–3.2s on DirectML (~19 chunk/s) + parse 0.7–1.2s +
-publish ≈ 5.2–7.2s. Getting under 5s needs faster embedding (batching/model), or splitting a
+`new_big` (60 new chunks): embed 3.1-3.2s on DirectML (~19 chunk/s) + parse 0.7-1.2s +
+publish ≈ 5.2-7.2s. Getting under 5s needs faster embedding (batching/model), or splitting a
 large new file so the first chunks publish before the rest. Not attempted.
 
 ---
@@ -443,11 +443,11 @@ capped at 512 chars *after* those lines are prepended: a longer `Exports:` line 
 function) or an enrichment-format change between builds moves where every chunk's own code
 is cut off. `scripts/chunk_digest_drift_probe.py` (read-only: rebuild each unedited file
 the way a sync does and diff per chunk): mcp_locate.py 47/114 changed, cli_ui.py 55/95,
-context_trace.py 22/94 — with the files unchanged on disk.
+context_trace.py 22/94, with the files unchanged on disk.
 
 ### Fix
 
-`chunk_digest` hashes the chunk's raw `text` (first 512 chars — every text cap used so far
+`chunk_digest` hashes the chunk's raw `text` (first 512 chars, every text cap used so far
 is ≥512, so chunks stored by older builds hash the same); empty text falls back to the old
 enriched-own-lines digest. After: 0 changed across 6 unedited files (mcp_locate,
 cli_ui, context_trace, accel, lifecycle_runtime, graphify/extract).
@@ -484,8 +484,8 @@ after append:  embed_ms=680  upserted=1  removed=0
 ### Sources
 
 - Lucene/Elasticsearch run segment merges on a separate scheduler so indexing is not
-  blocked — https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-merge.html
-- Atomic swap with `os.replace` — https://docs.python.org/3/library/os.html#os.replace
+  blocked, https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-merge.html
+- Atomic swap with `os.replace`, https://docs.python.org/3/library/os.html#os.replace
 
 ### Root cause
 
@@ -523,10 +523,10 @@ after  (0.3.132):  SUMMARY 3/3   B  3289 /  3208 /  3225 ms   catch-up  8157 /  
 ### Sources
 
 - MCP stdio transport: the server is a child of the host; if it exits the host marks the
-  server disconnected and does not respawn it —
+  server disconnected and does not respawn it
   https://modelcontextprotocol.io/specification/2025-06-18/basic/transports
 - MCP lifecycle (initialize must precede other requests, so a respawned worker needs the
-  initialize replayed) — https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
+  initialize replayed), https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle
 
 ### Root causes
 
@@ -587,7 +587,7 @@ Full suite: see "Full suite (final)" below.
 
 - **Embedder wedge after an idle demote (fixed).** Found in the 0.3.132 battery: after
   `memory demote: tier=locate_only`, `/v1/search` answered `dense_embed_loading` forever and
-  the keeper logged `embedder cold — defer` every 2s. A `_LazyEmbedder` held outside
+  the keeper logged `embedder cold - defer` every 2s. A `_LazyEmbedder` held outside
   `_ENGINES` kept its weights through `release_embedders()` and served `embed_one` without
   registering, so `embedder_is_loaded()` stayed False (and the demote freed nothing). Fix:
   wrappers are tracked in a WeakSet and all unloaded; a wrapper that still has weights
@@ -629,7 +629,7 @@ test_prewarm_stamp_locked, test_fast_stat, test_embedder_wedge`.
 `pytest tests -q -p no:cacheprovider` (no `-x`, PYTHONPATH unset, engine + bridge live):
 **1979 passed, 17 failed, 11 skipped** in 21m54s.
 
-Fail on a clean `HEAD` worktree too (pre-existing, not touched here) — 13:
+Fail on a clean `HEAD` worktree too (pre-existing, not touched here), 13:
 `test_auto_sessions_observability::test_client_injects_workspace_and_optional_session_telemetry`,
 `test_e2e_pipeline::test_full_pipeline_stores_in_faiss_collection`,
 `test_lifecycle_ownership::test_attach_mcp_session_is_nonblocking`,
@@ -641,13 +641,13 @@ Fail on a clean `HEAD` worktree too (pre-existing, not touched here) — 13:
 `job_run_follows_generic_execute`), `test_vague_prompts::test_oracle_polytrace_holds_on_vague_prompts`,
 `test_verify_board::test_poly_embed_matches_polytrace_correctness`.
 
-Environment only — pass with `PYTHONPATH=<repo>\packages` (the subprocess they spawn cannot
-import `pipeline` from the repo `.venv`) — 3:
+Environment only, pass with `PYTHONPATH=<repo>\packages` (the subprocess they spawn cannot
+import `pipeline` from the repo `.venv`), 3:
 `test_dashboard_api::test_background_server_reuses_pid_and_stops`,
 `test_lifecycle_simulation::test_watchdog_child_stays_alive_then_exits_clean`,
 `test_pythonw_mcp_stdio::test_pythonw_mcp_bridge_initialize_roundtrip`.
 
-Order-dependent — passes alone — 1:
+Order-dependent, passes alone, 1:
 `test_mcp_agent_warm_retry::test_client_for_returns_warming_without_force_restart`.
 
 The MCP-config guard logged no restores in this run, so the test that stubbed

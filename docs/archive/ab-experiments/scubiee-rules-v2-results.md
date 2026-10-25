@@ -18,11 +18,11 @@ from the earlier analysis are still proposals.
 
 ## 2. Results
 
-| Arm | rule tokens | tokens median | tokens mean | min–max | model calls (mean) | tool calls (median) | recall (mean) | precision (mean) |
+| Arm | rule tokens | tokens median | tokens mean | min, max | model calls (mean) | tool calls (median) | recall (mean) | precision (mean) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| guided | 326 | 426,389 | 405,291 | 319,927–461,011 | 12.0 | 13.5 | 0.83 | 0.39 |
-| two_layer | 622 | 344,092 | 345,040 | 270,912–433,979 | 10.2 | 12 | 1.00 | 0.61 |
-| **two_layer_v2** | **517** | **314,186** | **323,970** | 258,202–426,744 | **9.7** | **10** | **1.00** | **0.65** |
+| guided | 326 | 426,389 | 405,291 | 319,927-461,011 | 12.0 | 13.5 | 0.83 | 0.39 |
+| two_layer | 622 | 344,092 | 345,040 | 270,912-433,979 | 10.2 | 12 | 1.00 | 0.61 |
+| **two_layer_v2** | **517** | **314,186** | **323,970** | 258,202-426,744 | **9.7** | **10** | **1.00** | **0.65** |
 
 Per query:
 
@@ -44,7 +44,7 @@ What this supports:
 What the rules did not do:
 - **Batching did not measurably increase.** Tool calls per model call were guided 1.22,
   two_layer 1.28, v2 1.26. v2's savings came from doing **less work** (median 10 tool
-  calls vs 12–13.5, fewer greps: 1.5 vs 2.5), not from sending more calls in parallel.
+  calls vs 12-13.5, fewer greps: 1.5 vs 2.5), not from sending more calls in parallel.
   The batch rule can stay, but it isn't the lever it was meant to be.
 
 ## 3. New finding: the first map call fails in every Scubiee run
@@ -59,13 +59,13 @@ In **18 of 18 cells** the first `map` call returned an error (~990 chars):
 ```
 
 The agent then retries the same query with `project_id` added, and that call succeeds
-(~3.8–4.4k chars of cards). So the "always 2 maps" pattern is **a failed call plus a
+(~3.8-4.4k chars of cards). So the "always 2 maps" pattern is **a failed call plus a
 retry**. It is not the `next` field telling the agent to re-query; that earlier guess was
 wrong. The same ~990-char first map appears in every earlier Scubiee run, so the whole
 study paid this cost.
 
-Cost: one extra model call per run, re-reading ~21–26k tokens of context. That's roughly
-**6–9% of every Scubiee run's tokens**, plus a turn of latency.
+Cost: one extra model call per run, re-reading ~21-26k tokens of context. That's roughly
+**6-9% of every Scubiee run's tokens**, plus a turn of latency.
 
 Contributing causes seen in the code:
 - `"server disconnected"` is not in `_TRANSIENT_ENGINE_MARKERS`
@@ -83,7 +83,7 @@ Contributing causes seen in the code:
 1. **Make the first map call succeed.** Retry internally on a disconnected transport
    (add the marker to `_TRANSIENT_ENGINE_MARKERS` and retry once in the bridge), and
    don't mark repos ambiguous when the candidates share a `project_id`. This is the only
-   measured, guaranteed saving, ~6–9% per Scubiee run.
+   measured, guaranteed saving, ~6-9% per Scubiee run.
 2. **Make `next` match the available tools.** Don't suggest `pack_context` when it isn't
    exposed (it still does). Then the "ignore pack" clause can come out of the rules.
 3. **Return a compact confidence signal** so the stop rule has something to check.
@@ -115,15 +115,15 @@ here. Text is in `scripts/claude_sdk_harness/two_layer.py` (`RULES_V2`,
 
 | Arm | Query | tokens (mean) | range | model calls | tools/call | recall | precision |
 |---|---|---:|---:|---:|---:|---:|---:|
-| without | discovery (idle_retire) | 348,567 | 346,643–352,240 | 9.7 | 1.71 | 1.0 | 0.23 |
-| **two_layer_v2** | discovery | **276,212** | 260,578–297,611 | 8.3 | 1.37 | 1.0 | 0.29 |
-| **without** | focused (dirty_path) | **223,719** | 177,504–281,435 | 6.0 | 1.62 | 1.0 | 0.58 |
-| two_layer_v2 | focused | 435,328 | 388,484–462,382 | 13.0 | 1.31 | 1.0 | 0.67 |
+| without | discovery (idle_retire) | 348,567 | 346,643-352,240 | 9.7 | 1.71 | 1.0 | 0.23 |
+| **two_layer_v2** | discovery | **276,212** | 260,578-297,611 | 8.3 | 1.37 | 1.0 | 0.29 |
+| **without** | focused (dirty_path) | **223,719** | 177,504-281,435 | 6.0 | 1.62 | 1.0 | 0.58 |
+| two_layer_v2 | focused | 435,328 | 388,484-462,382 | 13.0 | 1.31 | 1.0 | 0.67 |
 | without | both | 286,143 | | 7.8 | 1.66 | 1.0 | 0.41 |
 | two_layer_v2 | both | 355,770 | | 10.7 | 1.34 | 1.0 | 0.48 |
 
 - **Discovery: v2 wins by 21%, consistently.** Every v2 run (max 298k) cost less than
-  every without run (min 347k). Native search needed 9–11 greps to find `_retire_self`.
+  every without run (min 347k). Native search needed 9-11 greps to find `_retire_self`.
 - **Focused: v2 costs about 2× as much, also consistently.** For this literal-sounding
   question ("dirty files", "freshness"), grep found `freshness.py` on the first or second
   call.

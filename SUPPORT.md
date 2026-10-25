@@ -25,7 +25,7 @@ When you ask for help, include:
 - Your OS, Python version, and accelerator (CUDA / DirectML / MLX / CPU)
 - The IDE or MCP client you use (Cursor, Claude Code, Kiro, …)
 - Steps to reproduce, and what you expected to happen
-- Sanitized logs — `scubiee doctor .` output, or a diagnostic bundle from
+- Sanitized logs: `scubiee doctor .` output, or a diagnostic bundle from
   `scubiee diagnose --no-tests --desktop`, plus the relevant tail of `~/.scubiee/engine.log`
 
 ## Keep sensitive data out of public posts

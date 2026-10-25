@@ -1,12 +1,12 @@
-# GATE + MCP instructions — heatmap-first routing
+# GATE + MCP instructions: heatmap-first routing
 
 **Date:** 2026-09-04  
-**Status:** approved — applied 2026-09-04 (rules + card loc/rank/howto + hard-query + map soft split + local install)
+**Status:** approved, applied 2026-09-04 (rules + card loc/rank/howto + hard-query + map soft split + local install)
 
 ## Goal
 
 Agents treat the heatmap as a **ranked locate plan**: full path + line range + score tells them **where to Read/Grep first**.  
-They may go wider only if that plan is insufficient — not by thrashing soft search first.
+They may go wider only if that plan is insufficient, not by thrashing soft search first.
 
 ## Agent mental model (one sentence)
 
@@ -40,7 +40,7 @@ Every card MUST be enough to open or search without a second locate tool.
 |-------|-----|
 | `file`, `start_line`, `end_line`, `loc` | Exact place to Read |
 | `symbol`, `kind` | Exact name to Grep / confirm |
-| `score`, `heat`, `rank` | Priority — hot first, then warm |
+| `score`, `heat`, `rank` | Priority, hot first, then warm |
 | `why`, `path` | Trust / debug the hop |
 | `suggested` | `read` for hot bodies; `grep` when you need call-sites / other mentions of that symbol |
 
@@ -50,7 +50,7 @@ Every card MUST be enough to open or search without a second locate tool.
 howto:
   1. Work TOP-DOWN by score (hot → warm).
   2. Native-Read each card's loc (file:start-end). Prefer Read over dumping bodies.
-  3. Native-Grep card symbols (and close variants) INSIDE those files / nearby dirs when you need call-sites or other mentions — the heatmap is your Grep plan, not a ban on Grep.
+  3. Native-Grep card symbols (and close variants) INSIDE those files / nearby dirs when you need call-sites or other mentions - the heatmap is your Grep plan, not a ban on Grep.
   4. If still missing a link → expand_context(hottest_or_seed_node, direction).
   5. Only if the map cannot help (no seed / wrong seed / still lost) → soft pinpoint/map/plate OR broader host Grep/Glob.
 ```
@@ -80,16 +80,16 @@ Do **not** strip location fields for “brevity.” Cards without loc+score are 
 
 ## Proposed GATE body (`managed_gate_usage_short`)
 
-Keep tight — always-applied rules. How-to detail lives in MCP instructions.
+Keep tight, always-applied rules. How-to detail lives in MCP instructions.
 
 ```text
-**Use Scubiee for locate** when tools are available — follow this routing strictly:
+**Use Scubiee for locate** when tools are available - follow this routing strictly:
 - task/problem + seed (file/symbol/chunk) → USE `map_context` FIRST (relevance HEATMAP: each card = full loc + score). Then native Read/Grep those locations top-down by score. Prefer this BEFORE soft search/pinpoint/map/explore.
 - need more of the same map → USE `expand_context` (delta cards; same follow-by-score loop). Broader Grep/Glob OK *after* the map if still missing.
 - exact literal / import / error with NO seed hunt → host Grep. Filename → host Glob. Known path → host Read.
 - soft browse with NO seed → `map` / `pinpoint` / `plate` as appropriate.
 - session / rematerialize handle → `workspace` / `expand`.
-**Native Grep/Glob/Read OK** after a heatmap (guided by cards), or when Scubiee MCP is down/blocked/paused/errors — continue; do not deadlock.
+**Native Grep/Glob/Read OK** after a heatmap (guided by cards), or when Scubiee MCP is down/blocked/paused/errors - continue; do not deadlock.
 Avoid parallel explore thrash; one heatmap beat, then read/grep/edit.
 Edit/Write/Shell stay native. How-to → Scubiee MCP server instructions.
 ```
@@ -114,9 +114,9 @@ HEATMAP-FIRST (default for understand/fix with a seed):
   Returns GUIDE cards only (no bodies). Each card has: file, start_line, end_line, loc, symbol, kind, score, heat, rank, why, path.
 - HOW TO USE THE HEATMAP:
   1) Sort/trust by score (hot first).
-  2) Native-Read card.loc ranges — that is the primary open path.
-  3) Native-Grep card.symbol (and tight variants) in those files/dirs when you need other mentions/call-sites — the heatmap tells you WHAT/WHERE to Grep; it does not forbid Grep.
-  4) If the map is thin or a hop is missing → USE expand_context(node, direction) for more guide cards; repeat 1–3.
+  2) Native-Read card.loc ranges - that is the primary open path.
+  3) Native-Grep card.symbol (and tight variants) in those files/dirs when you need other mentions/call-sites - the heatmap tells you WHAT/WHERE to Grep; it does not forbid Grep.
+  4) If the map is thin or a hop is missing → USE expand_context(node, direction) for more guide cards; repeat 1-3.
   5) If still insufficient → broader host Grep/Glob or soft pinpoint/map/plate. Do NOT start there when you had a seed.
 - rare batch bodies → collect_hot_context(threshold). Prefer native Read.
 
@@ -147,19 +147,19 @@ Classic body: same heatmap howto block at top; keep focus/grep/glob lines below.
 ## Tool description tweaks (MCP)
 
 `map_context`:  
-> Context TRACE guide: query+seed → ranked heatmap. Each card = full location (file:lines) + score + why. No bodies — native Read/Grep those locs top-down; expand_context if thin.
+> Context TRACE guide: query+seed → ranked heatmap. Each card = full location (file:lines) + score + why. No bodies, native Read/Grep those locs top-down; expand_context if thin.
 
 `expand_context`:  
-> Grow the guide map from a node — more loc+score cards. Same follow-by-score Read/Grep loop.
+> Grow the guide map from a node, more loc+score cards. Same follow-by-score Read/Grep loop.
 
 ---
 
 ## Files to update (after approval)
 
-1. `packages/pipeline/context_trace.py` — add `loc`, `rank`, `suggested`; strengthen `guide`/`howto` on responses  
-2. `packages/pipeline/rules_installer.py` — GATE short / MCP header / overview bullet  
-3. `packages/pipeline/templates/scubiee.md` — overview GATE 1 line  
-4. `packages/pipeline/mcp_locate.py` — SERVER_INSTRUCTIONS_* + tool descriptions  
+1. `packages/pipeline/context_trace.py`: add `loc`, `rank`, `suggested`; strengthen `guide`/`howto` on responses  
+2. `packages/pipeline/rules_installer.py`: GATE short / MCP header / overview bullet  
+3. `packages/pipeline/templates/scubiee.md`: overview GATE 1 line  
+4. `packages/pipeline/mcp_locate.py`: SERVER_INSTRUCTIONS_* + tool descriptions  
 5. Regenerate local `AGENTS.md`, `.cursor/rules/scubiee.mdc`, sibling rules via connect/rules install  
 
 ## Explicitly out of scope

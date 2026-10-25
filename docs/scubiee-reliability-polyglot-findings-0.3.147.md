@@ -1,4 +1,4 @@
-# Scubiee reliability — real-repo + polyglot findings (0.3.147)
+# Scubiee reliability: real-repo + polyglot findings (0.3.147)
 
 _Platform: macOS 26.5.2, Apple Silicon (M5, arm64), MLX/Metal, Python 3.12._
 _Method: clone real GitHub repos (single-language and polyglot), run `scubiee
@@ -13,17 +13,17 @@ Single-language: Python (cachetools), Go (cast), Rust (byteorder), TypeScript
 (ky), Java (JSON-java), Ruby (paint), C (sds), JavaScript (lodash, 608 chunks).
 
 Polyglot:
-- **leachim6/hello-world** — one repo, 12+ supported languages mixed
+- **leachim6/hello-world**: one repo, 12+ supported languages mixed
   (C, C++, C#, Go, Java, JS, JSX, Python, Ruby, Rust, TS, …).
-- **grpc-ecosystem/grpc-gateway** — large Go-dominant polyglot, **13,007 chunks**
+- **grpc-ecosystem/grpc-gateway**: large Go-dominant polyglot, **13,007 chunks**
   (Go + JS + sh), symbols across 6 top-level directories.
 
 ## Bugs found and fixed (all shipped, with regression tests)
 
-### 1. CRITICAL — fresh `init` concurrent-MLX segfault (~1/3–1/2 of runs)
+### 1. CRITICAL: fresh `init` concurrent-MLX segfault (~1/3-1/2 of runs)
 On a fresh init the engine SIGSEGV'd during warm. The faulting frame varied
 (numpy `qr` in `turbo_quant`, `CodeRankMLX` construction mid-GC, `import
-fastembed` on a worker thread) — one cross-thread native race: the warm thread's
+fastembed` on a worker thread), one cross-thread native race: the warm thread's
 Accelerate LAPACK (`turbo_quant` codec `qr`) running concurrently with the
 `_eager_prewarm` MLX embed. Fixed with a shared `mlx_native_guard()` (RLock +
 quiesce) around the `qr`, GC-disable across the MLX mmap build loop, and an
@@ -46,7 +46,7 @@ made `focus` throw. Wrapped so bare-name resolution degrades to `None`.
 
 ### 5. Common C++/Node extensions were never indexed
 `.cc .cxx .mjs .cjs .mts .cts` routed to real extractors but were missing from
-the index extension gate — those files were invisible to find/focus. Added them
+the index extension gate, those files were invisible to find/focus. Added them
 (commit `76de9f5`).
 
 ### 6. `focus` was Python-only; BOM files broke the outline
@@ -72,7 +72,7 @@ resolved 6/6 bare + 6/6 qualified; JS resolved.
   outline via the grep fallback rather than full tree-sitter. Adding those
   grammars as dependencies would upgrade them with no code change.
 - Files with **no named symbols** (top-level one-liner programs like a C#/TS
-  `console.log("…")`) correctly produce an empty outline — not a failure.
+  `console.log("…")`) correctly produce an empty outline, not a failure.
 
 ## Environment note (not a scubiee issue)
 

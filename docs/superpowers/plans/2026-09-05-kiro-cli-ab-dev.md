@@ -1,19 +1,19 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-07T19:03:54.497313+00:00
 **Model:** `auto` · **Effort:** `medium`
-**Task:** `weak_start` — soft-locate bad-start recovery
+**Task:** `weak_start`, soft-locate bad-start recovery
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Development task — soft-locate bad-start recovery
+# Development task - soft-locate bad-start recovery
 
 ## Problem
 When agents use this project's soft-locate / pack tools, they sometimes get a weak or unreliable starting point (for example something under tests or fixtures, or otherwise not a good production entry for the query). Today it is too easy to keep going from that bad start instead of recovering.
 
 ## Desired outcome
-After a soft locate / pack completes, if the recommended starting point looks unreliable, the tool response must include a clear, actionable next step that tells the agent to remake the locate with a richer code-oriented query — not silently continue from the weak start.
+After a soft locate / pack completes, if the recommended starting point looks unreliable, the tool response must include a clear, actionable next step that tells the agent to remake the locate with a richer code-oriented query - not silently continue from the weak start.
 
 If the starting point looks like normal production code for the query, do not spam false alarms; keep the existing happy path quiet.
 
@@ -26,7 +26,7 @@ If the starting point looks like normal production code for the query, do not sp
 ## Constraints
 - Stay in-process (no new network services).
 - Keep the change small and reviewable.
-- You may explore the codebase freely to find the right place — do not invent a parallel stack.
+- You may explore the codebase freely to find the right place - do not invent a parallel stack.
 - Do not commit, push, or install packages globally. Local test runs are fine.
 
 ## Success criteria
@@ -48,7 +48,7 @@ Implement this end-to-end. Explore first, then edit, then run the relevant tests
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

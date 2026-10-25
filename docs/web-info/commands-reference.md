@@ -40,9 +40,9 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee initialize [path]` | Managed repo init + reconcile existing index |
 | `scubiee activate [path]` | Mark repo active (also un-pauses a **paused** repo since 0.3.11) |
 | `scubiee pause [path] [--reason text]` | Pause background indexing for this repo |
-| `scubiee resume` | Resume **global** stop after `scubiee stop` (not per-repo pause — use `activate`) |
+| `scubiee resume` | Resume **global** stop after `scubiee stop` (not per-repo pause, use `activate`) |
 | `scubiee list` | JSON list of managed repos |
-| `scubiee remove [path]` | Unmanage repo in registry only (keeps index store unless `--delete-store`) — prefer **`wipe --confirm`** for full cleanup |
+| `scubiee remove [path]` | Unmanage repo in registry only (keeps index store unless `--delete-store`), prefer **`wipe --confirm`** for full cleanup |
 | `scubiee remove [path] --delete-store` | Unmanage + delete `~/.scubiee/projects/<id>/` (no VectorDB / `.scubiee` / repo rules cleanup) |
 | `scubiee never-index [path] [--reason text]` | Permanently refuse indexing for this path |
 
@@ -58,7 +58,7 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee index . --force` | Force full re-index |
 | `scubiee sync [path]` | Incremental sync (changed files) |
 | `scubiee sync . --confirm` | Sync when >400 files would change |
-| `scubiee sync-now [path]` | Lifecycle freshness reconciliation (blocked when repo is **paused** — use `activate` first) |
+| `scubiee sync-now [path]` | Lifecycle freshness reconciliation (blocked when repo is **paused**, use `activate` first) |
 | `scubiee rebuild [path]` | Force full rebuild |
 | `scubiee search <query> [path]` | Semantic + lexical search |
 | `scubiee search "foo" . --local --top-k 5` | In-process search |
@@ -86,7 +86,7 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee migrate --apply-all` | Apply migrations for all managed projects |
 | `scubiee resources` | Hardware + live pressure |
 | `scubiee resources --refresh` | Re-detect hardware |
-| `scubiee test quick [path]` | Run quick pytest tier (**requires pytest in the same Python env** — mainly for git checkouts) |
+| `scubiee test quick [path]` | Run quick pytest tier (**requires pytest in the same Python env**, mainly for git checkouts) |
 
 ---
 
@@ -103,8 +103,8 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee dashboard --no-open` | Start operator dashboard |
 | `scubiee dashboard --status` | Dashboard URL / PID / health |
 | `scubiee dashboard stop` | Stop dashboard |
-| `scubiee stop` | **Global stop** — tears down MCP/rules, blocks most CLI until `scubiee resume` |
-| `scubiee resume` | Resume after **global** `scubiee stop` (**not** per-repo pause — use `activate`) |
+| `scubiee stop` | **Global stop**, tears down MCP/rules, blocks most CLI until `scubiee resume` |
+| `scubiee resume` | Resume after **global** `scubiee stop` (**not** per-repo pause, use `activate`) |
 | `scubiee mcp [path]` | Run MCP adapter (normally invoked by Cursor) |
 
 ---
@@ -118,7 +118,7 @@ Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-glo
 | `scubiee connect --cursor` | Cursor MCP + `~/.cursor/rules/scubiee.mdc` |
 | `scubiee connect --kiro` | Kiro (+ workspace `.kiro/settings/mcp.json` when run in a repo) |
 | `scubiee connect --copilot` | Copilot/VS Code (+ `.vscode/mcp.json` when in a repo) |
-| `scubiee connect --cline` / `--roo-code` | Same pattern — prefer run inside project |
+| `scubiee connect --cline` / `--roo-code` | Same pattern, prefer run inside project |
 | `scubiee connect --all` | Connect all supported tools |
 | `scubiee connect --all --dry-run` | Preview paths that would be written |
 | `scubiee connect --cursor --repo <path>` | Target a specific repo for workspace-local writes |
@@ -157,20 +157,20 @@ After `--all --confirm`, JSON includes an **`audit`** block listing any **`remai
 
 ## MCP tools (inside Cursor)
 
-Not CLI commands — exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
+Not CLI commands, exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
 
 One **`map`** tool with two configs (`find` | `focus`), plus `gate`/`status`:
 
 | Tool | Role |
 |------|------|
-| `gate` | Tiny managed check (~5 tokens) — prefer at session start |
+| `gate` | Tiny managed check (~5 tokens), prefer at session start |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is X?" — ranked locations + the top result's code inline. Also orients a wide area and pulls code near a chunk you hold (put its names in the query). |
+| `map config=find` | "Where is X?", ranked locations + the top result's code inline. Also orients a wide area and pulls code near a chunk you hold (put its names in the query). |
 | `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
 
 Exact/name/path → host Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus`. (The old `related`/`graph` configs were folded into `find` in v0.3.142.)
 
-If `status` shows the engine still warming, retry the `map` call once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
+If `status` shows the engine still warming, retry the `map` call once after a short wait, do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
 
 ---
 
@@ -180,13 +180,13 @@ If `status` shows the engine still warming, retry the `map` call once after a sh
 |------|---------|
 | `0` | Success |
 | `1` | Error (check JSON `error` field) |
-| `2` | Safety pause — confirm required (`wipe` without `--confirm`, `wipe --all` without `--yes`, or large index/sync without `--confirm`) |
+| `2` | Safety pause, confirm required (`wipe` without `--confirm`, `wipe --all` without `--yes`, or large index/sync without `--confirm`) |
 
 ---
 
 ## Related
 
-- **[Complete CLI reference](../../web-info/complete-cli-reference.md)** — full parameter docs
+- **[Complete CLI reference](../../web-info/complete-cli-reference.md)**: full parameter docs
 - [Repository lifecycle](./repo-lifecycle.md)
 - [MCP tools reference](./mcp-tools-reference.md)
 - [Getting started](./getting-started.md)

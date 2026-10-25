@@ -1,6 +1,6 @@
 # Data & files reference
 
-Every important path, file, and directory Scubiee uses — what it contains, when it appears, and what happens if you delete it.
+Every important path, file, and directory Scubiee uses, what it contains, when it appears, and what happens if you delete it.
 
 **Version:** 0.3.14 · **Concepts:** [how-everything-works.md](./how-everything-works.md)
 
@@ -44,7 +44,7 @@ Override with env **`CTX_HOME`** (advanced/testing only).
 | `registry.json` | All enrolled repos, paths, pause state, project metadata | Wipe recreates empty; loses enrollment |
 | `accel.json` | GPU/CPU profile, batch size, calibration | `setup --repair` recreates |
 | `prefs.json` | User settings (`automatic` vs `mcp_cli` registration mode) | Recreated with defaults |
-| `projects/<project_id>/` | **Index store** — chunks, graph, FAISS, merkle, meta | `wipe` or `remove --delete-store` |
+| `projects/<project_id>/` | **Index store**, chunks, graph, FAISS, merkle, meta | `wipe` or `remove --delete-store` |
 | `upgrade_history.json` | Component versions applied during upgrades | Upgrade may re-run steps |
 | `engine.log` | Daemon log | Yes (diagnostic only) |
 | `watchdog.log` | Watchdog restarts | Yes |
@@ -63,7 +63,7 @@ Override with env **`CTX_HOME`** (advanced/testing only).
 **If deleted but registry still has path:** Scubiee may recover id from registry on next init.  
 **If both gone:** New project id → **full re-index**.
 
-Often listed in `.gitignore` — do not commit secrets; id is not secret but is machine-local binding.
+Often listed in `.gitignore`, do not commit secrets; id is not secret but is machine-local binding.
 
 ---
 
@@ -111,7 +111,7 @@ Conceptual structure per project:
 | `pause_reason` | Why pause was set |
 | `forget_pending` | Dashboard forget in progress |
 
-Edit manually only if you know registry semantics — prefer CLI `wipe`/`remove`.
+Edit manually only if you know registry semantics, prefer CLI `wipe`/`remove`.
 
 ---
 
@@ -127,10 +127,10 @@ Edit manually only if you know registry semantics — prefer CLI `wipe`/`remove`
 Contains:
 
 - `Scripts/scubiee.exe` (Windows) or `bin/scubiee`
-- `Scripts/python.exe` — Python used by MCP
-- `Lib/site-packages/pipeline/` — package code
+- `Scripts/python.exe`: Python used by MCP
+- `Lib/site-packages/pipeline/`: package code
 
-**This is what MCP spawn uses** — must match `scubiee --version` python.
+**This is what MCP spawn uses**: must match `scubiee --version` python.
 
 ### pip / venv
 
@@ -144,9 +144,9 @@ Separate copy under your venv's `site-packages`. Doctor warns if PATH picks wron
 |------|-------------|---------------|
 | Cursor | `~/.cursor/mcp.json`, `~/.cursor/rules/scubiee.mdc` | `<repo>/.cursor/mcp.json` |
 | Kiro | user steering/MCP | `<repo>/.kiro/settings/mcp.json` |
-| Copilot | — | `<repo>/.vscode/mcp.json`, `<repo>/.mcp.json` |
-| Cline | — | `<repo>/.cline/mcp.json` |
-| Roo | — | `<repo>/.roo/mcp.json` |
+| Copilot | - | `<repo>/.vscode/mcp.json`, `<repo>/.mcp.json` |
+| Cline | - | `<repo>/.cline/mcp.json` |
+| Roo | - | `<repo>/.roo/mcp.json` |
 
 **Wipe single repo:** removes project-local entries via `strip_all_project_tool_surfaces`.  
 **Wipe --all:** removes user-global MCP entries too.

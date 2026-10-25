@@ -1,4 +1,4 @@
-# CE Operator Dashboard — Design
+# CE Operator Dashboard: Design
 
 **Date:** 2026-08-17  
 **Branch / worktree:** `feat/ce-dashboard` / `.worktrees/ce-dashboard`  
@@ -6,7 +6,7 @@
 
 ## Problem
 
-Operators need a single local place to see CE health and manage repositories safely: missing vs moved vs deleted folders, Auto vs Manual admission, indexes/vectors, sync failures, hardware profile, and a graph view — without guessing CLI flags.
+Operators need a single local place to see CE health and manage repositories safely: missing vs moved vs deleted folders, Auto vs Manual admission, indexes/vectors, sync failures, hardware profile, and a graph view, without guessing CLI flags.
 
 Today CE has durable project IDs + registry, lifecycle APIs (`initialize` / `pause` / `remove` / `rebuild`), doctor/certify, and a minimal dark settings page at `/dashboard`. It does not yet provide a full operator control center or a validated Missing → Forget purge path.
 
@@ -38,7 +38,7 @@ Today CE has durable project IDs + registry, lifecycle APIs (`initialize` / `pau
 Binding:
 
 - Host: `127.0.0.1` only
-- Port: stable private-range port derived from CE install/machine id (`49152–65535`)
+- Port: stable private-range port derived from CE install/machine id (`49152-65535`)
 - If preferred port busy: pick next free port, persist choice
 - Base path: `/ce-dashboard` (reduces accidental collisions with common `/dashboard` apps)
 - PID/URL file under `~/.context-engine/dashboard.json`
@@ -90,13 +90,13 @@ States:
 Actions:
 
 - **Add / Initialize** (Manual mode primary)
-- **Locate** — pick new path; reattach if durable ID matches
+- **Locate**: pick new path; reattach if durable ID matches
 - **Pause / Resume**
-- **Unmanage** — stop managing; keep store (maps to remove without deleting index)
-- **Clear index** — delete vectors/chunks/graph store; keep project ID / registry row
+- **Unmanage**: stop managing; keep store (maps to remove without deleting index)
+- **Clear index**: delete vectors/chunks/graph store; keep project ID / registry row
 - **Rebuild / Re-embed**
 - **Pin / Unpin**
-- **Forget permanently** — only when validation allows; type project ID or folder name
+- **Forget permanently**: only when validation allows; type project ID or folder name
 
 ### Missing / delete validation
 

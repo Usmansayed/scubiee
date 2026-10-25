@@ -1,9 +1,9 @@
-# Context Engine MCP — Architecture & Tool Reference
+# Context Engine MCP: Architecture & Tool Reference
 
 A local, stdio MCP server (`context-engine`) that gives coding agents **fast,
 token-cheap code understanding**: semantic search, the right span, file
 structure, and the call graph. It deliberately covers only what native
-Grep/Read/Glob *can't* do — see [Design rationale](#design-rationale).
+Grep/Read/Glob *can't* do, see [Design rationale](#design-rationale).
 
 - Module: `pipeline.mcp_locate` (Python / FastMCP)
 - Transport: **stdio** (single client, local; logs go to stderr, never stdout)
@@ -61,7 +61,7 @@ retrieval environment for A/B trials:
 
 | `CTX_MCP_SURFACE` | Tools | Purpose |
 |---|---|---|
-| **`phase` (managed default)** | `gate`, `map`, `focus`, `grep`, `glob`, `workspace`, `expand`, `status` | Token-efficient locate trajectory — map for meaning, focus to deepen, grep/glob for literals/paths |
+| **`phase` (managed default)** | `gate`, `map`, `focus`, `grep`, `glob`, `workspace`, `expand`, `status` | Token-efficient locate trajectory, map for meaning, focus to deepen, grep/glob for literals/paths |
 | `rich` (legacy prod) | `search`, `read`, `outline`, `status` | Value-add only |
 | `read` | `search`, `read`, `status` | Minimal locate+read |
 | `nav` | `search`, `files`, `read`, `recall`, `expand`, `status` | Sealed locate (soft+exact+files+session) |
@@ -75,7 +75,7 @@ Production default for managed repos after `scubiee init`. Agents should use:
 
 | Tool | When |
 |---|---|
-| `map(query)` | Cold / new topic — ranked cards, no bodies |
+| `map(query)` | Cold / new topic, ranked cards, no bodies |
 | `pack_context(query, seed_file=…)` | Lean heatmap around a seed (composite_v1) |
 | `expand_context(node=…)` | Grow callees/callers when the pack is thin |
 | `collect_hot_context(ids=…)` | Optional bodies; prefer native Read on heatmap locs |
@@ -105,7 +105,7 @@ All tools accept `response_format="json"` (default, machine-readable) or
 
 **When:** the default first reach for any new / vague / "where does X happen" /
 "how does Y work" question. Finds code by **meaning** (embeddings + BM25 + graph
-fused) — not just string match. On the `nav` surface, `mode=exact` runs
+fused), not just string match. On the `nav` surface, `mode=exact` runs
 literal/regex grep through the same tool (sealed exact locate).
 
 **Params:** `query` (NL or symbol; soft asks welcome) · `k` how many hits
@@ -124,7 +124,7 @@ search(query="perception_code_graph", mode="exact")  // sealed literal
 
 ### `read(target|path, query, handle, start_line, end_line, detail=body, neighbors=false, max_neighbors=4, max_chars=2000)`
 
-**When:** open one specific thing before editing — a symbol, a search hit, a
+**When:** open one specific thing before editing, a symbol, a search hit, a
 known file, or an exact line range. Session-deduped: a repeat read returns an
 `unchanged` stub with the span's `handle`. On `nav`, `detail=outline` folds the
 old outline tool; `detail=neighbors` is the same as `neighbors=true`.
@@ -151,8 +151,8 @@ read(path="src/foo.py", start_line=40, end_line=88)    // exact range
 
 ### `outline(path, keep=60)`
 
-**When:** understand a file's shape fast — its classes/functions and their line
-ranges — without reading the whole file.
+**When:** understand a file's shape fast, its classes/functions and their line
+ranges, without reading the whole file.
 
 **Returns:** `symbols[{name, kind, start_line, end_line}]` (capped at `keep`).
 
@@ -171,10 +171,10 @@ session span count, token mode.
 
 ## Design rationale
 
-The surface is **intentionally lean — only tools that beat native**, and the
+The surface is **intentionally lean, only tools that beat native**, and the
 always-on guidance is a **tiny Need→do card** (MCP server instructions + Cursor
-rule), not a long doc the agent must open. Goal: Grep-like muscle memory —
-soft locate → `search`, open span → `read`, exact string → native Grep — with
+rule), not a long doc the agent must open. Goal: Grep-like muscle memory
+soft locate → `search`, open span → `read`, exact string → native Grep, with
 defaults that prevent stacking CE on top of Grep/Read thrash.
 
 - `search` (meaning), `read` (right span + call graph), `outline` (structure)
@@ -184,7 +184,7 @@ defaults that prevent stacking CE on top of Grep/Read thrash.
   A/B on the `frontend-mcp` codebase confirmed it: forcing every grep/read
   through the MCP pushed MCP-share to ~100% but *raised* total tokens vs. a
   version where `search` simply deflected reads. Token savings come from
-  `search` replacing reads — not from re-routing native-equivalent ops.
+  `search` replacing reads, not from re-routing native-equivalent ops.
 
 So: **use the MCP for meaning, structure, and the graph; use native Grep/Glob
 for an exact string or a known filename.** Fewer tools + short instructions =

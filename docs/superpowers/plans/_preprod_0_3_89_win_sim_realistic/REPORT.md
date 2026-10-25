@@ -1,11 +1,11 @@
-# Realistic MCP host-sim battery (Windows) — 0.3.89
+# Realistic MCP host-sim battery (Windows): 0.3.89
 
 **Date:** 2026-09-15  
 **While:** Mac Gate M running in parallel  
-**Harness:** live `uv tool` scubiee + `scripts/mcp_host_sim.py` / warm / ship — not unit pytest  
+**Harness:** live `uv tool` scubiee + `scripts/mcp_host_sim.py` / warm / ship, not unit pytest  
 
 **Verdict: PASS** (all steps `*_exit=0` and `"ok": true`).  
-Outer script printed `SOME_FAIL` due to a PowerShell `$LASTEXITCODE` capture glitch after `Tee-Object`; ignore that — each step log shows exit 0.
+Outer script printed `SOME_FAIL` due to a PowerShell `$LASTEXITCODE` capture glitch after `Tee-Object`; ignore that, each step log shows exit 0.
 
 ## Results
 
@@ -22,11 +22,11 @@ Outer script printed `SOME_FAIL` due to a PowerShell `$LASTEXITCODE` capture gli
 
 | Budget | Met? |
 |--------|------|
-| soft_ready ≤30s | Yes (3–9s) |
-| map_first ≤1000ms | Yes (66–392ms; true-first after settle still &lt;1s) |
-| pack_first ≤1000ms | Yes (~50–60ms) |
-| expand_first ≤5000ms | Yes (~0.6–0.7s) |
-| post-idle locate | Yes (~50–70ms) |
+| soft_ready ≤30s | Yes (3-9s) |
+| map_first ≤1000ms | Yes (66-392ms; true-first after settle still &lt;1s) |
+| pack_first ≤1000ms | Yes (~50-60ms) |
+| expand_first ≤5000ms | Yes (~0.6-0.7s) |
+| post-idle locate | Yes (~50-70ms) |
 
 ## Artifacts
 

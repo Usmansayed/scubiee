@@ -21,7 +21,7 @@ Which tests, checks, or manual steps did you run? For example:
 
 ## Checklist
 
-Tick what applies — not every item is relevant to every change.
+Tick what applies. Not every item is relevant to every change.
 
 - [ ] The change is focused and easy to follow
 - [ ] Relevant tests or checks were run

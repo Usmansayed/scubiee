@@ -1,7 +1,7 @@
-# MacBook handoff — Scubiee 0.3.102 (OS-specific, realistic)
+# MacBook handoff: Scubiee 0.3.102 (OS-specific, realistic)
 
 **From:** Windows pre-prod on 2026-09-21 (`docs/superpowers/plans/_preprod_0_3_101_win_sim_realistic/`)  
-**Checkout / PyPI:** install **0.3.102** (`uv tool install scubiee` or `uv tool install --force .`) — keepalive/dummy-search contention fixes after the morning 0.3.101 cut.  
+**Checkout / PyPI:** install **0.3.102** (`uv tool install scubiee` or `uv tool install --force .`), keepalive/dummy-search contention fixes after the morning 0.3.101 cut.  
 **You are validating:** Apple Silicon (preferred) or Intel Mac. Windows already ran Cursor Lane A + idle 120s. **Mac must prove MLX/ORT, not DirectML.**
 
 Do **not** treat Windows numbers as Mac numbers. Unique maps are real FastEmbed + D-channel (dense + BM25 + **full** graph BFS). Few-ms is identical-query cache only.
@@ -25,10 +25,10 @@ Do **not** treat Windows numbers as Mac numbers. Unique maps are real FastEmbed 
 
 | Topic | Windows (done) | Mac (you) |
 |-------|----------------|-----------|
-| Accel | `onnxruntime-directml` / GPU **D3 ~10s** idle | Apple Silicon **MLX**; Intel **coreml/cpu**. No DirectML. ORT thread-pool still sleeps after idle ([ORT #23461](https://github.com/microsoft/onnxruntime/issues/23461)) — **keep keepalive=8s**. |
+| Accel | `onnxruntime-directml` / GPU **D3 ~10s** idle | Apple Silicon **MLX**; Intel **coreml/cpu**. No DirectML. ORT thread-pool still sleeps after idle ([ORT #23461](https://github.com/microsoft/onnxruntime/issues/23461)), **keep keepalive=8s**. |
 | Wheel | `onnxruntime-directml>=1.17,<1.25` | `fastembed` + `onnxruntime` + **`mlx` on arm64**. After install: `scubiee setup --repair` → profile **`mlx`**, never leftover `cpu`. |
 | MCP spawn | `pythonw.exe` + `CREATE_NO_WINDOW` | plain `python` / `scubiee-mcp-bridge`. Confirm **no extra Terminal.app windows** on Cursor connect. |
-| Dual Python | conda vs `uv tool` fighting `~/.scubiee` (seen on Win) | Homebrew python vs `uv tool` — pin `CTX_DAEMON_PYTHON` to the uv-tool interpreter. |
+| Dual Python | conda vs `uv tool` fighting `~/.scubiee` (seen on Win) | Homebrew python vs `uv tool`, pin `CTX_DAEMON_PYTHON` to the uv-tool interpreter. |
 | Paths | `%USERPROFILE%\.scubiee` | `~/.scubiee`. MCP `CTX_REPO` must be an **absolute** path (Cursor still does not expand `${workspaceFolder}`). |
 | SIGSEGV | less common | `TOKENIZERS_PARALLELISM=false` + GC disable in MCP (already in `mcp_locate.main`). If locate dies on first map, capture Console + `~/.scubiee/engine.log`. |
 | RSS cap | 1536 MB + CPU 35% JobObject | JobObject is Windows-only. Confirm Mac RSS stays sane with MLX weights + keepalive; do not copy Win JobObject assumptions. |
@@ -125,12 +125,12 @@ curl -s -X POST http://127.0.0.1:8765/v1/embed/keepalive
 
 **Expected non-zero (not a Mac fail if same reasons):**
 
-- `doctor` / `doctor --fix` — dirty journal of uncommitted docs; exit 1 with `replay_dirty_journal`.
-- `sync-now` — auto cap 10k chunks; oversized change asks for `index --force` (do **not** force unless you intend a full reindex).
-- `search --local` — `dense_embed_required` while the daemon holds the embedder.
-- `scubiee test core` using **uv-tool** python — `No module named pytest`. Use the checkout interpreter: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest <core files>`.
+- `doctor` / `doctor --fix`, dirty journal of uncommitted docs; exit 1 with `replay_dirty_journal`.
+- `sync-now`: auto cap 10k chunks; oversized change asks for `index --force` (do **not** force unless you intend a full reindex).
+- `search --local`: `dense_embed_required` while the daemon holds the embedder.
+- `scubiee test core` using **uv-tool** python, `No module named pytest`. Use the checkout interpreter: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest <core files>`.
 
-**Do not run on a live enrolled repo:** `wipe`, `halt`, `pause`, `disconnect`, `rebuild`, `never-index`, `remove`, `unlock-tool`, `heal`, `index --force`, `mcp` stdio, `engine stop`/`run`, `upgrade` without `--check`. Do **not** run `python scripts/run_cli_combination_tests.py` without isolation — last scenario deletes the uv tool dir; even `--quick` issues `stop` / `engine stop` / `disconnect`.
+**Do not run on a live enrolled repo:** `wipe`, `halt`, `pause`, `disconnect`, `rebuild`, `never-index`, `remove`, `unlock-tool`, `heal`, `index --force`, `mcp` stdio, `engine stop`/`run`, `upgrade` without `--check`. Do **not** run `python scripts/run_cli_combination_tests.py` without isolation, last scenario deletes the uv tool dir; even `--quick` issues `stop` / `engine stop` / `disconnect`.
 
 After you quit Cursor / disconnect MCP, optional CLI locate:
 
@@ -157,7 +157,7 @@ python scripts/mcp_host_sim.py --lane a --live --settle-s 40 --idle-s 120 \
 
 | Phase | Budget |
 |-------|--------|
-| soft_ready | ≤40s (Windows: ~16s soft; Mac MLX load may be longer — still ≤40s warm) |
+| soft_ready | ≤40s (Windows: ~16s soft; Mac MLX load may be longer, still ≤40s warm) |
 | map_first after settle | ≤**3s** |
 | map_second unique | ≤**1s** |
 | pack / expand | ≤**1s** |

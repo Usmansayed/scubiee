@@ -1,16 +1,16 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-09T21:46:43.475207+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `pack_bodies_optin` — MCP pack body opt-in actually collects bodies
+**Task:** `pack_bodies_optin`, MCP pack body opt-in actually collects bodies
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Development task — make the documented pack-body opt-in actually return code bodies
+# Development task - make the documented pack-body opt-in actually return code bodies
 
 ## Problem
-This project's MCP pack/locate tools advertise an environment-variable (and/or tool-flag) opt-in so that pack responses can include hot code bodies again. In practice, turning that opt-in on still yields heatmap/location-only responses with empty body lists — the collection step never runs, so the documented knobs for body budget / max bodies stay inert. Agents then either thrash Native-Read or call a separate collect path when they believed opt-in would be enough.
+This project's MCP pack/locate tools advertise an environment-variable (and/or tool-flag) opt-in so that pack responses can include hot code bodies again. In practice, turning that opt-in on still yields heatmap/location-only responses with empty body lists - the collection step never runs, so the documented knobs for body budget / max bodies stay inert. Agents then either thrash Native-Read or call a separate collect path when they believed opt-in would be enough.
 
 ## Desired outcome
 When the pack-body opt-in is enabled (env and/or explicit tool flag):
@@ -24,12 +24,12 @@ When the pack-body opt-in is enabled (env and/or explicit tool flag):
 3. Automated tests cover:
    - default / opt-in-off path stays body-less (or heatmap reshape as today)
    - opt-in-on path actually requests collection (assert the pack runner is invoked with bodies enabled, and/or returned pack entries contain text when collection succeeds)
-4. Prefer fixing the existing MCP pack factory + lean reshape pipeline — do not invent a parallel pack API.
+4. Prefer fixing the existing MCP pack factory + lean reshape pipeline - do not invent a parallel pack API.
 5. Do not break callers that ignore bodies and only read heatmap/locs.
 
 ## Constraints
 - In-process only; no new network services.
-- Explore the codebase yourself — this prompt will not name files, symbols, or env var spellings beyond what you discover.
+- Explore the codebase yourself - this prompt will not name files, symbols, or env var spellings beyond what you discover.
 - Do not commit or push. Local tests are fine.
 - Keep the change small and reviewable.
 
@@ -51,7 +51,7 @@ Implement end-to-end: explore → edit → test.
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

@@ -14,7 +14,7 @@ Each managed repository gets a stable **`project_id`** (e.g. `ce_ab9a0c9170ecd47
 | `~/.scubiee/registry.json` | Lists all managed roots and lifecycle state |
 | `~/.scubiee/projects/<project_id>/` | Index store (chunks, graph, FAISS, merkle) |
 
-Git worktrees that share the same git common dir can share one project id across related paths — that is intentional.
+Git worktrees that share the same git common dir can share one project id across related paths, that is intentional.
 
 If you move a repo: the id file travels with it. If you delete the id file but registry still knows the path, Scubiee can recover. If both are gone, a **new** id is created and a **re-index** is required.
 
@@ -22,7 +22,7 @@ If you move a repo: the id file travels with it. If you delete the id file but r
 
 ## What gets indexed
 
-Default full index walks the repo with skip rules (vendor, `node_modules`, `.git`, large test corpora like `testdata/` in many layouts, etc.). The exact skip list is in the product’s path policy — **not every file on disk is counted or indexed**.
+Default full index walks the repo with skip rules (vendor, `node_modules`, `.git`, large test corpora like `testdata/` in many layouts, etc.). The exact skip list is in the product’s path policy, **not every file on disk is counted or indexed**.
 
 **Fast mode** (`--fast`):
 
@@ -80,7 +80,7 @@ Example error:
 scubiee init .
 ```
 
-Do **not** run bare `scubiee init` from your home folder expecting it to index “the current project” — it uses the **current directory** as the root.
+Do **not** run bare `scubiee init` from your home folder expecting it to index “the current project”, it uses the **current directory** as the root.
 
 If you truly need to index a broad path (rare):
 
@@ -92,7 +92,7 @@ scubiee init /very/large/path --confirm
 
 ## Safety: >400 file confirm gate
 
-Before a large index or sync, Scubiee counts **indexable** files (same rules as actual indexing — not raw `find` counts).
+Before a large index or sync, Scubiee counts **indexable** files (same rules as actual indexing, not raw `find` counts).
 
 If more than **400** files would be touched (default), it stops and asks for explicit consent:
 

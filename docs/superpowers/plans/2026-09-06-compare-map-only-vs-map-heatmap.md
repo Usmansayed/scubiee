@@ -6,14 +6,14 @@
 |---|---|---|
 | MCP | gate + map | gate + map + pack + expand |
 | chars ingested | ~28k | **~22k** |
-| map / pack payload | ~2.8k / — | ~2.3k / **~1.7k** |
+| map / pack payload | ~2.8k /, | ~2.3k / **~1.7k** |
 | pack_calls | 0 | 1 |
 | Same diagnosis? | yes | yes |
 
 ## What heatmap uniquely added
 
 - Real locs for `cli_map` + `pick_suggested_seed`
-- Live evidence: empty-symbol path → hot **`_root`** as neighbor (#2) — map-only could only infer this from code
+- Live evidence: empty-symbol path → hot **`_root`** as neighbor (#2), map-only could only infer this from code
 - Expand delta empty; still needed Grep for `resolve_seed_node`
 
 ## Shared gaps

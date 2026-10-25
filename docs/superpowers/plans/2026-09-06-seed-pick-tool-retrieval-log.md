@@ -1,4 +1,4 @@
-# Seed-pick A/B — tool retrieval log + improvisation notes
+# Seed-pick A/B: tool retrieval log + improvisation notes
 
 **Host tokens:** MCP Scubiee **448k** vs Native **543k** (~17.5% save).
 
@@ -58,7 +58,7 @@ Full machine log: `docs/superpowers/plans/2026-09-06-seed-pick-tool-retrieval-lo
 }
 ```
 
-### Retrieval timeline (compressed — Grep/Read heavy)
+### Retrieval timeline (compressed: Grep/Read heavy)
 
 - `03` Grep `pick_suggested_seed|resolve_seed_node|suggested_seed` @ `C:\Users\usman\Downloads\context-engine`
 - `04` Grep `cli_map|def map\b|suggested_seed` @ `C:\Users\usman\Downloads\context-engine`
@@ -94,12 +94,12 @@ Full machine log: `docs/superpowers/plans/2026-09-06-seed-pick-tool-retrieval-lo
 
 ## Where MCP still burned tokens
 
-1. **4× GetDynamicTools** — schema discovery before each MCP call (should cache once).
-2. **7× UpdateCurrentStep** — UI chrome, not locate value.
-3. **7× Grep after heatmap** — still shotgunning after pack; pack was only ~620 chars.
-4. **9× Read** — more than `read.top=5` (heatmap had 2 hot cards; agent over-read).
-5. **expand_context** — extra MCP hop after a thin-but-usable pack.
-6. Model reasoning turns between tools — host tokens ≫ tool chars (~18.5k chars vs 448k tokens).
+1. **4× GetDynamicTools**: schema discovery before each MCP call (should cache once).
+2. **7× UpdateCurrentStep**: UI chrome, not locate value.
+3. **7× Grep after heatmap**: still shotgunning after pack; pack was only ~620 chars.
+4. **9× Read**: more than `read.top=5` (heatmap had 2 hot cards; agent over-read).
+5. **expand_context**: extra MCP hop after a thin-but-usable pack.
+6. Model reasoning turns between tools, host tokens ≫ tool chars (~18.5k chars vs 448k tokens).
 
 ## Improvisation backlog (product + agent policy)
 

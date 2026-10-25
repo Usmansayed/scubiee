@@ -1,4 +1,4 @@
-# Scubiee 0.2.56 — Release Handoff
+# Scubiee 0.2.56: Release Handoff
 
 ## What Changed
 
@@ -32,14 +32,14 @@ Affected commands: `status`, `init`, `connect`, `disconnect`, `stop`, `resume`, 
 
 Two commands replace the old `stop` (which only killed processes but left MCP configs active, confusing agents):
 
-**`scubiee stop`** — Makes Scubiee completely invisible:
+**`scubiee stop`**: Makes Scubiee completely invisible:
 - Kills engine + watchdog + MCP processes
 - Disables MCP entries in all connected tools (`"disabled": true`)
 - Renames rule files to `*.paused` (invisible to IDE agent loaders)
 - Saves which tools were connected (for restore)
 - Shows y/N confirmation before proceeding (skip with `-y`)
 
-**`scubiee resume`** — Brings everything back:
+**`scubiee resume`**: Brings everything back:
 - Re-enables MCP entries
 - Restores rule files
 - Starts engine + watchdog
@@ -54,7 +54,7 @@ While stopped:
 
 ### 3. Upgrade Command
 
-**`scubiee upgrade`** — One command for the full upgrade lifecycle:
+**`scubiee upgrade`**: One command for the full upgrade lifecycle:
 - Checks PyPI for latest version
 - Stops running processes (avoids Windows DLL locks)
 - Pulls the new package via pip/uv
@@ -86,8 +86,8 @@ Destructive commands now prompt before executing:
   Continue? [y/N]
 ```
 
-- `scubiee stop` — prompts (skip with `-y`)
-- `scubiee wipe --all` — prompts (skip with `--yes`)
+- `scubiee stop`: prompts (skip with `-y`)
+- `scubiee wipe --all`: prompts (skip with `--yes`)
 - Non-TTY (piped/scripted) automatically skips prompts
 
 The capital letter in `[y/N]` indicates the default: pressing Enter without typing = No (safe choice for destructive actions).
@@ -146,11 +146,11 @@ python tests\windows_production_test.py
 
 ### Windows-specific concerns to watch for:
 
-1. **DML cold start timing** — DirectML session creation can take 10-15s on first use. The test allows 30s warm-up.
-2. **DLL locks** — If Cursor is running with MCP connected, `wipe --all` may fail to delete the uv tool env. Quit Cursor first.
-3. **Path separators** — All internal paths should use forward slashes in MCP env vars and JSON. Windows `\` only in user-facing display.
-4. **CREATE_NO_WINDOW** — The MCP process must not flash a console window. Test verifies `creationflags`.
-5. **taskkill /T /F** — Process stop uses tree-kill on Windows. Verify no orphans remain.
+1. **DML cold start timing**: DirectML session creation can take 10-15s on first use. The test allows 30s warm-up.
+2. **DLL locks**: If Cursor is running with MCP connected, `wipe --all` may fail to delete the uv tool env. Quit Cursor first.
+3. **Path separators**: All internal paths should use forward slashes in MCP env vars and JSON. Windows `\` only in user-facing display.
+4. **CREATE_NO_WINDOW**: The MCP process must not flash a console window. Test verifies `creationflags`.
+5. **taskkill /T /F**: Process stop uses tree-kill on Windows. Verify no orphans remain.
 
 ### Expected result:
 ```
@@ -168,16 +168,16 @@ If any test fails, the output shows `[FAIL]` with detail. Share the full output 
 ## Files Changed
 
 ```
-packages/pipeline/cli_ui.py          (NEW)  — Terminal formatting module
-packages/pipeline/pause_resume.py    (NEW)  — Global stop/resume logic
-packages/pipeline/upgrade.py         (NEW)  — Upgrade lifecycle
-packages/pipeline/__main__.py        (MOD)  — CLI commands wiring
-packages/pipeline/mcp_locate.py      (MOD)  — Paused status check
-packages/pipeline/daemon.py          (MOD)  — Paused guard + version mismatch restart
-packages/pipeline/watchdog.py        (MOD)  — Paused guard
-packages/pipeline/lifecycle_runtime.py (MOD) — Paused guard
-packages/pipeline/process_control.py (MOD)  — Self-PID exclusion fix
-tests/test_pause_resume.py           (NEW)  — 11 unit tests
-tests/mac_production_test.py         (existing) — 25/25 passing
-tests/windows_production_test.py     (NEW)  — Windows validation suite
+packages/pipeline/cli_ui.py          (NEW)  - Terminal formatting module
+packages/pipeline/pause_resume.py    (NEW)  - Global stop/resume logic
+packages/pipeline/upgrade.py         (NEW)  - Upgrade lifecycle
+packages/pipeline/__main__.py        (MOD)  - CLI commands wiring
+packages/pipeline/mcp_locate.py      (MOD)  - Paused status check
+packages/pipeline/daemon.py          (MOD)  - Paused guard + version mismatch restart
+packages/pipeline/watchdog.py        (MOD)  - Paused guard
+packages/pipeline/lifecycle_runtime.py (MOD) - Paused guard
+packages/pipeline/process_control.py (MOD)  - Self-PID exclusion fix
+tests/test_pause_resume.py           (NEW)  - 11 unit tests
+tests/mac_production_test.py         (existing) - 25/25 passing
+tests/windows_production_test.py     (NEW)  - Windows validation suite
 ```

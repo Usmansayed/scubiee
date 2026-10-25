@@ -1,4 +1,4 @@
-# Scubiee — visual & GitHub asset generation brief
+# Scubiee: visual & GitHub asset generation brief
 
 > **Purpose of this file:** Full context for another AI (ChatGPT, Kling, Midjourney, etc.) to generate **website / GitHub README visuals and a short product video** for Scubiee.  
 > **Product version at time of writing:** 0.3.14 · PyPI `scubiee`  
@@ -14,7 +14,7 @@ Famous GitHub repos (example reference the user likes: **Graphify**) win on an *
 
 1. Logo / hero still  
 2. One sentence of what it is  
-3. 30–60 second install  
+3. 30-60 second install  
 4. One “aha” visual or short film  
 5. Then docs
 
@@ -27,13 +27,13 @@ Famous GitHub repos (example reference the user likes: **Graphify**) win on an *
 | Wordmark + bird lockup | Brand recognition | Already exists (user has logo) |
 | README / website **hero still** | First glance | ~2560×1280, 2:1 |
 | Optional extra stills | How it works, OG/social | 2400×900, 1600×1600 |
-| **Product video** | Show indexing a repo | **8–9 seconds max**, one take |
+| **Product video** | Show indexing a repo | **8-9 seconds max**, one take |
 | README copy structure | Storefront, not encyclopedia | After assets exist |
 
 ### Hard split
 
 - **AI-generated:** brand film, editorial illustration, atmosphere around the logo.  
-- **Must be real (later):** terminal `scubiee init` / `connect`, Cursor MCP — never fake an IDE as the hero.  
+- **Must be real (later):** terminal `scubiee init` / `connect`, Cursor MCP, never fake an IDE as the hero.  
 - **Never fake:** GitHub Trending badges, YC badges, download counts, Discord “Join” unless they are real.
 
 **Do not clone Graphify.** Graphify = neon-green knowledge-graph hairball + `/graphify`. Scubiee = **local context engine for AI coding tools (MCP)**. Different product, different look.
@@ -44,7 +44,7 @@ Famous GitHub repos (example reference the user likes: **Graphify**) win on an *
 
 **Name:** Scubiee (three e’s). Never “Scuba”, “Scubee”, “Graphify”, or “context-engine” in user-facing copy.
 
-**One-line pitch (locked copy — do not hype-rewrite):**
+**One-line pitch (locked copy, do not hype-rewrite):**
 
 > Index locally. Agents search by meaning. Code never leaves the machine.
 
@@ -53,14 +53,14 @@ AI coding assistants (Cursor, Claude Code, Copilot, Kiro, …) are bad at findin
 
 **Not:** a cloud RAG product, an IDE replacement, a hosted multi-user search SaaS, a knowledge-graph visualization toy.
 
-### User journey (always this order — never invent a fourth marketing step)
+### User journey (always this order: never invent a fourth marketing step)
 
 | Step | Command | Meaning |
 |------|---------|---------|
 | 1. Install (once) | `uv tool install scubiee` | Package on PATH |
 | 2. Setup (once per machine) | `scubiee setup` | GPU/CPU detect, model download, `~/.scubiee/accel.json` |
 | 3. Init (per repo) | `scubiee init .` | Enroll + index on disk |
-| 4. Connect (per IDE) | `scubiee connect --cursor` | MCP + agent rules — then **reload MCP** |
+| 4. Connect (per IDE) | `scubiee connect --cursor` | MCP + agent rules, then **reload MCP** |
 
 **Critical:** `init` ≠ `connect`. Index first, wire the IDE second.
 
@@ -68,11 +68,11 @@ AI coding assistants (Cursor, Claude Code, Copilot, Kiro, …) are bad at findin
 
 | Tool | Meaning (for visuals) |
 |------|------------------------|
-| **map** | Ranked files & symbols — overview, not dumping bodies |
+| **map** | Ranked files & symbols, overview, not dumping bodies |
 | **focus** | Deep context, one target (one function / span) |
 | **grep** | Exact search **in the index** |
 
-Other real tools exist (`gate`, `status`, `glob`, `workspace`, `expand`) — **do not clutter the hero** with them. Hero = map · focus · grep.
+Other real tools exist (`gate`, `status`, `glob`, `workspace`, `expand`), **do not clutter the hero** with them. Hero = map · focus · grep.
 
 ### Locality (must show in film)
 
@@ -89,7 +89,7 @@ The user generated and iterated a hero. **This is the source of truth**, not the
 ### Logo (do not redesign)
 
 - White **line-art bird in flight** (swift / hummingbird / origami curves)  
-- Wordmark **Scubiee** — bold, modern, slightly rounded sans, white  
+- Wordmark **Scubiee**, bold, modern, slightly rounded sans, white  
 - Lockup: bird left, wordmark right  
 - Tagline under the lockup (exact):  
   `Index locally. Agents search by meaning. Code never leaves the machine.`
@@ -100,7 +100,7 @@ The user generated and iterated a hero. **This is the source of truth**, not the
 
 - Deep charcoal / near-black  
 - Faint **concentric sonar / radar rings** behind the logo  
-- Quiet, lots of air, developer-tool editorial (Linear / Vercel energy) — **not** a game trailer
+- Quiet, lots of air, developer-tool editorial (Linear / Vercel energy), **not** a game trailer
 
 ### Color (after iteration)
 
@@ -109,19 +109,19 @@ The user generated and iterated a hero. **This is the source of truth**, not the
 
 Safe palette:
 
-- Background `#0E1116`–`#111111`  
+- Background `#0E1116`, `#111111`  
 - Logo / primary type: pure white  
 - Body / captions: off-white `#E6E6E6` and readable gray `#A8A8A8` (not `#444` on black)  
 - Accent: **dull copper** for MAP highlight only  
 - FOCUS / GREP: steel, cool white, maybe a *whisper* of cyan/lime at ~20% saturation if needed  
 
-### Side metaphors (keep these ideas — they worked)
+### Side metaphors (keep these ideas: they worked)
 
 After rejecting “thin circuit traces,” the sides became **product scenes**:
 
 | Side | Metaphor | Notes |
 |------|----------|--------|
-| **MAP** (left) | Ranked constellation / file nodes (`api/handlers.ts`, `core/engine.rs`, …) | 3–4 chips max, one copper highlight |
+| **MAP** (left) | Ranked constellation / file nodes (`api/handlers.ts`, `core/engine.rs`, …) | 3-4 chips max, one copper highlight |
 | **FOCUS** (top right) | Circular lens: one function sharp (`parseQuery`), rest fall off | No electric beam into the logo |
 | **GREP** (bottom right) | Search field + a few line hits (`logger.debug…`) | One scan gesture, not a glowing terminal slab |
 
@@ -135,13 +135,13 @@ After rejecting “thin circuit traces,” the sides became **product scenes**:
 | 4 | Desaturated, same metaphors | **Loved the design; labels too dim** |
 | 5 | Same composition, brighter type | Target: readable labels, still quiet |
 
-**If generating again:** start from round 4–5. Do not go back to traces. Do not go back to neon galaxies.
+**If generating again:** start from round 4-5. Do not go back to traces. Do not go back to neon galaxies.
 
 ---
 
 ## 4. GitHub README storefront (structure we want)
 
-Not implementing the README in this brief — **this is the target layout** once images/video exist.
+Not implementing the README in this brief, **this is the target layout** once images/video exist.
 
 ```markdown
 <p align="center">
@@ -163,7 +163,7 @@ scubiee connect --cursor
 Reload MCP. That's it.
 
 ## See it in action
-[8–9s video or GIF]
+[8-9s video or GIF]
 
 ## How it works
 [optional architecture strip]
@@ -173,7 +173,7 @@ Deep CLI/docs stay **linked** (`web-info/complete-cli-reference.md`, `docs/web-i
 
 **Badges allowed only if real:** PyPI version, CI, license. No fake trending wreath.
 
-**Assets folder (suggested):** `docs/assets/` — `hero.png`, `logo.svg`, `product-8s.mp4` / `.gif`.
+**Assets folder (suggested):** `docs/assets/`, `hero.png`, `logo.svg`, `product-8s.mp4` / `.gif`.
 
 ---
 
@@ -186,7 +186,7 @@ Always:
 3. Say: **match attachments; do not redesign the bird**  
 4. One prompt per image  
 
-### Image A — Hero (README + site top)
+### Image A: Hero (README + site top)
 
 Job: one composition. Brand is the hero. Sides = map / focus / grep scenes. Readable type. Muted grade.
 
@@ -197,30 +197,30 @@ LOCK: white bird + “Scubiee” wordmark + exact tagline under it.
 Dark charcoal, faint sonar rings. Quiet Linear/Vercel mood.
 
 SIDES (creative product scenes, not circuit traces):
-LEFT MAP — 3–4 ranked file nodes, one dull-copper highlight
-TOP RIGHT FOCUS — lens, one function sharp
-BOTTOM RIGHT GREP — search + a few exact hits
+LEFT MAP - 3-4 ranked file nodes, one dull-copper highlight
+TOP RIGHT FOCUS - lens, one function sharp
+BOTTOM RIGHT GREP - search + a few exact hits
 
 Type for map / focus / grep and captions must be readable off-white/gray (#E6E6E6 / #A8A8A8), not charcoal-on-charcoal.
 
 NO neon, NO glow soup, NO particles, NO extra headline overpowering Scubiee, NO cards, NO fake IDE, NO scuba jokes, NO Graphify green hairball, NO fake badges.
 ```
 
-### Image B — How it works strip (optional)
+### Image B: How it works strip (optional)
 
 Three stages only: **SETUP** `scubiee setup` → **INDEX** `scubiee init .` → **CONNECT** `scubiee connect --cursor`.  
 Bottom bar: `AI tool → MCP → Scubiee local engine → ~/.scubiee`.  
 Same grade as hero. Small official logo as the engine node. No isometric city.
 
-### Image C — OG / Twitter (optional)
+### Image C: OG / Twitter (optional)
 
 Logo lockup + tagline + sonar rings. No side scenes if they won’t read at small size. 1200×630.
 
 ---
 
-## 6. Video — what we are making
+## 6. Video: what we are making
 
-**Length: 8–9 seconds max** (never 15–20).  
+**Length: 8-9 seconds max** (never 15-20).  
 **Form: ONE CONTINUOUS TAKE.** Camera never cuts.  
 **Camera IS Scubiee:** enters a repo, harvests structure from files, connects it, lands on the logo.
 
@@ -242,16 +242,16 @@ No person, no office, no cloud upload, no fake Cursor window.
 
 | Time | Beat |
 |------|------|
-| 0.00–1.20 | Approach: charcoal, repo architecture, tiny bird far ahead, faint ring |
-| 1.20–3.80 | Harvest: pass **4 files only** — `auth.ts` · `engine.py` · `handlers.ts` · `middleware.ts` — copper filaments trail the camera |
-| 3.80–6.20 | Connect: bridges + small constellation; one focus lens; one grep tick; still moving forward, slowing |
-| 6.20–8.50 | Lock: rings + **attached** bird+Scubiee wordmark; tagline exact; hold; end |
+| 0.00-1.20 | Approach: charcoal, repo architecture, tiny bird far ahead, faint ring |
+| 1.20-3.80 | Harvest: pass **4 files only**, `auth.ts` · `engine.py` · `handlers.ts` · `middleware.ts`, copper filaments trail the camera |
+| 3.80-6.20 | Connect: bridges + small constellation; one focus lens; one grep tick; still moving forward, slowing |
+| 6.20-8.50 | Lock: rings + **attached** bird+Scubiee wordmark; tagline exact; hold; end |
 
-Camera: dolly-forward + slight rise, then brake. 35–50mm. No whip pan.
+Camera: dolly-forward + slight rise, then brake. 35-50mm. No whip pan.
 
 On-screen text only: tiny file names while passing; final wordmark from **attached logo** (do not redraw the bird); exact tagline; optional whisper `map · focus · grep` in the last second if it doesn’t clutter.
 
-### Full video prompt (paste after §2–3 + attachments)
+### Full video prompt (paste after §2-3 + attachments)
 
 ```text
 FORMAT
@@ -262,32 +262,32 @@ FORMAT
 STORY IN ONE BREATH
 Camera IS Scubiee. It enters a repo, harvests meaning from files, weaves them together, and lands on the attached logo. Local. Quiet. Fast.
 
-0.00–1.20 APPROACH
+0.00-1.20 APPROACH
 Dark charcoal. Slow forward. Repository as stacked file-slabs / corridors (src  packages). Tiny white bird-mark far ahead (attached logo, miniature). Faint sonar ring.
 
-1.20–3.80 HARVEST
+1.20-3.80 HARVEST
 Still flying forward. Pass 4 files only: auth.ts · engine.py · handlers.ts · middleware.ts
 As we pass each, a thin muted-copper filament peels off and trails behind the camera. Files stay intact, slightly brighter after being read.
 
-3.80–6.20 CONNECT
-Chamber opens. Filaments find each other — imports as thin bridges, a short constellation (MAP).
+3.80-6.20 CONNECT
+Chamber opens. Filaments find each other - imports as thin bridges, a short constellation (MAP).
 Without cutting, camera threads ONE node like a lens: one function sharp for ~0.6s (FOCUS), then out.
-One steel/lime-whisper scan-line flicks across a wall and three matches tick (GREP) — one gesture, gone.
+One steel/lime-whisper scan-line flicks across a wall and three matches tick (GREP) - one gesture, gone.
 Still moving forward, decelerating.
 
-6.20–8.50 LOCK
-Rings close. Attached SCUBIEE logo (bird + wordmark) snaps in, pure white, no bloom — brightest thing in frame.
+6.20-8.50 LOCK
+Rings close. Attached SCUBIEE logo (bird + wordmark) snaps in, pure white, no bloom - brightest thing in frame.
 Tagline, small, exact:
   Index locally. Agents search by meaning. Code never leaves the machine.
 Hold until 8.5. End.
 
-CAMERA: dolly-forward + slight rise, then locked hero. Unhurried — compress geography, not frenetic cutting.
+CAMERA: dolly-forward + slight rise, then locked hero. Unhurried - compress geography, not frenetic cutting.
 
-GRADE: match attached hero — charcoal, white logo, dull copper threads, steel-gray architecture. Matte. Almost no bloom. No particle storm.
+GRADE: match attached hero - charcoal, white logo, dull copper threads, steel-gray architecture. Matte. Almost no bloom. No particle storm.
 
 NEGATIVES: cuts, >9 seconds, neon, galaxy particles, Matrix rain, scuba, clouds/upload, people, fake IDE, purple, new logo, lens flare.
 
-SUCCESS: one glance — it walked the repo, connected the code, became Scubiee.
+SUCCESS: one glance - it walked the repo, connected the code, became Scubiee.
 ```
 
 ### If the model truncates prompts
@@ -318,7 +318,7 @@ Convert to GIF later for README (~8 MB max, ~12 fps, ~1200px wide) if GitHub won
 
 ## 7. What “cool” means for this brand
 
-Cool = **a machine understanding a codebase** — architecture, threads, lock.  
+Cool = **a machine understanding a codebase**, architecture, threads, lock.  
 Not = nightclub HUD, crypto, underwater puns on the name, purple AI-slop, Graphify’s acid-green graph.
 
 Creativity belongs in **metaphor and camera**, not in extra colors and particles.
@@ -343,7 +343,7 @@ Creativity belongs in **metaphor and camera**, not in extra colors and particles
 | `web-info/website-content.md` | Short taglines |
 | `web-info/complete-cli-reference.md` | Every CLI command (not for the film) |
 | `web-info/how-everything-works.md` | Architecture |
-| `README.md` | Current GitHub page — to be replaced by storefront later |
+| `README.md` | Current GitHub page, to be replaced by storefront later |
 
 ---
 
@@ -364,4 +364,4 @@ scubiee connect --cursor
 
 Then: Reload MCP. That’s it.
 
-**Tools (hero only):** map — ranked files & symbols · focus — deep context, one target · grep — exact search in the index.
+**Tools (hero only):** map, ranked files & symbols · focus, deep context, one target · grep, exact search in the index.

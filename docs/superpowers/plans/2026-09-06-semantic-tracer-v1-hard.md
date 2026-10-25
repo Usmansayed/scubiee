@@ -1,4 +1,4 @@
-# Semantic tracer v1 bakeoff — `verify_hard.json`
+# Semantic tracer v1 bakeoff: `verify_hard.json`
 
 Cases: 50 · 24.37s · `real:fastembed`
 
@@ -17,10 +17,10 @@ Cases: 50 · 24.37s · `real:fastembed`
 
 ## Cycle 2 recommendation
 
-Cycle 1 comparator helped ranking/must@10 — proceed to Cycle 2 (trace centroid + strict teleport).
+Cycle 1 comparator helped ranking/must@10, proceed to Cycle 2 (trace centroid + strict teleport).
 
 ### Mechanism evidence (Cycle 1)
 
 - Comparators change **expansion order** + mild heat tint; they do **not** invent edges (`vector_only` still loses hard).
-- On hard: must@10 **0.805 → 0.821** with flat must-rec and tiny F1/prec gains — ranking quality improved without precision freefall.
-- Ship gate (must↑ + balanced F1/prec/acc) **not** met — need FN recovery (Cycle 2 teleport), not stronger island rescore.
+- On hard: must@10 **0.805 → 0.821** with flat must-rec and tiny F1/prec gains, ranking quality improved without precision freefall.
+- Ship gate (must↑ + balanced F1/prec/acc) **not** met, need FN recovery (Cycle 2 teleport), not stronger island rescore.

@@ -1,9 +1,9 @@
-# Scubiee macOS Handoff — v0.3.169 (pre-production checks, 0.3.162 → 0.3.169)
+# Scubiee macOS Handoff: v0.3.169 (pre-production checks, 0.3.162 → 0.3.169)
 
 **For:** the MacBook (Apple Silicon, MLX backend, `uv tool install scubiee`,
 tool venv under `~/.local/share/uv/tools/scubiee`).
 
-**Status:** 0.3.163–0.3.169 were built and validated on Windows only. None of
+**Status:** 0.3.163-0.3.169 were built and validated on Windows only. None of
 them has run on macOS. Run every section below before calling 0.3.169
 production-ready on Mac, and write findings to
 `docs/scubiee-macos-findings-0.3.169.md`, using the M-number register from
@@ -182,14 +182,14 @@ Run `scubiee init .` afterwards. Never commit init-generated `AGENTS.md`,
 
 ---
 
-## 7. Targeted regressions for 0.3.163–0.3.167
+## 7. Targeted regressions for 0.3.163-0.3.167
 
 1. **Engine-down recovery (M27 + 0.3.163):** with Cursor attached,
    `kill -9 $(lsof -ti tcp:8765 -sTCP:LISTEN)`, then one MCP `map find`. It
    should answer, and `/health` should show a new pid with `warm_state` reaching
    dense on MLX.
 2. **First find after worker restart (0.3.167):** reload Scubiee MCP in Cursor
-   and immediately run `map find`. Target < 1 s (Windows: 344–386 ms).
+   and immediately run `map find`. Target < 1 s (Windows: 344-386 ms).
 3. **Custom port (0.3.165):** `CTX_ENGINE_URL=http://127.0.0.1:8799 scubiee engine start`
    listens on 8799, and `scubiee map --config find …` with the same env works.
    Restore the default afterwards.
@@ -210,7 +210,7 @@ and §6, not just "passed".
 ### Known, not blockers
 
 - Full-suite embedder/model test failures that come from the local Python env.
-- Lane A `map_second` margin is thin (Windows 542–1,182 ms across runs).
+- Lane A `map_second` margin is thin (Windows 542-1,182 ms across runs).
 - Template changes inside 0.3.169 itself are only guaranteed to apply from the
   **next** upgrade, or after `scubiee connect --cursor`, because the upgrade
   into 0.3.169 runs the previous version's code. The §4 test avoids this by

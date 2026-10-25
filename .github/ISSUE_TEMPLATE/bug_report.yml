@@ -9,7 +9,7 @@ body:
         Thanks for reporting a bug! Please search [existing issues](https://github.com/Usmansayed/scubiee/issues) first.
 
         **Do not include secrets, API keys, tokens, or private source code.** Issues are public.
-        **Security vulnerabilities must be reported privately** — see [SECURITY.md](https://github.com/Usmansayed/scubiee/blob/main/SECURITY.md).
+        **Security vulnerabilities must be reported privately**: see [SECURITY.md](https://github.com/Usmansayed/scubiee/blob/main/SECURITY.md).
   - type: textarea
     id: description
     attributes:

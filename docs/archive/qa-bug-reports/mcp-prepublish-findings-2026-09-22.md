@@ -12,9 +12,9 @@ Fix the blockers in one pass, then publish as 0.3.107. Do not republish 0.3.106.
 
 | rank | symbol | lines |
 |---|---|---|
-| 9 | `run_map_context` | 2358–2554 |
-| 10 | `ensure_seeds_on_heatmap` | 1372–1460 |
-| 11 | `run_collect_hot` | 3189–3308 |
+| 9 | `run_map_context` | 2358-2554 |
+| 10 | `ensure_seeds_on_heatmap` | 1372-1460 |
+| 11 | `run_collect_hot` | 3189-3308 |
 
 The same seed with `include_bodies=1` kept the real scores and the real order:
 
@@ -35,11 +35,11 @@ Status reported `ast_hydrated: false`. The next lean pack finished in 12.2ms and
 
 That is `_lean_pack_fallback_heatmap` (`engine` tag `map_reuse`), used when `mode=lean`, bodies are off, and `ast_cache_ready` is false. It is silent: `ok: true`, `thin: false`. An agent will read tests and docs as the callees of `prewarm_pack_graph`.
 
-After the cache was warm, a real trace was 20–33ms (`poly_ms` about 11). The fallback should not look like a successful structural pack.
+After the cache was warm, a real trace was 20-33ms (`poly_ms` about 11). The fallback should not look like a successful structural pack.
 
 ### 3. `expand_context` does not see new symbols, and its callee list misses the pack neighbors
 
-`expand_context` on `packages/pipeline/context_trace.py::prewarm_pack_graph` returned `unknown node`, with `hydrate_source: cache`. The function is on disk (lines 590–641) and map found it. The baked call graph has not picked it up.
+`expand_context` on `packages/pipeline/context_trace.py::prewarm_pack_graph` returned `unknown node`, with `hydrate_source: cache`. The function is on disk (lines 590-641) and map found it. The baked call graph has not picked it up.
 
 Callees of `run_pack_context` (tracer used, 17ms) led with `card_role` and `refresh_node_from_disk`. `run_map_context` and `run_collect_hot` were not in the top 8. The body pack of the same seed leads with those two. Callers and effects were fine: callers start at `cli_pack`, effects are empty.
 
@@ -51,7 +51,7 @@ Callees of `run_pack_context` (tracer used, 17ms) led with `card_role` and `refr
 
 ### 5. `prewarm_pack_graph` contains dead code, and it is not in the published wheel
 
-The function returns at line 615. Lines 617–641 are the tail of `hydrate_ast_bundle` (`bake_on_miss`, `set_ast_hydrated`) pasted inside the function, so they never run. Map’s loc for this symbol is `590–751`, which also swallows the module-level `_SKIP_SEED_SYMBOLS` set. The live span is `590–641`.
+The function returns at line 615. Lines 617-641 are the tail of `hydrate_ast_bundle` (`bake_on_miss`, `set_ast_hydrated`) pasted inside the function, so they never run. Map’s loc for this symbol is `590-751`, which also swallows the module-level `_SKIP_SEED_SYMBOLS` set. The live span is `590-641`.
 
 Shipping prewarm means version 0.3.107, including `ensure_composite_edges` and `prewarm_pack_graph`. The uv tool overlay will be wiped by a normal install.
 
@@ -79,7 +79,7 @@ Full status: `agent_ready: stale`, `sync_state: syncing`, `ast_hydrated: false`,
 
 - Gate returns `1:ce_7d597c1390dca6a1c5b8c4d661f421be`.
 - Map is dense and names the right seeds, with line spans.
-- Warm composite trace is about 11ms (`poly_ms`), pack wall about 20–33ms.
+- Warm composite trace is about 11ms (`poly_ms`), pack wall about 20-33ms.
 - `include_bodies=1` chain order is the ranking fix: `run_map_context`, then `resolve_seed_node`, then `run_collect_hot`.
 - `collect_hot_context` returned live source for `run_pack_context`, `run_map_context`, and `cli_pack`.
 - `expand` accepts a heatmap id (`file::symbol`) and returns that span. An unknown handle is a clean error.

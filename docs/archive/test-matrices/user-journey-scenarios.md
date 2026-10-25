@@ -22,7 +22,7 @@ See [global-mcp-hosts-research.md](./global-mcp-hosts-research.md) for multi-hos
 
 ---
 
-## Scenario matrix (S1–S20)
+## Scenario matrix (S1: S20)
 
 | ID | User path | Expected behavior |
 |----|-----------|-------------------|
@@ -30,7 +30,7 @@ See [global-mcp-hosts-research.md](./global-mcp-hosts-research.md) for multi-hos
 | **S2** | `connect cursor` once | Global MCP; **no** global rules |
 | **S3** | Open repo without `init` | `[gate]` only; MCP says **use native** |
 | **S4** | `init .` in current repo | Full tools; MCP trajectory (no bans in MCP) |
-| **S5** | Init A, open B | B unmanaged — no cross-repo bleed |
+| **S5** | Init A, open B | B unmanaged, no cross-repo bleed |
 | **S6** | After `init` | Repo `.cursor/rules/scubiee.mdc` with **BAN native** |
 | **S7** | Rules on unenrolled repo | Skipped |
 | **S8** | `scubiee pause` | Gate line `p` |
@@ -91,7 +91,7 @@ Executable tests: `tests/test_scenario_backtracking.py`
 
 | Outcome | Tools | Instructions | Project rule |
 |---------|-------|--------------|--------------|
-| `NO_MCP` | — | — | — |
+| `NO_MCP` | - | - | - |
 | `GATE_ONLY_NATIVE` | `[gate]` | native-only | none |
 | `FULL_MANAGED` | all 7 | trajectory | BAN native |
 | `WRONG_REPO_GATE` | `[gate]` | native-only | none on B |
@@ -148,7 +148,7 @@ connect → open unmanaged → chat started (gate-only MCP process)
 ### Special-4 hosts (Kiro, Copilot, Cline, Roo)
 ```
 connect global → still need project MCP OR connect from inside repo
-See global-mcp-hosts-research.md — not covered by S18
+See global-mcp-hosts-research.md - not covered by S18
 ```
 
 ---
@@ -168,5 +168,5 @@ uv run pytest tests/test_mcp_repo_resolution.py -v
 
 | Date | Notes |
 |------|-------|
-| 2026-08-29 | S1–S12; v0.3.0 gating |
-| 2026-08-29 | S13–S20; rules/instructions split, multi-host, resilience |
+| 2026-08-29 | S1, S12; v0.3.0 gating |
+| 2026-08-29 | S13, S20; rules/instructions split, multi-host, resilience |

@@ -1,6 +1,6 @@
 # Scubiee lifecycle scenarios
 
-How to recover from **stop**, **disconnect**, **wipe**, **connect**, and **resume** — and what agents should tell the user.
+How to recover from **stop**, **disconnect**, **wipe**, **connect**, and **resume**, and what agents should tell the user.
 
 ## Three layers (don't confuse them)
 
@@ -58,8 +58,8 @@ gate() or status().next_action
 |---|----------|-------------|-------|------|
 | A1 | `scubiee stop` | **MCP:** `scubiee` key removed from `mcp.json` (other servers kept). **Rules:** Scubiee files deleted; other `.cursor/rules/*` kept. **Repo:** `<repo>/.scubiee/` removed. Registry + index in `~/.scubiee` kept. | Native tools only | `scubiee resume` |
 | A2 | `scubiee resume` | MCP + rules + `id.json` restored, engine starts | Use Scubiee normally | Reload MCP in IDE |
-| A3 | Action CLI while stopped (`init`, `connect`, `index`, …) | Blocked | — | Message: run `scubiee resume` |
-| A4 | Read-only CLI while stopped (`doctor`, `gate`, `version`) | Allowed | — | — |
+| A3 | Action CLI while stopped (`init`, `connect`, `index`, …) | Blocked | - | Message: run `scubiee resume` |
+| A4 | Read-only CLI while stopped (`doctor`, `gate`, `version`) | Allowed | - | - |
 | A5 | Stale MCP session after stop | Tools return `paused:true` | Do not retry Scubiee | `resume` + reload MCP |
 
 ### B. Connect / disconnect
@@ -88,7 +88,7 @@ gate() or status().next_action
 |---|-----------|--------|
 | D1 | New Cursor chat, same repo | Pass `project_id` + `session_id` from last tool response |
 | D2 | gate = `0:r` | Call `gate()` or `status()` once; then init if still `0` |
-| D3 | gate = `1:ce_…` but tools fail requires_initialize | `init .` or daemon not bound — `engine start` |
+| D3 | gate = `1:ce_…` but tools fail requires_initialize | `init .` or daemon not bound, `engine start` |
 | D4 | Old `project_id` in AGENTS.md after re-init | Reload MCP; rules rewritten on `connect` / `init` |
 | D5 | MCP running while globally paused | gate = `p`; agent uses native tools until `resume` |
 
@@ -97,7 +97,7 @@ gate() or status().next_action
 | # | Command | vs global stop |
 |---|---------|----------------|
 | E1 | `scubiee pause .` | Pauses **indexing** for one repo; MCP may still work |
-| E2 | `scubiee activate .` | Resumes that repo — **not** the same as `scubiee resume` |
+| E2 | `scubiee activate .` | Resumes that repo, **not** the same as `scubiee resume` |
 
 ---
 
@@ -116,7 +116,7 @@ gate() or status().next_action
 | `<repo>/.scubiee/` | **Deleted** | `id.json` restored from registry |
 | `~/.scubiee/` (index, registry) | **Kept** | Used to restore |
 
-**OS paths:** VS Code / Zed / Devin use `%APPDATA%` on Windows, `~/Library/...` on macOS, `~/.config/...` on Linux — same surgical remove logic everywhere.
+**OS paths:** VS Code / Zed / Devin use `%APPDATA%` on Windows, `~/Library/...` on macOS, `~/.config/...` on Linux, same surgical remove logic everywhere.
 
 ---
 
@@ -132,9 +132,9 @@ See **[scubiee-action-matrix.md](scubiee-action-matrix.md)** for all command com
    - Use **native Read/Grep/Glob** only until user resumes.
    - Tell user: **`scubiee resume`** (not init) + reload MCP.
 3. If `gate` is **`0`** → check `status().lifecycle.next_action`:
-   - `scubiee init .` — repo not enrolled
-   - `scubiee setup` — machine not ready
-   - `scubiee connect --cursor` — not wired to IDE
+   - `scubiee init .`: repo not enrolled
+   - `scubiee setup`: machine not ready
+   - `scubiee connect --cursor`: not wired to IDE
 4. If `gate` is **`1:ce_…`** → use that `project_id` on all locate calls.
 5. After user runs **`stop`** → only **`resume`** + MCP reload.
 6. After user runs **`disconnect`** → only **`connect`** (+ reload).

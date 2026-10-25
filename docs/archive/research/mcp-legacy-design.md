@@ -1,4 +1,4 @@
-# MCP Legacy Design (pre–token-efficient gating)
+# MCP Legacy Design (pre: token-efficient gating)
 
 This document records the **older Scubiee MCP integration model** (≈ v0.2.98 and earlier) for maintenance logs. It was replaced by connect-time tool gating + project-scoped rules on init.
 
@@ -19,10 +19,10 @@ This document records the **older Scubiee MCP integration model** (≈ v0.2.98 a
 
 ## Why it was replaced
 
-1. **Token waste in unmanaged repos** — Global rules (~187 tok/turn) + full tool schemas (~1,500–2,000 tok/turn) + verbose MCP instructions applied to **every workspace**, even without `scubiee init`.
-2. **Duplicate signaling** — Global Cursor rules, MCP instructions, and per-tool `"g"` fields all repeated the same GATE state.
-3. **Agent thrashing** — Conflicting rules (global “use Scubiee only” vs unmanaged GATE 0) caused unnecessary tool calls and native file reads.
-4. **Mid-session `list_changed` unreliable** — Cursor and Claude Code do not reliably refresh tool lists mid-session; dynamic tool exposure was not a dependable primary fix.
+1. **Token waste in unmanaged repos**: Global rules (~187 tok/turn) + full tool schemas (~1,500-2,000 tok/turn) + verbose MCP instructions applied to **every workspace**, even without `scubiee init`.
+2. **Duplicate signaling**: Global Cursor rules, MCP instructions, and per-tool `"g"` fields all repeated the same GATE state.
+3. **Agent thrashing**: Conflicting rules (global “use Scubiee only” vs unmanaged GATE 0) caused unnecessary tool calls and native file reads.
+4. **Mid-session `list_changed` unreliable**: Cursor and Claude Code do not reliably refresh tool lists mid-session; dynamic tool exposure was not a dependable primary fix.
 
 Standing cost in unmanaged repos under the legacy model: **~2,200 tokens/turn** before any tool was invoked.
 
@@ -78,11 +78,11 @@ Only the runtime block was strictly necessary; the rest inflated context.
 
 ## Legacy connect/init split (confusing)
 
-- **`scubiee setup`** — Hardware/runtime (after fix: no MCP)
-- **`scubiee connect`** — Global MCP + global rules (overreach)
-- **`scubiee init`** — Project enrollment but **stripped** project rules
+- **`scubiee setup`**: Hardware/runtime (after fix: no MCP)
+- **`scubiee connect`**: Global MCP + global rules (overreach)
+- **`scubiee init`**: Project enrollment but **stripped** project rules
 
-`write_project_gate_rules()` was deprecated and delegated to cleanup — the opposite of project-scoped gating.
+`write_project_gate_rules()` was deprecated and delegated to cleanup, the opposite of project-scoped gating.
 
 ---
 
@@ -90,16 +90,16 @@ Only the runtime block was strictly necessary; the rest inflated context.
 
 See implementation in:
 
-- `packages/pipeline/rules_installer.py` — connect MCP-only (global once); init writes project_id binding only
-- `packages/pipeline/mcp_locate.py` — unmanaged: minimal instructions + gate-only tools; **managed: full SERVER_INSTRUCTIONS_* trajectory at MCP spawn**
-- `tests/test_token_efficient_gating.py` — regression tests
+- `packages/pipeline/rules_installer.py`: connect MCP-only (global once); init writes project_id binding only
+- `packages/pipeline/mcp_locate.py`: unmanaged: minimal instructions + gate-only tools; **managed: full SERVER_INSTRUCTIONS_* trajectory at MCP spawn**
+- `tests/test_token_efficient_gating.py`: regression tests
 
 **Architecture (correct split):**
 
 | Step | Scope | What it does |
 |------|-------|--------------|
 | `scubiee setup` | Machine once | Hardware/runtime |
-| `scubiee connect cursor` | **Global once** | Registers MCP in `~/.cursor/mcp.json` — user never connects per folder |
+| `scubiee connect cursor` | **Global once** | Registers MCP in `~/.cursor/mcp.json`, user never connects per folder |
 | `scubiee init .` | Per enrolled repo | `.scubiee/id.json` + index + tiny GATE/project_id rule (~65 tok) |
 | MCP spawn | Per workspace open | If managed → full locate trajectory in MCP instructions; if not → gate-only |
 

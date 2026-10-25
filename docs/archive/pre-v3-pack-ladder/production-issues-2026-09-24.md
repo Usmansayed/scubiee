@@ -1,10 +1,10 @@
-# Production issues — 24 Sep 2026
+# Production issues: 24 Sep 2026
 
 Live battery on 0.3.120: 105 checks, 100 passed. The failures below are the ones that remain. Ranking stays composite. The 10k auto-full-index cap stays.
 
 ## 1. `POST /v1/sync` blocks the caller
 
-**Cause.** The HTTP handler runs `incremental_sync` on the request thread. That waits up to 90s for capacity, then walks the repo for newcomers. Clients time out at 35–45s. The engine log shows `large_reindex` and a late HTTP 200.
+**Cause.** The HTTP handler runs `incremental_sync` on the request thread. That waits up to 90s for capacity, then walks the repo for newcomers. Clients time out at 35-45s. The engine log shows `large_reindex` and a late HTTP 200.
 
 **Fix.** The request path waits at most 2s for capacity. If capacity is not free, return `strategy=deferred` immediately. Do not discover newcomers on this call, and do not extract or embed on the request thread. A dirty merkle returns `strategy=deferred` with the file list. The keeper poll syncs those indexed files.
 
@@ -12,7 +12,7 @@ Live battery on 0.3.120: 105 checks, 100 passed. The failures below are the ones
 
 **Cause.** `poll_repo_changes` returns before probing when `CTX_KEEPER_DEFER_WHILE_CLIENTS=1` and any client is registered. Copilot and Cursor stay registered, so a save is invisible unless something calls `/v1/dirty`. The full newcomer walk was the original reason for the skip (multi-second GIL stall).
 
-**Fix.** Keep polling while clients are connected, but probe indexed files only (`discover_newcomers=False`). That check is about 200ms here, not the 7–12s newcomer walk. Interval ticks that embed a large dirty set still defer while clients are up.
+**Fix.** Keep polling while clients are connected, but probe indexed files only (`discover_newcomers=False`). That check is about 200ms here, not the 7-12s newcomer walk. Interval ticks that embed a large dirty set still defer while clients are up.
 
 ## 3. A locate streak defers a one-file edit
 

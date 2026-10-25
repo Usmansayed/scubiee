@@ -1,4 +1,4 @@
-# Hot-lane worklog — 0.3.131
+# Hot-lane worklog: 0.3.131
 
 Date: 2026-09-26. Repo: `C:\Users\usman\Downloads\context-engine`. Project id: `ce_c505c4e65dbe5e2063a6c1089fe4db4e`. Engine: `http://127.0.0.1:8765`.
 Brief: `docs/plans/2026-09-26-hot-lane-5s-map-reflect.md`.
@@ -47,15 +47,15 @@ The brief's first three causes were correct: FAISS mutation without the lock, th
 | Stage (before → after) | Cause | Fix |
 | --- | --- | --- |
 | process death | FAISS `add/delete/compact/_own_index_storage` mutated the index while `search` read it | all mutators hold the collection `RLock` that `search` uses |
-| publish 23 s → **4–5 ms** | `load_engine(force_reload=True)` rebuilt the whole binder | append-only `WarmSearchEngine.apply_chunk_delta` patch publish |
-| debounce 1–2 s → **250 ms** | one debounce for every reason | hot debounce for save reasons; a rewrite never pushes a queued save out |
+| publish 23 s → **4-5 ms** | `load_engine(force_reload=True)` rebuilt the whole binder | append-only `WarmSearchEngine.apply_chunk_delta` patch publish |
+| debounce 1-2 s → **250 ms** | one debounce for every reason | hot debounce for save reasons; a rewrite never pushes a queued save out |
 | compaction | named upsert compacted the whole collection on any delete | skipped on the hot lane; idle/bulk still compacts |
 | graph 6.7 s → **0** | `build_merge` rebuilds all 15.9k nodes through `build(dedup=True)` | a hot save defers the graph (and capability cards); a non-hot catch-up carries them |
 | embed 2.4 s → **0.4 s** | every `embed_many` re-compressed the whole 10k-entry `embed_cache.npz` (~1.3 s) | snapshot only for ≥64 new rows; load replays the `.jsonl` log tail |
-| invalidate 3.5 s → **0.15–0.3 s**, after publish | `invalidate_paths` loaded and **rewrote** all 130 session stores on every save | skip stores that don't cache the path; hot adds invalidate after publish |
-| vector write 2.3 s → **0.1–0.7 s** | `add` dequantized all 7.5k rows to read back 2; a fresh collection per sync re-ran a 768² QR and re-read `faiss.index`; `save` sat on the critical path | row-range decode, cached rotation, collection reuse guarded by a disk fingerprint, save deferred past publish |
-| queue 3–7 s | `.zed/…` passed the newcomer scan but the Merkle dropped it, so it re-synced every poll (~7 s each) | `root_probe` skips junk newcomers |
-| queue 3–7 s | the ~7.5 s newcomer repo walk ran on the keeper thread every 30 s | moved to its own thread |
+| invalidate 3.5 s → **0.15-0.3 s**, after publish | `invalidate_paths` loaded and **rewrote** all 130 session stores on every save | skip stores that don't cache the path; hot adds invalidate after publish |
+| vector write 2.3 s → **0.1-0.7 s** | `add` dequantized all 7.5k rows to read back 2; a fresh collection per sync re-ran a 768² QR and re-read `faiss.index`; `save` sat on the critical path | row-range decode, cached rotation, collection reuse guarded by a disk fingerprint, save deferred past publish |
+| queue 3-7 s | `.zed/…` passed the newcomer scan but the Merkle dropped it, so it re-synced every poll (~7 s each) | `root_probe` skips junk newcomers |
+| queue 3-7 s | the ~7.5 s newcomer repo walk ran on the keeper thread every 30 s | moved to its own thread |
 | queue | a deferred graph catch-up (~8 s) could start between two saves | catch-ups wait until 20 s after the last save |
 | queue | a save could wait behind one slow non-hot path | explicit saves always go ahead of any backlog |
 
@@ -103,9 +103,9 @@ Hot reasons: `write`, `changed_file`, `editor_save`, `probe_write`, `after_kiro_
 
 Modified and deleted files still take the full publish. Measured here:
 
-- full publish: 1.5–5.6 s (avg 2.8 s, n=12)
-- patch publish: 3.6–82 ms (avg 7.4 ms, n=25)
-- BM25 rebuild alone over 7502 chunks: **339–393 ms**
+- full publish: 1.5-5.6 s (avg 2.8 s, n=12)
+- patch publish: 3.6-82 ms (avg 7.4 ms, n=25)
+- BM25 rebuild alone over 7502 chunks: **339-393 ms**
 
 BM25 alone already exceeds the brief's ~300 ms patch-publish cap, and a shifting delta also needs a dense row permutation and a graph-span rebuild on top. **Verdict: no-go for 0.3.131.** A follow-up would need incremental BM25 (append/tombstone postings), not a rebuild.
 

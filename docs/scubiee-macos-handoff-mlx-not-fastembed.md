@@ -1,4 +1,4 @@
-# macOS handoff — DO NOT swap MLX → FastEmbed for the index build
+# macOS handoff: DO NOT swap MLX → FastEmbed for the index build
 
 _Audience: the macOS agent working on Apple Silicon (MLX/Metal)._
 _Context: commit `984e8a5` ("fix(macos): make connect-then-init reliable")._
@@ -6,14 +6,14 @@ _Status: Bug A fix = KEEP. Bug B fix (FastEmbed index swap) = REVERT to MLX-firs
 
 ---
 
-## TL;DR — the decision you must respect
+## TL;DR: the decision you must respect
 
 **MLX is the chosen embedder on Apple Silicon. Keep it.** The owner picked MLX on
 purpose (Metal GPU, fast local embeds). The index build must stay on MLX. Do
 **not** route the one-time index build through FastEmbed/ONNX on Darwin. The
 previous change did exactly that and it is being rolled back.
 
-If MLX crashes at the vector write, **fix the crash on the MLX path** — do not
+If MLX crashes at the vector write, **fix the crash on the MLX path**, do not
 run away to a different embedder.
 
 ---
@@ -22,7 +22,7 @@ run away to a different embedder.
 
 Two bugs were fixed in one commit. One fix is good; the other is a bad decision.
 
-### Bug A — connect→init deadlock → **the fix is correct, keep it**
+### Bug A: connect→init deadlock → **the fix is correct, keep it**
 The supervisor started by `connect` kept respawning/idle-stopping the engine
 while `init` tried to take the exclusive store write-lock, so `init` wedged. The
 fix is a bounded, self-expiring **store hold** (`engine_transition.json`
@@ -34,26 +34,26 @@ Files for Bug A (keep): `lifecycle_runtime.py` (store-hold flag + guards),
 `watchdog.py` (loop no-op while held), `repo_lifecycle.py` (set/clear around the
 index block), `__main__.py` (bounded `ensure_daemon` handoff).
 
-### Bug B — index-write segfault → **the FastEmbed swap is the wrong fix**
+### Bug B: index-write segfault → **the FastEmbed swap is the wrong fix**
 A full index embeds on MLX/Metal, then does a numpy-LAPACK / faiss vector write
 (`store.upsert_vectors` → `turbo_quant` QR / `np.zeros`) in the same process.
 MLX's Metal allocator leaves the heap in a state that trips the malloc guard
 (~1/3 of inits SIGTRAP/SIGSEGV at "Writing index"). That root cause is real.
 
 The fix shipped two things:
-1. `mlx_mac.quiesce_mlx()` — synchronize + clear the Metal cache under the embed
+1. `mlx_mac.quiesce_mlx()`: synchronize + clear the Metal cache under the embed
    lock **before** the faiss/numpy write. **This is the right idea.**
-2. `indexer.py` — default the entire index build to **FastEmbed/ONNX on Darwin**
+2. `indexer.py`: default the entire index build to **FastEmbed/ONNX on Darwin**
    whenever MLX would otherwise be used. **This is the wrong idea** and must go.
 
 The problem: with (2) in place, `embedder.backend` is `"fastembed"`, so the
 `quiesce_mlx()` guard in `indexer.py` (`if ... embedder.backend == "mlx"`) never
-runs. The two fixes were never tested independently — the backend swap masks
+runs. The two fixes were never tested independently, the backend swap masks
 whether `quiesce_mlx()` alone already solves the crash. It very likely does.
 
 Why the swap is bad regardless:
 - **It overrides a deliberate architecture choice.** MLX was chosen on purpose.
-- **It splits the embedder within one install** — index vectors produced by
+- **It splits the embedder within one install**: index vectors produced by
   FastEmbed/ONNX, queries produced by MLX. Same model + 768-dim, but two native
   code paths generating vectors that must stay numerically comparable. That is a
   silent correctness risk you do not want in the retrieval path.
@@ -71,7 +71,7 @@ Why the swap is bad regardless:
    `CTX_INDEX_EMBED_BACKEND` override knob if you want an *escape hatch*, but the
    **default on Apple Silicon must be MLX**, not FastEmbed.
 
-2. **Make `quiesce_mlx()` the actual fix — and make sure it runs on the MLX
+2. **Make `quiesce_mlx()` the actual fix, and make sure it runs on the MLX
    path.** Keep the `quiesce_mlx()` call before `store.upsert_vectors`, but with
    MLX as the index backend the `embedder.backend == "mlx"` branch will now
    actually execute. Confirm it is called on the main thread, under the embed
@@ -81,7 +81,7 @@ Why the swap is bad regardless:
 3. **Prove the MLX path alone is crash-free.** Run the first-ever `init` on a
    clean repo **≥20 times** on MLX with `quiesce_mlx()` active (no FastEmbed
    swap). Expectation: 0 crashes at "Writing index". If it still crashes >0/20,
-   escalate the real root cause before considering any backend workaround — and
+   escalate the real root cause before considering any backend workaround, and
    bring it back to the owner, because dropping MLX is the owner's call, not the
    agent's.
 
@@ -108,7 +108,7 @@ Why the swap is bad regardless:
 
 ---
 
-## Reference — what the connect feature actually is (keep it this simple)
+## Reference: what the connect feature actually is (keep it this simple)
 
 - `scubiee connect <tool>` → append the tool slug (e.g. `kiro`, `cursor`) to the
   machine-wide state file `~/.scubiee/connected_tools.json` (atomic write + `.bak`

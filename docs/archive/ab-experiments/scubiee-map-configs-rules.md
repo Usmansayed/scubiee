@@ -9,17 +9,17 @@ The two-layer prompt for `map_v2_bridge.py`. Three configs: `find`, `refs`, `vie
 
 Source: `scripts/claude_sdk_harness/two_layer.py` (`RULES_CONFIGS`, `INSTRUCTIONS_CONFIGS`), wired as the `configs` arm in `policies.py`. Token check: `check_two_layer.py`.
 
-The caps were raised from 200/1000 (single-map tool) because there are now configs to explain. The instruction budget is spent on **one worked example per config** — real arguments and the actual response shape — so the agent sees exactly what each returns and how to act on it, rather than an abstract description.
+The caps were raised from 200/1000 (single-map tool) because there are now configs to explain. The instruction budget is spent on **one worked example per config**, real arguments and the actual response shape, so the agent sees exactly what each returns and how to act on it, rather than an abstract description.
 
 ## The three configs (and what the five collapsed into)
 
 | config | Answers | Absorbed |
 |---|---|---|
-| `find` | "where is the code for X?" (you don't know the location) | — |
+| `find` | "where is the code for X?" (you don't know the location) | - |
 | `refs` | "a name's definitions, uses, and relations" | old `around` (relation kinds: callers/callees/tests/siblings) |
-| `view` | "show me this" — code of named targets, or the structure of a path | old `open` (targets) + `outline` (path) |
+| `view` | "show me this", code of named targets, or the structure of a path | old `open` (targets) + `outline` (path) |
 
-Why three, not five: the first live arm test showed the agent over-exploring — after `find` already answered a task it still called `around` and three `refs` before editing. Fewer configs means fewer side-trips. All capability is kept; `open`/`outline`/`around` still alias.
+Why three, not five: the first live arm test showed the agent over-exploring, after `find` already answered a task it still called `around` and three `refs` before editing. Fewer configs means fewer side-trips. All capability is kept; `open`/`outline`/`around` still alias.
 
 ## RULES (284 tokens)
 
@@ -140,7 +140,7 @@ Bad trajectories (never):
 
 - **Config picker leads both layers.** It's the one decision the agent makes every call.
 - **Each config shows its real response.** The response shapes above were captured from the live bridge, not invented, so the agent is trained on exactly what it will receive. This is where the raised budget went.
-- **"How to act" after every example.** The waste is always in what the agent does *after* a result, so each block ends with the action to take — and, for `find`, the explicit "EDIT, don't look around" that the arm test showed was missing.
+- **"How to act" after every example.** The waste is always in what the agent does *after* a result, so each block ends with the action to take, and, for `find`, the explicit "EDIT, don't look around" that the arm test showed was missing.
 - **Trajectories carry call counts.** The quantity to minimise is model calls, so good/bad examples are labelled with them.
 - **Hard rules are a separate MUST/MUST-NOT block**, so the model can override a preference but not a rule.
 

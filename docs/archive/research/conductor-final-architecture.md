@@ -1,4 +1,4 @@
-# Conductor — final production architecture
+# Conductor: final production architecture
 
 Date: 2026-08-01  
 Corpus: `testdata/frontend-mcp` (Graphify graph + BM25 + nomic-embed-text 768)
@@ -11,7 +11,7 @@ Corpus: `testdata/frontend-mcp` (Graphify graph + BM25 + nomic-embed-text 768)
 |-----|------|--------|
 | **`D_rerank`** | Production search for agents | **FINAL** |
 | `baseline_graphify` | Structure-only (debug / symbol hunt) | keep as secondary tool, not default |
-| `r_gated` / `D_floor` / `X_soft` / `R_complex` | Soft-router experiments | **REJECT for default** — lab soft wins; live OpenCode soft A/B net-negative |
+| `r_gated` / `D_floor` / `X_soft` / `R_complex` | Soft-router experiments | **REJECT for default**, lab soft wins; live OpenCode soft A/B net-negative |
 | `C_gear` / `B_ppr` | Expand specialists | research only; diverse/consistency worse than D |
 
 ### Why D (evidence)
@@ -51,31 +51,31 @@ flowchart TD
    - BM25 over code chunks  
    - Dense cosine (`nomic-embed-text` @ Ollama)
 
-2. **Hybrid file list** — BM25+dense RRF (Claude Context–style), `k=60`, weights ~`bm25=1.0`, `dense=0.5`.
+2. **Hybrid file list**: BM25+dense RRF (Claude Context, style), `k=60`, weights ~`bm25=1.0`, `dense=0.5`.
 
-3. **Min-rank fusion (A)** — each file keeps `min(rank_graph, rank_hybrid)`; small bonus if both lists agree; soft-rank neighbor files of seeds.
+3. **Min-rank fusion (A)**: each file keeps `min(rank_graph, rank_hybrid)`; small bonus if both lists agree; soft-rank neighbor files of seeds.
 
-4. **Path/symbol boost** — basename / path-token overlap with query keys.
+4. **Path/symbol boost**: basename / path-token overlap with query keys.
 
-5. **D lexical/path rerank** — score ≈ exact basename + path overlap + BM25 + dense + small graph term; reorder pool → top‑K files; pick best chunk inside file.
+5. **D lexical/path rerank**: score ≈ exact basename + path overlap + BM25 + dense + small graph term; reorder pool → top‑K files; pick best chunk inside file.
 
 No LLM router. No always-on Graphify floor. Graph is a **channel inside fusion**, not a post-hoc injector on soft NL.
 
 ### Defaults (`ConductorConfig`)
 
 - `rrf_k=60`, `bm25_weight=1.0`, `dense_weight=0.5`  
-- Candidate pool ~40–80 before rerank  
+- Candidate pool ~40-80 before rerank  
 
 ---
 
 ## What we explicitly do not ship
 
-- **Soft lexical floor / `r_gated` as default** — injects false friends on vague English.  
-- **Graphify-only as agent search** — fine for identifier queries; fails soft intent.  
-- **Query router to C_gear for paraphrase** — helped some holdouts, taxed diverse.  
-- Dual product behavior “call Graphify **or** hybrid” — one ranking for search.
+- **Soft lexical floor / `r_gated` as default**: injects false friends on vague English.  
+- **Graphify-only as agent search**: fine for identifier queries; fails soft intent.  
+- **Query router to C_gear for paraphrase**: helped some holdouts, taxed diverse.  
+- Dual product behavior “call Graphify **or** hybrid”, one ranking for search.
 
-Optional later (not blocking ship): stronger code embedder, HyDE/query expansion, cross-encoder rerank — those address miss_both without undoing D.
+Optional later (not blocking ship): stronger code embedder, HyDE/query expansion, cross-encoder rerank, those address miss_both without undoing D.
 
 ---
 
@@ -85,7 +85,7 @@ Optional later (not blocking ship): stronger code embedder, HyDE/query expansion
 |-----------------|-----|
 | `mode=d_rerank` / default search | **Production** |
 | `POST /compare` | Graphify vs D (structure A/B) |
-| `POST /compare_rgated` | Research only — do not promote from one soft sheet |
+| `POST /compare_rgated` | Research only, do not promote from one soft sheet |
 | `mode=graphify` | Symbol/structure debug |
 
 Engine: [`packages/conductor/service.py`](../packages/conductor/service.py).

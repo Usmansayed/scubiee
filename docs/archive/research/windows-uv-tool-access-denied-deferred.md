@@ -24,7 +24,7 @@ Admin did **not** help. Root cause: **file locks** (Cursor MCP / daemon holding 
    - disable CE in global + project MCP → stop processes → optional force-remove with rename-then-delete + backoff
 2. **`scubiee upgrade`**: uses prepare; on Access denied → `unlock-tool` + `uv tool install --force`
 3. **`scubiee unlock-tool`**: stop + force-remove only (when CLI still works)
-4. **PS1 recovery** (`uninstall-uv-scubiee.ps1` / `repair-uv-scubiee.ps1`): MCP-off **first**, then kill, then retry remove — message says Admin will not help
+4. **PS1 recovery** (`uninstall-uv-scubiee.ps1` / `repair-uv-scubiee.ps1`): MCP-off **first**, then kill, then retry remove, message says Admin will not help
 5. **`uv_tool_uninstall` / `force_remove_uv_tool_dir`**: same MCP-first + retry path
 
 ---

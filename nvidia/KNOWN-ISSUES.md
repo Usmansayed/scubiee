@@ -1,4 +1,4 @@
-# Known Issues & Fixes — NVIDIA Windows
+# Known Issues & Fixes: NVIDIA Windows
 
 Issues discovered during testing and their resolutions in scubiee 0.2.25.
 

@@ -1,7 +1,7 @@
-# Locate calibration — Phase C live (Kiro policy A/B)
+# Locate calibration: Phase C live (Kiro policy A/B)
 
 **Run:** `20260907T084356Z` · **Tasks:** 1 · **Elapsed:** 74.77s
-**Both arms have Scubiee** — only Prefer/Forbid instruction text differs.
+**Both arms have Scubiee**: only Prefer/Forbid instruction text differs.
 
 ## Scoreboard
 

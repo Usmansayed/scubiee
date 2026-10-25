@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-08  
 **Status:** proposed (awaiting approval to implement gaps)  
-**Choice:** Hybrid **C** — agent sees **3 tools**; internals reuse **D_rerank = dense + BM25 + Graphify**  
+**Choice:** Hybrid **C**, agent sees **3 tools**; internals reuse **D_rerank = dense + BM25 + Graphify**  
 **Token goal:** ~**50% reduction in retrieval-append tokens** (tool-result chars that become `newly_append_tokens`), not magic on already-cached prefix  
 **Evidence base:** TraceLab v0.0.2 · 100 Claude + 100 Codex · `DETAILED_AGENT_WORKFLOWS.md`
 
@@ -40,7 +40,7 @@ Opportunity means (structural): semantic locate ≈ 1.0, focus ≈ 1.0, result b
 | **`focus(query\|path)`** | Follow-up Grep/re-Read; repair re-search | WF2, WF3, WF5 |
 | **`workspace(action=show\|pin\|clear)`** | Re-orient mid-session; remember hot files | WF2, WF6 |
 
-Optional 4th: **`status`** (health only — not for retrieval).
+Optional 4th: **`status`** (health only, not for retrieval).
 
 **Do not** expose `search_code` + Grep + Glob as the primary path for coding agents using this engine. Native `Read`/`Edit` stay for mutation after pointers are known.
 
@@ -68,14 +68,14 @@ This matches `packages/pipeline/mcp_locate.py` + `packages/pipeline/locate.py` +
 
 ## 3. Tool contracts (research-shaped)
 
-### 3.1 `map(query)` — cold start / new topic
+### 3.1 `map(query)`: cold start / new topic
 
 **When (agent rule):** first ask on a topic; after topic change; never for “show me that file again”.
 
 **Internally:**
-1. D_rerank hybrid retrieve (`CTX_RETRIEVE=D`) — dense + BM25 + graph
+1. D_rerank hybrid retrieve (`CTX_RETRIEVE=D`), dense + BM25 + graph
 2. Rank/diversify files (penalize `__init__`, distractors)
-3. Pull **short excerpts** only (`excerpt_chars` default ≤ 800–1200 for savings mode)
+3. Pull **short excerpts** only (`excerpt_chars` default ≤ 800-1200 for savings mode)
 4. Optional graph neighborhood under `graph_budget`
 5. Touch work-session heatmap
 6. Return JSON card: targets[{file, lines, why, score_sources}], excerpts, next hint
@@ -87,12 +87,12 @@ This matches `packages/pipeline/mcp_locate.py` + `packages/pipeline/locate.py` +
 
 **Replaces:** WF1 bootstrap + WF4 search-heavy locate loops.
 
-### 3.2 `focus(query, path?)` — follow-up / repair / deepen
+### 3.2 `focus(query, path?)`: follow-up / repair / deepen
 
 **When:** same topic; after error; “more of X”; mid-edit clarification.
 
 **Internally:**
-- If `path` set → bounded snippet (`max_chars`), touch heatmap — **no re-search**
+- If `path` set → bounded snippet (`max_chars`), touch heatmap, **no re-search**
 - Else → D_rerank **biased to heatmap + pins** (smaller `top_k`, smaller graph budget)
 
 **Token policy:**
@@ -101,14 +101,14 @@ This matches `packages/pipeline/mcp_locate.py` + `packages/pipeline/locate.py` +
 
 **Replaces:** WF2 follow-up re-grep; WF3 repair widen; WF5 light re-read.
 
-### 3.3 `workspace(action, path?)` — session brain
+### 3.3 `workspace(action, path?)`: session brain
 
 **When:** staying on a feature for hours; after several focuses; before another map.
 
 **Actions:**
-- `show` — heatmap + induced graph subgraph (no full file bodies)
-- `pin` — mark hot file (WF5/WF6)
-- `clear` — new task boundary
+- `show`: heatmap + induced graph subgraph (no full file bodies)
+- `pin`: mark hot file (WF5/WF6)
+- `clear`: new task boundary
 
 **Token policy:** paths + symbols + 1-line blurbs only; no file dumps.
 
@@ -126,12 +126,12 @@ This matches `packages/pipeline/mcp_locate.py` + `packages/pipeline/locate.py` +
 
 | Lever | Mechanism | Expected cut of retrieval append |
 |---|---|---|
-| One hybrid locate vs N greps | Fewer tool rounds + smaller payloads | 15–25% |
-| Excerpt budgets vs full files | Cap per target | 20–30% |
-| Focus/pin vs re-read duplicates | Skip near-dup dumps | 10–20% |
-| Workspace vs orient cascades | Almost free | 5–10% |
+| One hybrid locate vs N greps | Fewer tool rounds + smaller payloads | 15-25% |
+| Excerpt budgets vs full files | Cap per target | 20-30% |
+| Focus/pin vs re-read duplicates | Skip near-dup dumps | 10-20% |
+| Workspace vs orient cascades | Almost free | 5-10% |
 
-Stacked (not fully additive): **~40–60%** on retrieval-append is plausible; claim **50%** as the target KPI on a held-out agent A/B (same tasks, with/without CE tools).
+Stacked (not fully additive): **~40-60%** on retrieval-append is plausible; claim **50%** as the target KPI on a held-out agent A/B (same tasks, with/without CE tools).
 
 **Not counted as savings:** prefix-cache hits on conversation history (already high in TraceLab). We optimize **append**, especially tool results.
 
@@ -158,12 +158,12 @@ Already exists: `mcp_locate.py`, `locate.py`, D_rerank searcher, `work_session`,
 
 **Implement next (priority order):**
 
-1. **Savings-mode budgets** — env `CTX_TOKEN_MODE=savings|rich`; tighten defaults in `locate.py`  
-2. **Heatmap-biased focus** — ensure focus mode truly upweights pinned/hot files in retrieve merge  
-3. **Dedup / reopen** — return pointer-only if same path+line span served recently  
-4. **Result card shape** — always include `token_estimate`, `sources: {dense,bm25,graph}`, `next` playbook string  
-5. **Agent rule pack** — one short RULE.md / Cursor rule: only map|focus|workspace for locate  
-6. **A/B harness** — replay or live tasks measuring retrieval `result_chars` / append tokens with vs without CE  
+1. **Savings-mode budgets**: env `CTX_TOKEN_MODE=savings|rich`; tighten defaults in `locate.py`  
+2. **Heatmap-biased focus**: ensure focus mode truly upweights pinned/hot files in retrieve merge  
+3. **Dedup / reopen**: return pointer-only if same path+line span served recently  
+4. **Result card shape**: always include `token_estimate`, `sources: {dense,bm25,graph}`, `next` playbook string  
+5. **Agent rule pack**: one short RULE.md / Cursor rule: only map|focus|workspace for locate  
+6. **A/B harness**: replay or live tasks measuring retrieval `result_chars` / append tokens with vs without CE  
 7. **(Optional)** merge `search_code` MCP into locate-only so agents can’t bypass budgets
 
 Out of scope for this pass: training a model; replacing Edit/Bash for tests.
@@ -182,6 +182,6 @@ Out of scope for this pass: training a model; replacing Edit/Bash for tests.
 
 ## 8. Approval
 
-Recommended path: **approve this design → implement gaps 1–6 → measure KPI**.
+Recommended path: **approve this design → implement gaps 1-6 → measure KPI**.
 
 Reply **approve** (or note changes). Implementation plan + code follows approval.

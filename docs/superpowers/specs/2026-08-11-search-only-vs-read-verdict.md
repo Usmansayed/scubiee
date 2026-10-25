@@ -1,4 +1,4 @@
-# Search-only vs search+read — trial log verdict
+# Search-only vs search+read: trial log verdict
 
 **Date:** 2026-08-11  
 **Primary evidence:** `%TEMP%\ce_iso_trial\20260810T214438Z` (`ce_search` vs `ce_nav`, fair, no contamination)  
@@ -17,7 +17,7 @@ Should Context Engine expose **only `search`** (plus health `status`), or also a
 
 `ce_search` used **~2.5× fewer** work tokens, edited earlier, same task success.
 
-Prior solo `ce_search` (interrupted dual-arm vs `cbm_ce`) hit **~508k** work tokens with complete+quality — shows search-only can be *much* cheaper still (run-to-run variance is real; direction vs nav is stable).
+Prior solo `ce_search` (interrupted dual-arm vs `cbm_ce`) hit **~508k** work tokens with complete+quality, shows search-only can be *much* cheaper still (run-to-run variance is real; direction vs nav is stable).
 
 ## What the agents actually did
 
@@ -53,11 +53,11 @@ Total tool calls: **568**
 | `updateTodos` | 18 | bookkeeping |
 | MCP `recall` | 3 | rarely used |
 
-Before first edit (238 calls): **MCP read 180** vs search 16 — locate became a read thrash loop.  
+Before first edit (238 calls): **MCP read 180** vs search 16, locate became a read thrash loop.  
 MCP read targets: **312 calls → 40 unique → 272 duplicate reads**.  
 Top dupes: `dispatch_registry.py` ×36, `tools.py` ×21, `handlers.py` ×21, …  
 Conversation markers: **`unchanged`/`already_in_session` ≈ 89**, `thrash_blocked` = 1.  
-Native Grep/Glob/Read: **0** (seal-style obedience) — but that did **not** save tokens.
+Native Grep/Glob/Read: **0** (seal-style obedience), but that did **not** save tokens.
 
 ## Log-derived diagnosis
 
@@ -79,8 +79,8 @@ Do **not** make CE `read` (or files/recall/expand) the default product surface r
 
 Keep **native Read/Grep/Glob** as the host’s open/exact tools (as `ce_search` already does). Optionally later:
 
-- A **gated** CE `read` (neighbors / one-shot span) behind an explicit opt-in surface for wiring questions — only after hard server-side per-target caps prove they cut tokens in a rematch  
-- Stronger **`search` hit payloads** (short excerpt by default, or one-shot `fetch=true` for top-1) so agents need fewer native Reads — test before adding a second tool
+- A **gated** CE `read` (neighbors / one-shot span) behind an explicit opt-in surface for wiring questions, only after hard server-side per-target caps prove they cut tokens in a rematch  
+- Stronger **`search` hit payloads** (short excerpt by default, or one-shot `fetch=true` for top-1) so agents need fewer native Reads, test before adding a second tool
 
 ## Artifact pointers
 

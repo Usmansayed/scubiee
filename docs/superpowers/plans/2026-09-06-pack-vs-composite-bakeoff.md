@@ -1,7 +1,7 @@
 # Pack engines bakeoff: composite vs others
 
 **Cases:** 8 (from blind20 triple-pack queries)
-**Mode:** lean heatmap-only (`include_bodies=False`) — MCP default
+**Mode:** lean heatmap-only (`include_bodies=False`), MCP default
 **Same seed** per case from map → `pick_suggested_seed`
 
 ## Summary

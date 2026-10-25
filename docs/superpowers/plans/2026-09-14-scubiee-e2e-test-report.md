@@ -1,4 +1,4 @@
-# Scubiee Context Engine — E2E Test Report (2026-09-14)
+# Scubiee Context Engine: E2E Test Report (2026-09-14)
 
 ## 1. Architecture summary
 
@@ -85,7 +85,7 @@ scripts/run_scubiee_e2e_suite.py → ok=True
 Report: docs/superpowers/plans/e2e-suite-results.json
 ```
 
-### Host-sim (lane A, live, skip-idle) — 2026-09-14T121133Z
+### Host-sim (lane A, live, skip-idle): 2026-09-14T121133Z
 | Phase | ms | notes |
 |-------|-----|-------|
 | soft_ready FIRST | +1.14s from host_start | was ~20s |
@@ -102,27 +102,27 @@ Report: docs/superpowers/plans/e2e-suite-results.json
 
 ## 6. Bugs found → root cause → fix
 
-1. **Duplicate MCP process groups** — `tools/list_changed` spam + expand GIL wedge → Cursor second NodeService bridge. Fixed emit-on-respawn-only + expand no-bake.
-2. **final_check unpublished dirty** — locate streak deferred forever on stop. Fixed clear streak + force flush/publish.
-3. **Stale publish test** — `load_engine(..., base_dir=None)` API drift. Test updated.
+1. **Duplicate MCP process groups**: `tools/list_changed` spam + expand GIL wedge → Cursor second NodeService bridge. Fixed emit-on-respawn-only + expand no-bake.
+2. **final_check unpublished dirty**: locate streak deferred forever on stop. Fixed clear streak + force flush/publish.
+3. **Stale publish test**: `load_engine(..., base_dir=None)` API drift. Test updated.
 
 ## 7. Performance baselines (this machine)
 
 | Metric | Target | Observed |
 |--------|--------|----------|
 | Soft ready after attach | ≤10s | ~1.1s (engine reused / bg-open) |
-| First map after soft | ≤1s | 315–1378 ms |
-| Steady map | ≤300–800 ms | 650–1025 ms |
-| Lean pack | ≤1–5s | ~285–426 ms |
+| First map after soft | ≤1s | 315-1378 ms |
+| Steady map | ≤300-800 ms | 650-1025 ms |
+| Lean pack | ≤1-5s | ~285-426 ms |
 | Expand (bundle warm) | ≤5s | ~1.9s |
 | Expand (cold bake) | forbid on MCP | warming / bg bake |
 
 ## 8. Remaining risks / follow-ups
 
-- Bridge nested pythonw parentage still looks like “double bridge” in Task Manager (display quirk) — count **top-level** bridges only.
+- Bridge nested pythonw parentage still looks like “double bridge” in Task Manager (display quirk), count **top-level** bridges only.
 - Full 194-file pytest not re-run this beat (curated 163); schedule nightly full.
 - Large monorepo AST bundle miss still needs background bake UX (`ast_warming` retry).
-- Live multi-window Cursor still can start two MCP configs if duplicate `mcp.json` entries exist — audit global+project.
+- Live multi-window Cursor still can start two MCP configs if duplicate `mcp.json` entries exist, audit global+project.
 - Stress: intentional multi-MB dirty while 3 parallel packs (not yet automated beyond unit dirty burst).
 - Reinstall + Cursor MCP reload required for production pick-up of today’s fixes.
 

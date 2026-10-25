@@ -3,7 +3,7 @@
 **Date:** 2026-08-29 (extended same day)  
 **Evaluator:** Cursor agent (Composer)  
 **Surface:** `phase` (`map | focus | grep | glob | workspace | status`)  
-**Sessions:** `scubiee-eval-1` (27 calls), `scubiee-eval-2` (38 calls) — **65 total**  
+**Sessions:** `scubiee-eval-1` (27 calls), `scubiee-eval-2` (38 calls), **65 total**  
 **Method:** For each distinct repo subsystem, attempt **full-context retrieval using only Scubiee MCP** (no native Read/Grep/Glob). Log tool calls, coverage, and failure modes.
 
 ---
@@ -12,10 +12,10 @@
 
 | Area | File(s) | Lines | Tool calls | Est. coverage | Verdict |
 |------|---------|------:|-----------:|--------------:|---------|
-| 1. Embedder | `packages/pipeline/embedder.py` | 833 | 9 | ~65% | Partial — outline broken; many spans needed |
-| 2. MCP locate | `packages/pipeline/mcp_locate.py` | 2,862 | 8 | ~20% | Poor — huge file, truncation wall |
+| 1. Embedder | `packages/pipeline/embedder.py` | 833 | 9 | ~65% | Partial, outline broken; many spans needed |
+| 2. MCP locate | `packages/pipeline/mcp_locate.py` | 2,862 | 8 | ~20% | Poor, huge file, truncation wall |
 | 3. Session store | `packages/pipeline/session_store.py` | 611 | 7 | ~55% | OK for edits; poor for full-file explain |
-| 4. Graphify extract | `packages/graphify/extract.py` + `extractors/` | 5,739+ | 8 | <5% of facade file | Misleading — real logic moved to `engine.py` |
+| 4. Graphify extract | `packages/graphify/extract.py` + `extractors/` | 5,739+ | 8 | <5% of facade file | Misleading, real logic moved to `engine.py` |
 
 **Extended (batch 2):** indexer (~40%), resources (~70%), keeper_tick (fn ✅, file ❌), ce_service (~8%), fair_schedule ✅, incremental header ✅, daemon (map only).
 
@@ -31,12 +31,12 @@
 
 Per area:
 
-1. `map(query)` — semantic entry point
-2. `focus(mode=outline)` — API / symbol map
-3. `focus(mode=span)` — body retrieval (default `max_chars=2000`, then `12000` with explicit line ranges)
-4. `focus(mode=neighbors)` — wiring (where relevant)
-5. `grep` — exact symbols when outline/map thin
-6. `workspace(show)` — session state audit
+1. `map(query)`: semantic entry point
+2. `focus(mode=outline)`: API / symbol map
+3. `focus(mode=span)`: body retrieval (default `max_chars=2000`, then `12000` with explicit line ranges)
+4. `focus(mode=neighbors)`: wiring (where relevant)
+5. `grep`: exact symbols when outline/map thin
+6. `workspace(show)`: session state audit
 
 **Success criterion:** Could an agent explain or safely edit this subsystem without native `Read`?
 
@@ -44,7 +44,7 @@ Per area:
 
 ## Area 1: Embedder (`packages/pipeline/embedder.py`, 833 lines)
 
-**Domain:** ML embedding pipeline — FastEmbed, MLX, Ollama backends; `embed_many` batching; Resource Manager integration.
+**Domain:** ML embedding pipeline, FastEmbed, MLX, Ollama backends; `embed_many` batching; Resource Manager integration.
 
 ### Tool trace
 
@@ -57,33 +57,33 @@ Per area:
 | 5 | `focus(span, lines 600-833, max_chars=12000)` | ✅ Full `embed_many` + stats (234 lines, no truncation) |
 | 6 | `focus(span, query="class Embedder", max_chars=12000)` | ❌ Returned `_choose_backend` (94-153), not `Embedder` class body |
 | 7 | `focus(span, start_line=151)` | ⚠️ Only lines 151-191 (`__init__` partial, 40 lines) |
-| 8 | Re-fetch lines 600-833 | `already_in_session` — **code body empty** |
+| 8 | Re-fetch lines 600-833 | `already_in_session`, **code body empty** |
 
 ### Coverage gaps
 
-- Lines ~192-599: `_encode_batch`, MLX path, cache logic — **never retrieved**
-- `Embedder.__init__` complete body — partial only
-- Class methods between init and `embed_one` — missing
+- Lines ~192-599: `_encode_batch`, MLX path, cache logic, **never retrieved**
+- `Embedder.__init__` complete body, partial only
+- Class methods between init and `embed_one`, missing
 
 ### Failures logged
 
-1. **`outline` returns 0 symbols** — likely UTF-8 BOM (`\ufeff`) at file start; AST outline silently fails.
-2. **`query=` symbol resolution inaccurate** — `"class Embedder"` resolved to helper above class, not class body.
+1. **`outline` returns 0 symbols**: likely UTF-8 BOM (`\ufeff`) at file start; AST outline silently fails.
+2. **`query=` symbol resolution inaccurate**: `"class Embedder"` resolved to helper above class, not class body.
 3. **`start_line` without `end_line`** returns tiny chunk (~40 lines), not rest of symbol.
-4. **`already_in_session` strips code** — re-fetch returns `code: ""` with hint to use `expand(handle)`, but **`expand` is not on phase surface**.
-5. **`map` ranking noise** — bench scripts outrank primary implementation.
+4. **`already_in_session` strips code**: re-fetch returns `code: ""` with hint to use `expand(handle)`, but **`expand` is not on phase surface**.
+5. **`map` ranking noise**: bench scripts outrank primary implementation.
 
 ### What worked
 
 - `grep` for exact class definition (1 hit, instant)
-- `focus(span, start_line=600, end_line=833, max_chars=12000)` — full `embed_many` in one call
-- `workspace(show)` — accurate heatmap of touched files
+- `focus(span, start_line=600, end_line=833, max_chars=12000)`: full `embed_many` in one call
+- `workspace(show)`: accurate heatmap of touched files
 
 ---
 
 ## Area 2: MCP locate (`packages/pipeline/mcp_locate.py`, 2,862 lines)
 
-**Domain:** Scubiee MCP server itself — surface switching, `map_impl`, `focus_impl`, `create_mcp`, tool registration.
+**Domain:** Scubiee MCP server itself, surface switching, `map_impl`, `focus_impl`, `create_mcp`, tool registration.
 
 ### Tool trace
 
@@ -93,31 +93,31 @@ Per area:
 | 2 | `focus(outline)` | ❌ **0 symbols** (BOM file) |
 | 3 | `focus(span, lines 1-250, max_chars=2000)` | ⚠️ Truncated in imports |
 | 4 | `focus(span, lines 2311-2400, max_chars=12000)` | ✅ Full `focus_impl` (~90 lines) |
-| 5 | `focus(span, query="create_mcp focus_impl", max_chars=12000)` | ⚠️ Lines 1438-2801 span — **still truncated** at 12k chars (~1,363 lines requested) |
+| 5 | `focus(span, query="create_mcp focus_impl", max_chars=12000)` | ⚠️ Lines 1438-2801 span, **still truncated** at 12k chars (~1,363 lines requested) |
 
 ### Coverage gaps
 
-- Lines 250-1437: server instructions, arg models, `read_impl`, `grep_impl` — **not retrieved**
-- `create_mcp` body — truncated even at max budget
+- Lines 250-1437: server instructions, arg models, `read_impl`, `grep_impl`, **not retrieved**
+- `create_mcp` body, truncated even at max budget
 - Only ~20% of file meaningfully in agent context
 
 ### Failures logged
 
 1. **Outline completely broken** on this file (0 symbols).
-2. **Char budget ≠ line budget** — requesting 1,363 lines at `max_chars=12000` still truncates; no pagination hint with next `start_line`.
-3. **Map points to mega-span** (1438-2801) — indexed chunk boundaries too coarse for a 2,862-line file.
+2. **Char budget ≠ line budget**: requesting 1,363 lines at `max_chars=12000` still truncates; no pagination hint with next `start_line`.
+3. **Map points to mega-span** (1438-2801): indexed chunk boundaries too coarse for a 2,862-line file.
 4. **Tests outrank implementation** in map results.
 
 ### What worked
 
 - Map found correct file and approximate region for `create_mcp`
-- Targeted span on `focus_impl` (90 lines) — complete, usable
+- Targeted span on `focus_impl` (90 lines), complete, usable
 
 ---
 
 ## Area 3: Session store (`packages/pipeline/session_store.py`, 611 lines)
 
-**Domain:** Session-native span storage — `put_span`, `expand`, `recall`, dedup by content hash, handles.
+**Domain:** Session-native span storage, `put_span`, `expand`, `recall`, dedup by content hash, handles.
 
 ### Tool trace
 
@@ -125,26 +125,26 @@ Per area:
 |------|------|--------|
 | 1 | `focus(outline)` | ✅ **22 symbols** with line ranges |
 | 2 | `focus(span, put_span 266-389, max_chars=2000)` | ⚠️ Truncated mid-function |
-| 3 | `focus(neighbors, :266)` | ⚠️ 4 neighbors — all **file headers** (50 lines each), not callers of `put_span` |
+| 3 | `focus(neighbors, :266)` | ⚠️ 4 neighbors, all **file headers** (50 lines each), not callers of `put_span` |
 | 4 | `focus(span, query="expand recall put_span", max_chars=12000)` | ⚠️ `put_span` truncated at 12k |
 | 5 | `focus(span, expand at 435, max_chars=12000)` | ✅ Full `expand()` function (~40 lines) |
 | 6 | `workspace(show)` | ✅ 11 spans tracked, heatmap correct |
 
 ### Coverage gaps
 
-- `recall`, `govern_targets`, `apply_governor_to_card` — not fetched
-- `put_span` full body — truncated
-- Load/save/clear helpers — outline only
+- `recall`, `govern_targets`, `apply_governor_to_card`, not fetched
+- `put_span` full body, truncated
+- Load/save/clear helpers, outline only
 
 ### Failures logged
 
-1. **`neighbors` is file-adjacency, not call graph** — returned `project_id.py`, `session_isolation.py` headers, not who calls `put_span`.
-2. **Truncation on 125-line function** even at `max_chars=12000` — suggests char counting includes metadata or span selection is wrong.
-3. **No `expand` on phase surface** — handles stored (`sp_0003`, etc.) but agent cannot re-materialize bodies after `already_in_session`.
+1. **`neighbors` is file-adjacency, not call graph**: returned `project_id.py`, `session_isolation.py` headers, not who calls `put_span`.
+2. **Truncation on 125-line function** even at `max_chars=12000`, suggests char counting includes metadata or span selection is wrong.
+3. **No `expand` on phase surface**: handles stored (`sp_0003`, etc.) but agent cannot re-materialize bodies after `already_in_session`.
 
 ### What worked
 
-- **Outline is excellent** on this file — complete API map in one call
+- **Outline is excellent** on this file, complete API map in one call
 - Symbol-targeted span for `expand()` worked perfectly
 - File size (611 lines) is within reach with ~4-5 targeted spans
 
@@ -152,7 +152,7 @@ Per area:
 
 ## Area 4: Graphify extract (`packages/graphify/extract.py`, 5,739 lines)
 
-**Domain:** Multi-language tree-sitter structural extraction — Python/JS/Java/C#/Swift/etc., rationale nodes, member-call resolution.
+**Domain:** Multi-language tree-sitter structural extraction, Python/JS/Java/C#/Swift/etc., rationale nodes, member-call resolution.
 
 ### Tool trace
 
@@ -160,24 +160,24 @@ Per area:
 |------|------|--------|
 | 1 | `focus(outline)` | ⚠️ **60 symbols** returned; file has 60+ more functions (cap hit at line 3381) |
 | 2 | `focus(span, extract_python 1190-1318, max_chars=2000)` | ⚠️ Truncated in comments |
-| 3 | `focus(span, query="extract_python", max_chars=12000)` | ❌ **7 lines only** (1190-1197) — just the facade wrapper |
-| 4 | `focus(span, query="_extract_generic")` | ❌ Returned `extract_c` (1689-1693) — wrong symbol |
+| 3 | `focus(span, query="extract_python", max_chars=12000)` | ❌ **7 lines only** (1190-1197), just the facade wrapper |
+| 4 | `focus(span, query="_extract_generic")` | ❌ Returned `extract_c` (1689-1693), wrong symbol |
 | 5 | `map("graphify extract _extract_generic tree-sitter...")` | ✅ **Found real impl:** `extractors/engine.py:2249` |
 | 6 | `grep("def _extract_generic")` | ✅ Confirms `engine.py:2249` only |
 
 ### Coverage gaps
 
-- **<5% of `extract.py` retrieved** — file is a facade; core logic migrated to `extractors/`
-- `_extract_python_rationale` (1080-1185) — not retrieved
-- Member-call resolvers (2200-2967) — outline shows them, bodies never fetched
-- `engine.py` `_extract_generic` (~2,475 lines per map card) — not attempted (would hit same truncation wall)
+- **<5% of `extract.py` retrieved**: file is a facade; core logic migrated to `extractors/`
+- `_extract_python_rationale` (1080-1185): not retrieved
+- Member-call resolvers (2200-2967), outline shows them, bodies never fetched
+- `engine.py` `_extract_generic` (~2,475 lines per map card), not attempted (would hit same truncation wall)
 
 ### Failures logged
 
-1. **Outline cap at 60 symbols** on 5,739-line file — agent thinks it has full shape but doesn't.
-2. **Semantic `query=` on focus wildly inaccurate** inside large files — `_extract_generic` → `extract_c`.
-3. **Facade pattern invisible** — `extract.py` looks like the subsystem; real code is in `extractors/engine.py` (map found it, focus didn't).
-4. **Indexed chunk points to thin wrapper** — map rank 2 for extract is 7-line `extract_python`, not the 2,475-line engine.
+1. **Outline cap at 60 symbols** on 5,739-line file, agent thinks it has full shape but doesn't.
+2. **Semantic `query=` on focus wildly inaccurate** inside large files, `_extract_generic` → `extract_c`.
+3. **Facade pattern invisible**: `extract.py` looks like the subsystem; real code is in `extractors/engine.py` (map found it, focus didn't).
+4. **Indexed chunk points to thin wrapper**: map rank 2 for extract is 7-line `extract_python`, not the 2,475-line engine.
 
 ### What worked
 
@@ -189,7 +189,7 @@ Per area:
 
 ## Cross-cutting failure modes (ranked by severity)
 
-### P0 — Blocks full-context retrieval
+### P0: Blocks full-context retrieval
 
 | # | Failure | Evidence | Impact |
 |---|---------|----------|--------|
@@ -197,7 +197,7 @@ Per area:
 | 2 | **`max_chars` truncation without pagination** | `mcp_locate create_mcp` span 1,363 lines → truncated at 12k chars | Cannot retrieve large functions/files via Scubiee alone |
 | 3 | **`outline` returns 0 symbols on BOM files** | `embedder.py`, `mcp_locate.py` → `count: 0` | No API map for two critical pipeline files |
 
-### P1 — Degrades value significantly
+### P1: Degrades value significantly
 
 | # | Failure | Evidence | Impact |
 |---|---------|----------|--------|
@@ -206,7 +206,7 @@ Per area:
 | 6 | **Outline symbol cap (60) on huge files** | `extract.py` outline stops at symbol 60 | False sense of completeness |
 | 7 | **`neighbors` = file adjacency, not call graph** | `put_span` neighbors = import-file headers | "Wiring" mode doesn't show who calls what |
 
-### P2 — Friction / inefficiency
+### P2: Friction / inefficiency
 
 | # | Failure | Evidence | Impact |
 |---|---------|----------|--------|
@@ -220,24 +220,24 @@ Per area:
 
 ## What Scubiee does better than native tools
 
-1. **`map` for cold discovery** — Found `session_store.py`, `extractors/engine.py`, and integration points without knowing filenames.
-2. **`outline` on clean Python files** — `session_store.py` API in one call beats grepping definitions.
-3. **`grep` with path + line** — Equivalent to native grep but stays in managed telemetry.
-4. **`workspace(show)`** — Session heatmap and span inventory; native tools have no equivalent.
-5. **Targeted spans with explicit line ranges + high `max_chars`** — `embed_many` (234 lines) retrieved completely in one call.
+1. **`map` for cold discovery**: Found `session_store.py`, `extractors/engine.py`, and integration points without knowing filenames.
+2. **`outline` on clean Python files**: `session_store.py` API in one call beats grepping definitions.
+3. **`grep` with path + line**: Equivalent to native grep but stays in managed telemetry.
+4. **`workspace(show)`**: Session heatmap and span inventory; native tools have no equivalent.
+5. **Targeted spans with explicit line ranges + high `max_chars`**: `embed_many` (234 lines) retrieved completely in one call.
 
 ---
 
 ## Recommended fixes (priority order)
 
-1. **Expose `expand(handle)` on phase surface** — or return excerpt on `already_in_session` instead of empty `code`.
-2. **Fix BOM handling in outline** — strip `\ufeff` before AST parse; `embedder.py` and `mcp_locate.py` are critical paths.
-3. **Truncation pagination** — when `truncated: true`, return `{ next_start_line, handle, lines_total, lines_returned }`.
-4. **Symbol-scoped spans** — `focus(target="Embedder")` should use outline line ranges for full class/method body.
-5. **Raise outline cap** or paginate — report `"symbols_shown": 60, "symbols_total": 95` on large files.
-6. **Real call-graph neighbors** — wire `graph_neighbors` for `focus(neighbors)` on functions, not just import adjacency.
-7. **Map ranking boost** — deprioritize `tests/`, `scripts/bench_*` when query targets production symbols.
-8. **Facade detection in map cards** — flag `"facade": true, "impl": "extractors/engine.py"` when re-exporting.
+1. **Expose `expand(handle)` on phase surface**: or return excerpt on `already_in_session` instead of empty `code`.
+2. **Fix BOM handling in outline**: strip `\ufeff` before AST parse; `embedder.py` and `mcp_locate.py` are critical paths.
+3. **Truncation pagination**: when `truncated: true`, return `{ next_start_line, handle, lines_total, lines_returned }`.
+4. **Symbol-scoped spans**: `focus(target="Embedder")` should use outline line ranges for full class/method body.
+5. **Raise outline cap** or paginate, report `"symbols_shown": 60, "symbols_total": 95` on large files.
+6. **Real call-graph neighbors**: wire `graph_neighbors` for `focus(neighbors)` on functions, not just import adjacency.
+7. **Map ranking boost**: deprioritize `tests/`, `scripts/bench_*` when query targets production symbols.
+8. **Facade detection in map cards**: flag `"facade": true, "impl": "extractors/engine.py"` when re-exporting.
 
 ---
 
@@ -246,15 +246,15 @@ Per area:
 ```
 FULL-CONTEXT RETRIEVAL WITH SCUBIEE (phase surface)
 
-1. map(query) with CODE VOCABULARY — find entry files
-2. focus(outline) — if count=0, file may have BOM; use grep + line ranges
-3. grep exact symbols — faster and more accurate than focus query=
-4. focus(span, start_line=X, end_line=Y, max_chars=12000) — always pass BOTH line bounds
+1. map(query) with CODE VOCABULARY - find entry files
+2. focus(outline) - if count=0, file may have BOM; use grep + line ranges
+3. grep exact symbols - faster and more accurate than focus query=
+4. focus(span, start_line=X, end_line=Y, max_chars=12000) - always pass BOTH line bounds
 5. If truncated → narrow line range and call again (do NOT assume one call gets a whole file)
-6. workspace(show) — check what's already in session before re-fetching
+6. workspace(show) - check what's already in session before re-fetching
 7. If already_in_session with empty code → native Read is currently required (phase has no expand)
 8. For files >1000 lines → plan 3-6 targeted spans via outline/grep, abandon "full file" goal
-9. map may point to facade files — follow grep to find moved implementations in extractors/
+9. map may point to facade files - follow grep to find moved implementations in extractors/
 ```
 
 ---
@@ -262,7 +262,7 @@ FULL-CONTEXT RETRIEVAL WITH SCUBIEE (phase surface)
 ## Raw session stats
 
 - **Total Scubiee tool calls:** 27
-- **Spans stored:** 15 handles (`sp_0001` – `sp_0015`)
+- **Spans stored:** 15 handles (`sp_0001`, `sp_0015`)
 - **Truncation events:** 7 of 15 span fetches
 - **`already_in_session` events:** 1 (body stripped)
 - **Outline failures (0 symbols):** 2 of 4 files
@@ -295,7 +295,7 @@ FULL-CONTEXT RETRIEVAL WITH SCUBIEE (phase surface)
 ### Batch 2 highlights
 
 **Indexer (`index_repo`, lines 105-529)**
-- `outline` returned 9 symbols including `index_repo` at 105-529 — excellent targeting hint
+- `outline` returned 9 symbols including `index_repo` at 105-529, excellent targeting hint
 - `focus(span, query="index_repo", max_chars=12000)` → **truncated** mid-function (~40% of 425 lines)
 - `neighbors` on `indexer.py:105` → file-header adjacency (`accel.py`, `chunk_compress.py`), not call graph
 
@@ -394,16 +394,16 @@ focus(start_line=46, end_line=65, path=fair_schedule.py)
 | `clear` | ✅ resets topic/spans |
 | `pin(resources.py)` | ✅ pin appears in heatmap; heat boosted to 10.99 |
 | `show` | ✅ 11 spans, heatmap, `focus_seen`, `map_queries` logged |
-| `already_in_session` re-fetch | ❌ `code: ""` — body gone, no `expand` on phase |
+| `already_in_session` re-fetch | ❌ `code: ""`, body gone, no `expand` on phase |
 
 ### `status` / `gate`
 
 | Tool | Value |
 |------|-------|
-| `gate()` | Returns project id string — minimal ✅ |
+| `gate()` | Returns project id string, minimal ✅ |
 | `status()` | Rich: engine health, keeper state, dirty files, session stats, tool list ✅ |
 
-**Notable:** `status` reported `overlay_ready: false`, `syncing: true` during eval — search index may be slightly stale vs disk (evaluation doc itself in dirty queue).
+**Notable:** `status` reported `overlay_ready: false`, `syncing: true` during eval, search index may be slightly stale vs disk (evaluation doc itself in dirty queue).
 
 ---
 
@@ -424,7 +424,7 @@ Files tested for `focus(outline)`:
 | `ce_service.py` | **0** | **Yes** |
 | `daemon.py` | **0** | **Yes** |
 
-**5 of 10 tested pipeline files have broken outlines** — all BOM-prefixed. This is a systemic issue, not edge case.
+**5 of 10 tested pipeline files have broken outlines**: all BOM-prefixed. This is a systemic issue, not edge case.
 
 ---
 
@@ -462,7 +462,7 @@ To reach ~80% coverage of a subsystem using **only Scubiee phase tools**:
 
 | File size | Outline works? | Spans needed | Typical calls | Still blocked by |
 |-----------|----------------|-------------:|--------------:|----------------|
-| <200 lines | Yes | 1-2 | 3-4 | — |
+| <200 lines | Yes | 1-2 | 3-4 | - |
 | 200-500 lines | Yes | 2-4 | 5-8 | truncation on large fns |
 | 500-1000 lines | Maybe (BOM) | 4-8 | 8-12 | outline missing |
 | 1000-3000 lines | Usually no | 8-15+ | 15-25+ | truncation, no pagination |
@@ -474,41 +474,41 @@ To reach ~80% coverage of a subsystem using **only Scubiee phase tools**:
 
 ## Updated failure catalog (all batches)
 
-### P0 — Ship blockers for "Scubiee-only" agents
+### P0: Ship blockers for "Scubiee-only" agents
 
-1. **`already_in_session` strips code body** — agent loses context; hints `expand` but phase has no `expand`
-2. **BOM breaks outline on ~50% of core pipeline files** — no API map for embedder, mcp_locate, sync_loop, ce_service, daemon
-3. **Truncation without pagination** — no `next_start_line`, no multi-page `expand`
+1. **`already_in_session` strips code body**: agent loses context; hints `expand` but phase has no `expand`
+2. **BOM breaks outline on ~50% of core pipeline files**: no API map for embedder, mcp_locate, sync_loop, ce_service, daemon
+3. **Truncation without pagination**: no `next_start_line`, no multi-page `expand`
 
-### P1 — Major value loss
+### P1: Major value loss
 
-4. **`focus query=` symbol resolution unreliable** — wrong symbol, wrong file region, or thin wrapper
-5. **Symbol-only target without path** — `FairEmbedScheduler.acquire` → file header
-6. **Plain-English map queries rank docs/tests first** — code vocabulary required
-7. **Neighbors ≠ call graph** — misleading for "who calls this"
+4. **`focus query=` symbol resolution unreliable**: wrong symbol, wrong file region, or thin wrapper
+5. **Symbol-only target without path**: `FairEmbedScheduler.acquire` → file header
+6. **Plain-English map queries rank docs/tests first**: code vocabulary required
+7. **Neighbors ≠ call graph**: misleading for "who calls this"
 8. **Outline 60-symbol cap** on large files without `symbols_total`
-9. **Map mega-chunks** — cards span 1000+ lines then truncate on focus
+9. **Map mega-chunks**: cards span 1000+ lines then truncate on focus
 
-### P2 — Friction
+### P2: Friction
 
-10. **`glob` naming brittleness** — `*keeper*` misses implementation file
-11. **Map test/bench pollution** — adds filtering overhead
-12. **Session ID leak** — some map calls ignore explicit `session_id`, use transport default
-13. **Missing file errors vague** — "Scubiee request failed" not "file not found"
-14. **`max_chars=200` default too low** — truncates 63-line functions
-15. **Facade files** — `extract.py` vs `extractors/engine.py`
-16. **Worktree duplicates in glob** — `.worktrees/production-certification/...` pollutes results
+10. **`glob` naming brittleness**: `*keeper*` misses implementation file
+11. **Map test/bench pollution**: adds filtering overhead
+12. **Session ID leak**: some map calls ignore explicit `session_id`, use transport default
+13. **Missing file errors vague**: "Scubiee request failed" not "file not found"
+14. **`max_chars=200` default too low**: truncates 63-line functions
+15. **Facade files**: `extract.py` vs `extractors/engine.py`
+16. **Worktree duplicates in glob**: `.worktrees/production-certification/...` pollutes results
 
-### P3 — Works well (don't break)
+### P3: Works well (don't break)
 
-- `grep` exact literals — **100% accuracy** in all tests
-- `outline` on non-BOM Python — accurate line ranges
-- `focus` with explicit `start_line` + `end_line` + `max_chars=12000` — best retrieval path
-- `map` with code vocabulary — finds right region fast
-- `workspace(show)` — excellent session reorientation
-- `workspace(pin)` — boosts heat correctly
-- `status()` — comprehensive engine/keeper visibility
-- Markdown `outline` — honest `language_unsupported` message
+- `grep` exact literals, **100% accuracy** in all tests
+- `outline` on non-BOM Python, accurate line ranges
+- `focus` with explicit `start_line` + `end_line` + `max_chars=12000`, best retrieval path
+- `map` with code vocabulary, finds right region fast
+- `workspace(show)`: excellent session reorientation
+- `workspace(pin)`: boosts heat correctly
+- `status()`: comprehensive engine/keeper visibility
+- Markdown `outline`, honest `language_unsupported` message
 
 ---
 

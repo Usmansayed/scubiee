@@ -1,7 +1,7 @@
 # Session-Native Context Engine (beyond 3 search tools)
 
 **Date:** 2026-08-08  
-**Status:** implementing (Phase A–B landed in code)  
+**Status:** implementing (Phase A, B landed in code)  
 **Supersedes/extends:** `2026-08-08-tracelab-three-tool-context-engine-design.md`  
 **KPI:** ≥**50%** cut in **retrieval-append tokens** (tool-result payload that becomes `newly_append_tokens`)
 
@@ -40,7 +40,7 @@ TARGET
 ```
 
 The LLM context window is the expensive medium. **Session store is cheap.**  
-Anything already retrieved should live in the store and re-enter the prompt only as a **handle** (~20–40 tokens), not as a re-dump (~2k–10k tokens).
+Anything already retrieved should live in the store and re-enter the prompt only as a **handle** (~20-40 tokens), not as a re-dump (~2k, 10k tokens).
 
 ---
 
@@ -85,7 +85,7 @@ Keep agent surface small. Five tools max; three are retrieval, two are session m
 | **`focus(query\|path)`** | Follow-up / repair / deepen. Prefer hot zone; never full rediscovery |
 | **`workspace(show\|pin\|clear)`** | Session heatmap + pins + subgraph (no bodies) |
 
-### B. Session memory (the 50% unlock — currently underbuilt)
+### B. Session memory (the 50% unlock: currently underbuilt)
 
 | Tool | Job |
 |---|---|
@@ -178,22 +178,22 @@ From the 200-session lever study (`session_savings_levers.json`):
 
 ## 7. Build plan (implementation order)
 
-### Phase A — Session Context Store + Governor (highest ROI)
+### Phase A: Session Context Store + Governor (highest ROI)
 1. Persist spans/facts/ledger in `.context-engine/session_store.json`  
 2. Wrap `map`/`focus` responses: store full text server-side; return handles + ≤N excerpt lines  
 3. On repeat hit (same path+hash or same signature): return `already_in_session` stub  
 4. Add tools **`recall`** + **`expand`**
 
-### Phase B — Tighten retrieve (use full hybrid)
+### Phase B: Tighten retrieve (use full hybrid)
 5. Ensure map/focus always go through D_rerank (dense+BM25+graph)  
 6. `CTX_TOKEN_MODE=savings` budgets (excerpt caps, max_targets)  
 7. Heatmap/pin bias in focus ranking  
 
-### Phase C — Prove 50%
+### Phase C: Prove 50%
 8. A/B harness: same tasks with Grep/Read baseline vs CE tools  
 9. Metric: sum retrieval `result_chars` / append tokens; gate merge on ≥50%  
 
-### Phase D — Agent contract
+### Phase D: Agent contract
 10. Cursor/MCP rule: context locate **only** via map/focus/workspace/recall/expand  
 11. Bash/Grep allowed for **verify**, not for discovery  
 

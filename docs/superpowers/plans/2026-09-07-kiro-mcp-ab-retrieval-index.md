@@ -1,25 +1,25 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-10T03:49:51.022259+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `complex_retrieval_index` — complex index/sync/engine-warm retrieval → single reasoning context file
+**Task:** `complex_retrieval_index`, complex index/sync/engine-warm retrieval → single reasoning context file
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Retrieval challenge — assemble a reasoning context pack (NO code changes)
+# Retrieval challenge - assemble a reasoning context pack (NO code changes)
 
 ## Mission
-You must retrieve enough multi-hop codebase context to answer a hard product question later —
+You must retrieve enough multi-hop codebase context to answer a hard product question later -
 but you will NOT implement anything. Your ONLY deliverable is one markdown file that stores
 all context needed for reasoning.
 
-## Hard question (do not answer in chat — put evidence in the file)
+## Hard question (do not answer in chat - put evidence in the file)
 Trace how Scubiee becomes **ready to locate/pack** and what agents see when it is not:
 1. How the local engine is contacted / ensured (URL, health, warm path).
 2. Which preflight / capability gates can refuse index or embedding work (provider / deps).
 3. How MCP `status` / gate-style health surfaces expose `warm_state`, index usability, or similar.
-4. How a soft locate still reaches `map` → `pack_context` once the engine is usable — where
+4. How a soft locate still reaches `map` → `pack_context` once the engine is usable - where
    suggested_seed and lean heatmap are produced in the pack pipeline.
 5. What “warming / error / not ready” means for agents (retry vs fail vs native fallback policy
    in product instructions if present).
@@ -63,7 +63,7 @@ That file MUST contain:
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

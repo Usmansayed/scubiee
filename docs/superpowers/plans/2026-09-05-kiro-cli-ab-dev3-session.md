@@ -1,16 +1,16 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-09T20:17:02.116389+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `session_isolation` — shared-MCP session isolation fail-closed + dual-session proof
+**Task:** `session_isolation`, shared-MCP session isolation fail-closed + dual-session proof
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Development task — stop cross-chat locate/pack leakage on a shared MCP process
+# Development task - stop cross-chat locate/pack leakage on a shared MCP process
 
 ## Problem
-Two agent chats can share one MCP server process. Soft-locate / pack persistence (pins, packed bodies, heatmap handles) from chat A must never silently become chat B's context. Today it is too easy for a missing or ambiguous session identity to reuse the wrong store — which wastes tokens and produces wrong code slices.
+Two agent chats can share one MCP server process. Soft-locate / pack persistence (pins, packed bodies, heatmap handles) from chat A must never silently become chat B's context. Today it is too easy for a missing or ambiguous session identity to reuse the wrong store - which wastes tokens and produces wrong code slices.
 
 ## Desired outcome
 When session isolation is enabled:
@@ -22,12 +22,12 @@ When session isolation is enabled:
 1. Structured error when isolation is on and session cannot be resolved for a state-mutating locate/pack path.
 2. Dual-session test: actions in session A do not appear as session B's persisted locate/pack state.
 3. Happy path with a valid session id still works (no false failures).
-4. Prefer fixing the existing session + locate/pack persistence pipeline — do not invent a second session system.
+4. Prefer fixing the existing session + locate/pack persistence pipeline - do not invent a second session system.
 5. Keep the change reviewable; do not break hosts that already inject a session id.
 
 ## Constraints
 - In-process only; no new network services.
-- Explore the codebase yourself — this prompt will not name files or functions.
+- Explore the codebase yourself - this prompt will not name files or functions.
 - Do not commit or push. Local tests are fine.
 - Do not disable isolation to "make tests pass."
 
@@ -50,7 +50,7 @@ Implement end-to-end: explore → edit → test.
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

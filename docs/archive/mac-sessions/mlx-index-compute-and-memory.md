@@ -17,7 +17,7 @@ Traditional path: scan → parse/graphify → chunk/enrich → embed → turboqu
 | Vector write | **0.20 s** | turboquant 8-bit |
 | **Wall (end-to-end)** | **45.3 s** | 65.5 chunks/s |
 
-Process RSS peak: **620 MB** (`/usr/bin/time` 650,412,032 bytes) — under the **800 MB** first-index cap.
+Process RSS peak: **620 MB** (`/usr/bin/time` 650,412,032 bytes), under the **800 MB** first-index cap.
 
 ## Model compute (the embedding GPU work)
 

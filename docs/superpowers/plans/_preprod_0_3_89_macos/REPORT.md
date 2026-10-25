@@ -1,17 +1,17 @@
 # Scubiee 0.3.89 macOS Gate M pre-prod check
 
 **Date:** 2026-09-15  
-**Machine:** MacBook Pro — Apple M5, macOS 26.5.2 (25F84), arm64  
+**Machine:** MacBook Pro, Apple M5, macOS 26.5.2 (25F84), arm64  
 **Install:** `uv tool install --force '.[macos]' --refresh` from commit `1307ee5`  
 **Python:** `~/.local/share/uv/tools/scubiee/bin/python` (3.10.21)  
-**Profile:** `mlx` @ **109.1–110.1 t/s** (Metal FP16)  
-**Harness:** real `scubiee` CLI + uv-tool Python scripts — not in-process mocks for ship decision.
+**Profile:** `mlx` @ **109.1-110.1 t/s** (Metal FP16)  
+**Harness:** real `scubiee` CLI + uv-tool Python scripts, not in-process mocks for ship decision.
 
 ## Verdict
 
-**Mac production READY for 0.3.89 (soft-path / MCP)** — Gates **A, M (pytest), C, D** green after killing a stale `.venv` 0.3.29 daemon.
+**Mac production READY for 0.3.89 (soft-path / MCP)**: Gates **A, M (pytest), C, D** green after killing a stale `.venv` 0.3.29 daemon.
 
-**Not unconditional CLI parity:** `scubiee pack` crashes on this install (`ModuleNotFoundError: trace_lab.multi_seed` — module absent from both source tree and wheel). MCP `pack_context` in host-sim / ship_check is fine. `doctor` reports `checksum_mismatch` until a rebuild.
+**Not unconditional CLI parity:** `scubiee pack` crashes on this install (`ModuleNotFoundError: trace_lab.multi_seed`, module absent from both source tree and wheel). MCP `pack_context` in host-sim / ship_check is fine. `doctor` reports `checksum_mismatch` until a rebuild.
 
 Windows already conditional READY; same version tag → **cross-platform soft-path can be claimed** with the CLI-pack caveat below.
 
@@ -25,7 +25,7 @@ Windows already conditional READY; same version tag → **cross-platform soft-pa
 | **E** Full pytest | **not run** | Advisory per matrix |
 | **W** Windows | **skip** | Windows-only |
 
-## Host-sim SLAs (this run — after stale venv removed)
+## Host-sim SLAs (this run: after stale venv removed)
 
 | Phase | Budget | Result |
 |-------|--------|--------|
@@ -40,7 +40,7 @@ First attempt **failed** `WARM_TIMEOUT` because port 8765 was owned by a hung **
 
 All checks PASS (`failed: 0`): attach_kick, warm_ready_within_deadline (~1.36s, soft_search_ready=true), first_map_after_ready ~479ms, map_after_idle ~487ms.
 
-## Mac pytest (Gate M0–M1)
+## Mac pytest (Gate M0: M1)
 
 ```
 tests/mac_production_test.py
@@ -57,7 +57,7 @@ Optional: `test_lifecycle_runtime.py` + `test_hw_track.py` → **27 passed**.
 ## Critical Mac pitfalls (this session)
 
 1. **Stale local `.venv` steals the daemon.** `install_marker.json` still pointed at `.../hidden-context-engine-/.venv` (0.3.29). `scubiee engine ensure` spawned that interpreter even though `which scubiee` was uv-tool 0.3.89. Health then showed `version: 0.3.29`. Host-sim timed out on soft-ready. **Fix:** remove/rename `.venv` before Gate C; rewrite `~/.scubiee/install_marker.json` to the uv-tool prefix; never leave two installs sharing `~/.scubiee`.
-2. **`run_scubiee_e2e_suite.py` is broken on this tree** — references `tests/test_runtime_controller.py` (and others) that do not exist. Runner exits before any tests.
+2. **`run_scubiee_e2e_suite.py` is broken on this tree**: references `tests/test_runtime_controller.py` (and others) that do not exist. Runner exits before any tests.
 3. **CLI `pack` import bug:** `from trace_lab.multi_seed import ...` but `multi_seed` is not in `packages/trace_lab/` or the installed wheel. MCP pack path still green.
 4. **`doctor` → checksum_mismatch** (`rebuild_index` in repair_plan). Soft search still worked for host-sim; index may need `scubiee rebuild` / re-init for doctor green.
 5. LaunchAgent / dual-install warnings can persist until marker + supervisor are aligned with uv-tool only.
@@ -77,9 +77,9 @@ Optional: `test_lifecycle_runtime.py` + `test_hw_track.py` → **27 passed**.
 | `test_pack_seed_heat_thin` collection error | Test imported `apply_query_aware_heat` which was never implemented | Implemented in `composite_v1.py` | 16/16 thin+multi_seed passed |
 | BM25 cache always rebuilds | `load_bm25_cache` called `_rebuild_accel()` which **does not exist** on `BM25Index`; exception swallowed → perpetual miss | Call only if present | `test_bm25_cache_roundtrip` PASS; Gate B 167/167 |
 
-**Doctor `ok=False`:** not a code defect here — `repair_plan` is `replay_dirty_journal` while docs/AGENTS dirties are pending. Soft search remains ready.
+**Doctor `ok=False`:** not a code defect here, `repair_plan` is `replay_dirty_journal` while docs/AGENTS dirties are pending. Soft search remains ready.
 
-Host-sim after fixes: soft ~0.02–2.6s, map 4.2ms, pack 3.4ms, expand 128ms.
+Host-sim after fixes: soft ~0.02-2.6s, map 4.2ms, pack 3.4ms, expand 128ms.
 
 - `mac_pytest.log`, `mac_lifecycle.log`
 - `host_sim.log`, `mcp-host-sim-20260915T122408Z.{json,md}`

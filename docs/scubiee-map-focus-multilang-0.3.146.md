@@ -1,4 +1,4 @@
-# map `focus` — multi-language symbol resolution (0.3.146)
+# map `focus`: multi-language symbol resolution (0.3.146)
 
 ## Problem
 
@@ -45,7 +45,7 @@ Wiring in `map_v3_helpers.py`:
 
 ### Design properties
 - **Graceful degradation.** A missing grammar (`.kt .swift .php .scala .sh` are
-  not core deps) or a parse error returns `[]` and focus falls back to grep —
+  not core deps) or a parse error returns `[]` and focus falls back to grep
   it never raises.
 - **BOM-safe** on every path.
 - **Error-tolerant.** Tree-sitter recovers partial symbols from truncated or
@@ -53,10 +53,10 @@ Wiring in `map_v3_helpers.py`:
 
 ## Verification
 
-- `tests/test_map_lang_outline.py` — outline finds the expected symbols in TS,
+- `tests/test_map_lang_outline.py`: outline finds the expected symbols in TS,
   TSX, JS, Go, Rust, Java, C#, C++, C, Ruby; BOM-invariance per language;
   unknown-ext and missing-grammar both degrade to `[]`; Python AST + BOM path.
-- `tests/test_map_outline_bom.py` — the Python BOM regression.
+- `tests/test_map_outline_bom.py`: the Python BOM regression.
 - End-to-end on a 9-language fixture and on the repo's own `.ts` files:
   `focus` resolves bare names, `Class.method`, and BOM files to the correct
   file; `find` returns the correct multi-language symbols with `Class.method`

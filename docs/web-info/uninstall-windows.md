@@ -16,7 +16,7 @@ While **Cursor MCP** (or the engine daemon) is running, that Python process hold
 error: failed to remove directory ...\scubiee\Scripts: Access is denied
 ```
 
-This is a **file lock**, not an ACL problem. **Admin PowerShell does not help.** Reboot “works” only because it kills the locker — use unlock instead.
+This is a **file lock**, not an ACL problem. **Admin PowerShell does not help.** Reboot “works” only because it kills the locker, use unlock instead.
 
 **pip uninstall** can *look* easier because it only removes the `scubiee` package from site-packages, not the interpreter MCP is using. That is **not** a full uninstall of a uv tool install.
 
@@ -46,7 +46,7 @@ What **`unlock-tool`** does:
 What **`wipe --all --confirm --package`** does:
 
 1. Removes indexes, MCP wiring, model caches, rules, enrolled markers
-2. Uninstalls scubiee — JSON **`audit.remaining`** lists paths still on disk if locks remain
+2. Uninstalls scubiee, JSON **`audit.remaining`** lists paths still on disk if locks remain
 
 Then **reload Cursor** so MCP picks up the new state.
 

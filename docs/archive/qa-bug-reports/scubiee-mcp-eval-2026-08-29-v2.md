@@ -1,4 +1,4 @@
-# Scubiee MCP Tools — Evaluation Feedback (v2)
+# Scubiee MCP Tools: Evaluation Feedback (v2)
 
 **Date:** 2026-08-29  
 **Repo:** `ce_f01682314e33b2beb8cf8c0c8782bc43` (477 files / 3991 chunks)  
@@ -11,11 +11,11 @@
 
 | Finding | Severity | Action |
 |---------|----------|--------|
-| `call_sites` returns 0 / definitions only | High | **Fixed** — searches `\bident\s*\(` call sites, skips `def`/`class` lines; parses `file.py:symbol` targets |
-| `glob` skips `.scubiee/` | Medium | **Fixed** — explicit dot-dir patterns (e.g. `.scubiee/**`) descend into named dirs |
-| Shared-session hint on every response | Low | Open — dedupe after `gate()` |
+| `call_sites` returns 0 / definitions only | High | **Fixed**, searches `\bident\s*\(` call sites, skips `def`/`class` lines; parses `file.py:symbol` targets |
+| `glob` skips `.scubiee/` | Medium | **Fixed**, explicit dot-dir patterns (e.g. `.scubiee/**`) descend into named dirs |
+| Shared-session hint on every response | Low | Open, dedupe after `gate()` |
 | NL map queries weak | Low | Already signaled via `confidence:low` / `weak_match` |
-| `workspace` pin needs explicit `action` | Low | Open — improve param validation/docs |
+| `workspace` pin needs explicit `action` | Low | Open, improve param validation/docs |
 
 Regression tests: `tests/test_mcp_agent_eval_regressions.py` (`test_call_sites_*`, `test_glob_explicit_dot_scubiee_dir`).
 
@@ -51,7 +51,7 @@ Overall: **7/8 tools production-ready** at evaluation time; `call_sites` + dot-d
 
 ## Tool-by-Tool Results
 
-### 1. `gate` — Session bootstrap
+### 1. `gate`: Session bootstrap
 
 **Output:**
 ```
@@ -69,7 +69,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 2. `status` — Health & diagnostics
+### 2. `status`: Health & diagnostics
 
 | Aspect | Rating | Notes |
 |--------|--------|-------|
@@ -81,7 +81,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 3. `map` — Semantic cold-start locate
+### 3. `map`: Semantic cold-start locate
 
 **Good query (code vocabulary):**
 ```
@@ -106,7 +106,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 4. `focus` — Deep dive
+### 4. `focus`: Deep dive
 
 | Mode | Rating | Notes |
 |------|--------|-------|
@@ -117,7 +117,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 5. `grep` — Exact string search
+### 5. `grep`: Exact string search
 
 | Aspect | Rating | Notes |
 |--------|--------|-------|
@@ -128,7 +128,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 6. `glob` — File discovery
+### 6. `glob`: File discovery
 
 | Aspect | Rating | Notes |
 |--------|--------|-------|
@@ -137,7 +137,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 7. `workspace` — Session brain
+### 7. `workspace`: Session brain
 
 | Aspect | Rating | Notes |
 |--------|--------|-------|
@@ -147,7 +147,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 
 ---
 
-### 8. `expand` — Handle re-materialization
+### 8. `expand`: Handle re-materialization
 
 | Aspect | Rating | Notes |
 |--------|--------|-------|
@@ -170,7 +170,7 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 | Issue | Severity | Suggestion |
 |-------|----------|------------|
 | Shared-session hint on every response | Low | Show once per session after `gate()` |
-| NL map queries fail silently-ish | Low | Already warned — could reject below threshold |
+| NL map queries fail silently-ish | Low | Already warned, could reject below threshold |
 | `workspace` pin needs explicit `action` | Low | Better param docs / validation error |
 
 ---
@@ -178,8 +178,8 @@ Session 'cursor@conn-3e7230' may be shared across parallel chats...
 ## Recommendations
 
 **For agents using Scubiee:**
-1. Start with `gate()` — not `status()`
-2. Write map queries in **code vocabulary** (20–60 tokens)
+1. Start with `gate()`, not `status()`
+2. Write map queries in **code vocabulary** (20-60 tokens)
 3. Prefer `focus(span)` over reading whole files
 4. Use `grep` for literals; `call_sites` now finds Python calls after reload
 5. Call `workspace(show)` before re-mapping the same topic

@@ -1,4 +1,4 @@
-# macOS test plan — Scubiee 0.2.87
+# macOS test plan: Scubiee 0.2.87
 
 **Date:** 2026-08-27  
 **Release:** [scubiee 0.2.87 on PyPI](https://pypi.org/project/scubiee/0.2.87/)  
@@ -19,7 +19,7 @@ Use this on **Apple Silicon** (preferred) or Intel Mac. Goal: confirm the Scubie
 | `~/.context-engine/` | **`~/.scubiee/`** |
 | `<repo>/.context-engine/` | **`<repo>/.scubiee/`** |
 | Rules `context-engine.mdc` / old markers | **`scubiee.mdc`** / `<!-- scubiee:start -->` |
-| Legacy home/MCP migration helpers | **Removed** — fresh Scubiee only |
+| Legacy home/MCP migration helpers | **Removed**, fresh Scubiee only |
 
 There is **no** automatic migrate from `.context-engine` → `.scubiee`. Treat this as a clean install.
 
@@ -57,7 +57,7 @@ Windows-only items you can skip: `unlock-tool`, Access denied on `%APPDATA%\uv\t
 
 ## How to test (copy/paste)
 
-### 0) Prep — remove old identity if present
+### 0) Prep: remove old identity if present
 
 ```bash
 # Optional but recommended if you used older builds on this Mac:
@@ -120,7 +120,7 @@ scubiee status .
 
 **Pass:**
 
-- `init` succeeds (or asks `--confirm` only for huge scopes — that is OK).
+- `init` succeeds (or asks `--confirm` only for huge scopes, that is OK).
 - Repo has **`.scubiee/id.json`** (and **no** new `.context-engine/`).
 - Home index under **`~/.scubiee/projects/...`**.
 - Daemon healthy; chunks > 0 for a non-empty repo.
@@ -135,10 +135,10 @@ scubiee connect --cursor
 Inspect:
 
 ```bash
-# Global — MCP key must be scubiee; no literal ${workspaceFolder} in CTX_REPO
+# Global - MCP key must be scubiee; no literal ${workspaceFolder} in CTX_REPO
 cat ~/.cursor/mcp.json
 
-# Project pin — absolute CTX_REPO for this repo
+# Project pin - absolute CTX_REPO for this repo
 cat .cursor/mcp.json
 
 # Rules
@@ -176,7 +176,7 @@ map returns cards
 grep/glob return hits when the string/file exists
 ```
 
-**Fail (known class from earlier Mac session):** `managed: false` because global MCP still points at home / literal `${workspaceFolder}` — re-run `connect --cursor` **from the project**, reload MCP, new chat.
+**Fail (known class from earlier Mac session):** `managed: false` because global MCP still points at home / literal `${workspaceFolder}`, re-run `connect --cursor` **from the project**, reload MCP, new chat.
 
 ### 6) Health JSON branding
 
@@ -242,7 +242,7 @@ scubiee diagnose --no-tests --desktop
 - Windows `unlock-tool` / Access denied
 - npm package (not published)
 - Publishing again (0.2.87 already on PyPI)
-- Migrating old `.context-engine` data (unsupported — wipe and re-init)
+- Migrating old `.context-engine` data (unsupported, wipe and re-init)
 
 ---
 

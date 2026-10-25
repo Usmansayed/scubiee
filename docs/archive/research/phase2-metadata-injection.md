@@ -1,4 +1,4 @@
-# Phase 2–3 — Metadata Generation & Injection
+# Phase 2-3: Metadata Generation & Injection
 
 Date: 2026-07-31
 
@@ -70,8 +70,8 @@ python -m enrich testdata/scubiee-news-flow --out out/scubiee-enrich --limit 5
 
 ## Packages
 
-- `packages/metadata` — `build_chunk_meta` / `ChunkMeta.render`
-- `packages/enrich` — `chunk_repo_from_ir` / `inject_metadata` / `enrich_repo`
+- `packages/metadata`: `build_chunk_meta` / `ChunkMeta.render`
+- `packages/enrich`: `chunk_repo_from_ir` / `inject_metadata` / `enrich_repo`
 
 ## Next (Phase 4)
 

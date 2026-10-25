@@ -11,7 +11,7 @@ Wall: **14.24s**
 - pack avg body chars: 4322.0
 - verdicts: ['pack_better_for_exact_edit', 'pack_better_for_exact_edit', 'pack_better_for_exact_edit']
 
-## p01 — I need to figure out how the tool gets wired into my editor when I connect it.
+## p01: I need to figure out how the tool gets wired into my editor when I connect it.
 
 **Enrich:** `when I run connect how does the tool install into the editor write mcp config permissions allowlist auto approve project rules gate text so the agent can call locate tools`
 
@@ -27,7 +27,7 @@ Wall: **14.24s**
 - body_chars: **5073** · chain edges: `['seed', 'calls', 'calls', 'seed', 'calls', 'calls', 'calls', 'calls']`
 - verdict: **pack_better_for_exact_edit**
 
-## p02 — Search feels stale after I edit files — how does refresh / sync decide to update?
+## p02: Search feels stale after I edit files, how does refresh / sync decide to update?
 
 **Enrich:** `after I change code when does background sync or freshness decide the index is stale and refresh embeddings or search without full rebuild`
 
@@ -43,7 +43,7 @@ Wall: **14.24s**
 - body_chars: **1893** · chain edges: `['seed', 'calls', 'calls', 'calls', 'calls', 'calls', 'calls', 'calls']`
 - verdict: **pack_better_for_exact_edit**
 
-## p03 — I want to understand how a pack request turns a seed into a small set of code bodies.
+## p03: I want to understand how a pack request turns a seed into a small set of code bodies.
 
 **Enrich:** `how does pack take a seed and query then walk calls to build a lean heatmap and return hottest function bodies under a character budget`
 

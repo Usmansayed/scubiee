@@ -4,7 +4,7 @@
 
 - **20** human-like vague prompts in `fixtures/trace-lab/vague_prompts.json`
 - Each prompt has gold `must` / `should` / `must_not` context (the true heatmap)
-- Paraphrases share a `family` — they should yield the **same** hot set
+- Paraphrases share a `family`, they should yield the **same** hot set
 - Pipeline under test: **map (BM25 + hashed dense vectors) → seed → PolyTrace**
 
 Vector channel: deterministic hashed char/token n-gram embeddings (`packages/trace_lab/vector_index.py`), same cosine API product FAISS would use. No trained encoder required for the sim.
@@ -32,9 +32,9 @@ Family heatmap agreement:
 
 ## What this proves
 
-1. **The crisp 1.0 board was not a lie about tracing** — with the right seed, PolyTrace still hits ~0.99 F1 / 1.0 recall on vague wording, and paraphrases produce **identical** heatmaps.
-2. **The 1.0 does not transfer to end-to-end vague queries** — seed finding is the failure mode. Hybrid map is ~0.67 F1; vector-alone is worse (~0.56).
-3. **Vector search is necessary but not sufficient** — it helps some paraphrases, but hashed n-grams on a 37-node toy corpus lose to BM25+topic boosts. Product should use real embeddings here; the sim now has the slot.
+1. **The crisp 1.0 board was not a lie about tracing**: with the right seed, PolyTrace still hits ~0.99 F1 / 1.0 recall on vague wording, and paraphrases produce **identical** heatmaps.
+2. **The 1.0 does not transfer to end-to-end vague queries**: seed finding is the failure mode. Hybrid map is ~0.67 F1; vector-alone is worse (~0.56).
+3. **Vector search is necessary but not sufficient**: it helps some paraphrases, but hashed n-grams on a 37-node toy corpus lose to BM25+topic boosts. Product should use real embeddings here; the sim now has the slot.
 4. **mapfuse** (try several map seeds, merge heat) recovers almost all must-nodes (recall ~0.98) but can over-merge across wrong seeds → precision tax. Faction-locking candidates helps.
 
 ## Honest product shape

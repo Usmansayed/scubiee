@@ -1,4 +1,4 @@
-# CBM–CE Hybrid Facade Implementation Plan
+# CBM: CE Hybrid Facade Implementation Plan
 
 > **For agentic workers:** Implement task-by-task. Spec: `docs/superpowers/specs/2026-08-11-cbm-ce-hybrid-design.md`.
 

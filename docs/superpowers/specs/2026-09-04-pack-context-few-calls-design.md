@@ -1,7 +1,7 @@
-# Design: pack_context — few calls, fat relevant context
+# Design: pack_context: few calls, fat relevant context
 
 **Date:** 2026-09-04  
-**Status:** approved — implementing
+**Status:** approved, implementing
 
 ## Insight
 Fewer API calls with more relevant context often beats many thin calls (tool/decision overhead). Goal: full useful context in the fewest calls while saving total tokens vs guide→many Reads.

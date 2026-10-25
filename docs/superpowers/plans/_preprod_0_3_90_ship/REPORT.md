@@ -33,5 +33,5 @@
 | GitHub `main` | pushed `9b3f9a3` |
 | Tag `v0.3.90` | pushed |
 | Local `python -m build` | wheel+sdist ok (`trace_lab/multi_seed.py` in wheel) |
-| GitHub Actions `publish` | **FAILED** (pypi + npm) — same pattern as recent `v0.3.1x` tags; needs valid `PYPI_API_TOKEN` / `NPM_TOKEN` or trusted-publishing fix |
-| PyPI `scubiee==0.3.90` | **LIVE** — uploaded 2026-09-15 via local `uv publish` using `.env` `pipy_*` |
+| GitHub Actions `publish` | **FAILED** (pypi + npm), same pattern as recent `v0.3.1x` tags; needs valid `PYPI_API_TOKEN` / `NPM_TOKEN` or trusted-publishing fix |
+| PyPI `scubiee==0.3.90` | **LIVE**, uploaded 2026-09-15 via local `uv publish` using `.env` `pipy_*` |

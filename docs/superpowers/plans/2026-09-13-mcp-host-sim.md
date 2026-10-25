@@ -16,5 +16,5 @@ Implemented:
 - Unit tests green (29)
 
 Lane A live smoke (`--live --skip-idle`): harness works end-to-end; currently fails
-`WARM_TIMEOUT` because cold probe map is ~36–40s (>30s SLA). That is the product
-gap the sim is meant to catch — do not loosen the budget.
+`WARM_TIMEOUT` because cold probe map is ~36-40s (>30s SLA). That is the product
+gap the sim is meant to catch, do not loosen the budget.

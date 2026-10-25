@@ -11,7 +11,7 @@ runs) via `PATTERNS.md` and `TRAJECTORIES.md`. Nothing here rests on a single ru
 Cost of a coding agent ≈ (context carried per model call) × (number of model calls). The goal of
 the map tool is to let the agent reach a correct edit in the **fewest model calls**. This report
 asks: across every session we have, what actually drives call count up, and what should change in
-the tool, the rules, and the instructions to drive it down — without losing correctness.
+the tool, the rules, and the instructions to drive it down, without losing correctness.
 
 ---
 
@@ -25,14 +25,14 @@ Correlation of API calls to total tokens, per arm (`TRAJECTORIES.md` §1):
 | mini | 7 | 0.978 | 0.365 |
 | mini_v3 | 11 | **0.993** | 0.842 |
 | newmap | 8 | 0.987 | -0.121 |
-| all dev | 36 | **0.978** | — |
+| all dev | 36 | **0.978** | - |
 
-Call count explains ~98% of token variance. **Result size does not** — newmap's result-chars are
+Call count explains ~98% of token variance. **Result size does not**, newmap's result-chars are
 tiny (3-14k) yet it was sometimes the priciest arm purely from extra calls. This confirms the #1
 rule framing is correct and should stay the top line of both the rules and the instructions.
 
 Two different cost engines sit underneath that law:
-- **mini_v3** (old map): corr(grep, tokens) = **0.842** — its cost comes from **grep fallback
+- **mini_v3** (old map): corr(grep, tokens) = **0.842**, its cost comes from **grep fallback
   chains** when one map + one whole-file Read doesn't cover the task.
 - **newmap**: grep corr is negative (it almost never greps). Its cost comes from **extra `map`
   locate calls** (`refs`/`view` follow-ups after `find`).
@@ -56,7 +56,7 @@ Cheapest vs priciest trajectories, collapsed (`TRAJECTORIES.md` §3):
 - 692k (loss-shaped): `map:find map:view Read Skill Edit*6 map:refs*2 map:view Read Bash`
 
 The cheap cells are a clean two-step: locate once, edit. The expensive cells append an
-exploration chain — grep for mini_v3, `refs`/`view` for newmap. **The optimization target is the
+exploration chain, grep for mini_v3, `refs`/`view` for newmap. **The optimization target is the
 tail, not the first move.** Every arm's first move is already a single map call; the waste is what
 comes after.
 
@@ -85,13 +85,13 @@ over-ask: a one-symbol change needs one `find`.
 Two root causes, both fixable:
 1. **`refs` reflex after `find`.** `refs` is the most-used config (9 calls vs 8 finds) and most
    of those are "get the callers to be thorough" after `find` already returned connections (P4).
-2. **Deprecated aliases still fire.** Trajectories show `map:open` and `map:around` — the agent
+2. **Deprecated aliases still fire.** Trajectories show `map:open` and `map:around`, the agent
    reached for the old 5-config names. The consolidation to 3 isn't fully landing in the agent's
    head, so it treats "look around" as a distinct tool.
 
 ---
 
-## 4. Grep fallback is mini_v3's tax — and newmap already avoids it
+## 4. Grep fallback is mini_v3's tax: and newmap already avoids it
 
 Grep-fallback incidence and penalty (`TRAJECTORIES.md` §2):
 
@@ -103,7 +103,7 @@ Grep-fallback incidence and penalty (`TRAJECTORIES.md` §2):
 mini_v3 greps in over half its cells, paying a **~158k penalty** when it does. This is the old
 map's structural weakness: a whole-file Read gives the agent one file, and the moment the task
 needs a second symbol or file it greps. newmap's `find` returning the clustered region is exactly
-the fix — and newmap's grep rate is already low. **Do not add grep affordances to newmap;** its
+the fix, and newmap's grep rate is already low. **Do not add grep affordances to newmap;** its
 near-zero grep rate is a feature.
 
 ---
@@ -117,16 +117,16 @@ Skill calls separately, so they don't muddy the newmap-vs-mini_v3 token delta.
 
 ---
 
-## 6. What to optimize — prioritized
+## 6. What to optimize: prioritized
 
 ### Tool (`cfg_find` / bridge)
 - **T1 (done, keep).** `find` returns all clustered symbol bodies in one call. This is the single
-  change that flipped newmap from losing to winning (P2) — it attacks the §3 root cause directly.
+  change that flipped newmap from losing to winning (P2), it attacks the §3 root cause directly.
 - **T2 (do).** Make the deprecated aliases **loud**: when the agent calls config `open`/`around`/
   `outline`, prepend a one-line notice to the result: "note: `open`/`around` are folded into
   `view`/`refs`; prefer those." Addresses §3 cause #2 without breaking the aliases.
 - **T3 (do).** In `find`'s connections block, when connections are present, end with an explicit
-  "— you already have callers/callees; a `refs` call for wiring is NOT needed —" line. Addresses
+  ", you already have callers/callees; a `refs` call for wiring is NOT needed, " line. Addresses
   §3 cause #1 at the point of temptation (the result the agent is reading).
 - **T4 (consider, measure first).** `find` could accept `scope` already; add a cheap hint when
   the top hits span **multiple files** (a true multi-file change) vs one file, so the agent knows
@@ -143,16 +143,16 @@ Skill calls separately, so they don't muddy the newmap-vs-mini_v3 token delta.
 - **I1 (done this cycle).** Named the refs-after-find trap in the bad-trajectory list and in the
   `refs` how-to. §4/P4 justify it.
 - **I2 (do).** Add the 3-config consolidation note so the agent stops reaching for `open`/`around`:
-  one line — "there are exactly THREE configs: find, refs, view. `open`/`outline`/`around` are old
+  one line, "there are exactly THREE configs: find, refs, view. `open`/`outline`/`around` are old
   names; use view/refs." Addresses §3 cause #2 in the instruction the agent reads before acting.
 - **I3 (do).** Replace the generic "stop and edit as soon as you can" with the §3 count anchor so
   rules and instructions agree.
 
 ### Measurement / methodology
 - **M1.** Retire the `mini` arm (strictly dominated, P5). Baseline newmap against `mini_v3` only.
-- **M2.** Re-run both tasks at **n≥3** — all current wins are n=1 and mini_v3's variance is large
+- **M2.** Re-run both tasks at **n≥3**, all current wins are n=1 and mini_v3's variance is large
   (§3: 147k-785k on the same task). The newmap win is directional until repeated.
-- **M3.** Add a **multi-file** task (edit spanning 2+ files) — the current tasks are 1-file, so
+- **M3.** Add a **multi-file** task (edit spanning 2+ files), the current tasks are 1-file, so
   they can't exercise whether one `find` covers a multi-file change (T4's open question).
 - **M4.** Separate Skill-call tokens in the report (§5) so they don't distort the delta.
 

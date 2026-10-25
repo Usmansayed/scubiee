@@ -1,6 +1,6 @@
 # Repository lifecycle
 
-How Scubiee **enrolls**, **pauses**, **activates**, **removes**, and **wipes** a repository — and what data is kept or deleted at each step.
+How Scubiee **enrolls**, **pauses**, **activates**, **removes**, and **wipes** a repository, and what data is kept or deleted at each step.
 
 **Docs assume [scubiee 0.3.146](https://pypi.org/project/scubiee/0.3.146/)** (published on PyPI).
 
@@ -45,26 +45,26 @@ Uninitialized folders show `enrolled: false` and `state: "unmanaged"`.
 
 These are **not** interchangeable.
 
-### Per-repo pause — `scubiee pause .`
+### Per-repo pause: `scubiee pause .`
 
 - Stops background indexing/sync for **this repo only**
 - **Keeps** enrollment, index store, VectorDB, `.scubiee/id.json`
 - `sync-now` is blocked until you **`scubiee activate .`**
 - Other repos continue normally
 
-### Global stop — `scubiee stop`
+### Global stop: `scubiee stop`
 
 - Stops the engine and tears down MCP/rules surfaces machine-wide
 - **Keeps** all repo data on disk
 - Most CLI/MCP blocked until **`scubiee resume`**
 - Use before upgrade, uninstall, or when Windows file locks appear
 
-### Repo wipe — `scubiee wipe . --confirm`
+### Repo wipe: `scubiee wipe . --confirm`
 
 - **Unmanages** the repo and **deletes** its Scubiee-owned data
 - Does **not** delete your source code
 - Does **not** uninstall Scubiee or wipe other repos
-- Global MCP (e.g. user `~/.cursor/mcp.json`) stays — other projects keep working
+- Global MCP (e.g. user `~/.cursor/mcp.json`) stays, other projects keep working
 
 ---
 
@@ -89,7 +89,7 @@ In a TTY you can omit `--confirm` and answer the prompt. Without confirmation, e
 
 | Removed | Location / notes |
 |---------|------------------|
-| Registry enrollment | `~/.scubiee/registry.json` — repo becomes **unmanaged** |
+| Registry enrollment | `~/.scubiee/registry.json`, repo becomes **unmanaged** |
 | Index store | `~/.scubiee/projects/<project_id>/` |
 | VectorDB collections | Collections tied to this repo cwd |
 | Repo identity folder | `<repo>/.scubiee/` (and nested copies if any) |
@@ -173,11 +173,11 @@ scubiee wipe --all --confirm
 
 Optional flags:
 
-- `--keep-models` — keep CodeRank/FastEmbed caches
-- `--keep-package` — keep uv tool install
-- `--package` — also uninstall the scubiee package
+- `--keep-models`: keep CodeRank/FastEmbed caches
+- `--keep-package`: keep uv tool install
+- `--package`: also uninstall the scubiee package
 
-See [Commands reference — Settings & wipe](./commands-reference.md#settings--wipe) and [Uninstall guides](./uninstall-windows.md).
+See [Commands reference, Settings & wipe](./commands-reference.md#settings--wipe) and [Uninstall guides](./uninstall-windows.md).
 
 ---
 

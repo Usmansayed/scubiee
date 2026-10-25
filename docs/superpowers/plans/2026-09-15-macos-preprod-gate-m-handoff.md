@@ -23,8 +23,8 @@ Windows soft-path is already **conditionally ready**. Mac was **not run** and is
 
 **Ship rules (from matrix):**
 
-- Windows production: A–D + W green  
-- **Mac production: A–D style availability + Gate M green**  
+- Windows production: A, D + W green  
+- **Mac production: A, D style availability + Gate M green**  
 - Cross-platform: both OS on the **same** version tag  
 
 Full matrix: `docs/superpowers/plans/2026-09-14-scubiee-preprod-test-matrix.md`  
@@ -44,7 +44,7 @@ Install from **this repo** (or a commit that includes them). Do **not** test a s
 | Setup UI: single “Runtime installed” line | UX / progress dedup |
 | Open hard-fail → `open_repo_failed` (not mislabeled warming) | Admission errors |
 | WinError 193 daemon spawn fallback | Windows-specific; ignore on Mac |
-| Console blink: disk-backed schtasks cache + pythonw worker fallback | Mostly Windows; Mac uses LaunchAgent — still use same tree |
+| Console blink: disk-backed schtasks cache + pythonw worker fallback | Mostly Windows; Mac uses LaunchAgent, still use same tree |
 
 **Critical lesson from Windows:** unit tests against `packages/` can be green while the **installed** `uv tool` binary is stale. Always:
 
@@ -66,10 +66,10 @@ python -c "import pipeline; print(pipeline.__file__)"
 
 ## 3. Machine / env rules (do not skip)
 
-1. **One install owns `~/.scubiee`** — prefer `uv tool` only. Uninstall stray pip/conda scubiee copies.
+1. **One install owns `~/.scubiee`**: prefer `uv tool` only. Uninstall stray pip/conda scubiee copies.
 2. Run pytest with the **uv-tool Python that has MLX/ORT**, not a bare venv missing accel.
 3. Always set: `export PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`
-4. Prefer invoking the uv-tool `scubiee` on PATH after install; if `doctor` complains about binaries mismatch, call the tool binary under `$(uv tool dir)/scubiee/bin/scubiee` (path shape may vary — check `uv tool dir`).
+4. Prefer invoking the uv-tool `scubiee` on PATH after install; if `doctor` complains about binaries mismatch, call the tool binary under `$(uv tool dir)/scubiee/bin/scubiee` (path shape may vary, check `uv tool dir`).
 5. Soft map/pack SLA after warm: **≤1s**; expand first hydrate may be slower once; keep CPU calm (Windows capped 20%; on Mac record Activity Monitor peaks).
 6. Stop engine before `uv tool install --force` / upgrade (file locks).
 7. After `scubiee stop`, use **`scubiee resume`** (not `wake`).
@@ -85,7 +85,7 @@ mkdir -p docs/superpowers/plans/_preprod_0_3_89_macos
 
 ## 4. Exact sequence (copy-paste)
 
-### Step 0 — Sync + install
+### Step 0: Sync + install
 
 ```bash
 cd /path/to/context-engine
@@ -101,7 +101,7 @@ scubiee --version
 Find uv-tool Python (use this for all scripts/pytest below):
 
 ```bash
-# Typical Apple Silicon / uv layout — adjust if `uv tool dir` differs:
+# Typical Apple Silicon / uv layout - adjust if `uv tool dir` differs:
 UVPY="$(uv tool dir)/scubiee/bin/python"
 # Fallback if needed:
 # UVPY="$(dirname "$(dirname "$(readlink -f "$(which scubiee)")")")/bin/python"
@@ -109,7 +109,7 @@ UVPY="$(uv tool dir)/scubiee/bin/python"
 "$UVPY" -c "import mlx, fastembed, onnxruntime; print('mlx_ok', mlx.__file__)"
 ```
 
-### Step 1 — Gate A (env + soft ready)
+### Step 1: Gate A (env + soft ready)
 
 ```bash
 scubiee setup --repair
@@ -129,7 +129,7 @@ scubiee setup --repair
 scubiee setup --status          # must return to mlx on Apple Silicon
 ```
 
-### Step 2 — Gate M0–M1 (Mac pytest)
+### Step 2: Gate M0, M1 (Mac pytest)
 
 ```bash
 # Install pytest into uv-tool env if missing:
@@ -161,7 +161,7 @@ Optional Darwin lifecycle:
   2>&1 | tee docs/superpowers/plans/_preprod_0_3_89_macos/mac_lifecycle.log
 ```
 
-### Step 3 — Gate B (curated e2e, same as Windows)
+### Step 3: Gate B (curated e2e, same as Windows)
 
 ```bash
 "$UVPY" scripts/run_scubiee_e2e_suite.py \
@@ -171,7 +171,7 @@ Optional Darwin lifecycle:
 
 **Pass:** `[e2e] ok=True` (Windows had 163 passed).
 
-### Step 4 — Gate C (real MCP ship + host-sim + warm) — **P0**
+### Step 4: Gate C (real MCP ship + host-sim + warm), **P0**
 
 ```bash
 scubiee engine ensure
@@ -200,7 +200,7 @@ Windows reference SLAs this cycle: soft ~2.9s, map/pack ~60ms, expand ~0.65s.
 
 Also acceptable: `scripts/run_mcp_ship_preprod.py --require-live --skip-cli` if you use that wrapper.
 
-### Step 5 — Gate D (real CLI combo)
+### Step 5: Gate D (real CLI combo)
 
 ```bash
 "$UVPY" scripts/run_cli_combination_tests.py --quick \
@@ -211,9 +211,9 @@ scubiee preflight . 2>&1 | tee docs/superpowers/plans/_preprod_0_3_89_macos/pref
 ```
 
 **Pass:** all combo rows PASS (Windows: 30/30).  
-Note: CLI combo **stops the engine** — re-run `scubiee engine ensure` before claiming soft-ready again.
+Note: CLI combo **stops the engine**, re-run `scubiee engine ensure` before claiming soft-ready again.
 
-### Step 6 — Gate M3 product journey (manual)
+### Step 6: Gate M3 product journey (manual)
 
 ```bash
 # Small clean repo or this checkout after ensure:
@@ -228,7 +228,7 @@ scubiee resume          # not wake
 - [ ] Live `map` then `pack_context` lean ≤1s when warm  
 - [ ] Activity Monitor: idle CPU low; RSS full-warm while connected is OK  
 
-### Step 7 — Report
+### Step 7: Report
 
 Write:
 
@@ -252,7 +252,7 @@ Also fill one row in `docs/macos-deferred-verification.md` “Record results” 
 **Ship decision language to use:**
 
 - If M + C + D green: **Mac production READY for 0.3.89** (plus Windows already conditional).  
-- If only Mac pytest green but host-sim fails: **not ready** — host-sim is P0.
+- If only Mac pytest green but host-sim fails: **not ready**, host-sim is P0.
 
 ---
 
@@ -262,19 +262,19 @@ Also fill one row in `docs/macos-deferred-verification.md` “Record results” 
 2. **Stale uv tool** after pulling fixes → `uv tool install --force '.[macos]' --refresh`.  
 3. **`CTX_HOME` / `CTX_ALLOW_TEST_HOME` left set** → wrong home / wrong port; unset before Gate A.  
 4. **Dual install** (pip + uv) fighting `~/.scubiee`.  
-5. **Host-sim leftovers** — sim should kill MCP leftovers; if soft stuck false, quit IDE MCP / kill stray scubiee MCP procs then re-ensure.  
-6. **Cursor `${workspaceFolder}`** — older Mac notes: global pins may leave `managed=false`; prefer project-level connect (`scubiee connect --cursor` in the repo).  
+5. **Host-sim leftovers**: sim should kill MCP leftovers; if soft stuck false, quit IDE MCP / kill stray scubiee MCP procs then re-ensure.  
+6. **Cursor `${workspaceFolder}`**: older Mac notes: global pins may leave `managed=false`; prefer project-level connect (`scubiee connect --cursor` in the repo).  
 7. **Do not** re-prove Windows DML / JobObject / pythonw blink on Mac.  
-8. Quality bakeoffs (polytrace F1, etc.) are **advisory** — do not block soft-path if map/pack SLAs are green.
+8. Quality bakeoffs (polytrace F1, etc.) are **advisory**, do not block soft-path if map/pack SLAs are green.
 
 ---
 
 ## 7. Optional wipe sanity (quick)
 
-Only if you have time — validates the wipe shim fix on Darwin too:
+Only if you have time, validates the wipe shim fix on Darwin too:
 
 ```bash
-# Destructive to local scubiee state — use a throwaway machine profile or accept re-setup
+# Destructive to local scubiee state - use a throwaway machine profile or accept re-setup
 # scubiee wipe --all --confirm
 # ls ~/.local/bin/scubiee*     # should be gone
 # uv tool install '.[macos]'   # should NOT need --force for “executables already present”
@@ -292,4 +292,4 @@ Paste or commit:
 3. Machine line: model (e.g. MacBook Pro M-series), macOS version, `scubiee --version`, profile (`mlx`/`cpu`)  
 4. One-line verdict: **Gate M PASS/FAIL** + any P0 blocker  
 
-Contact context: Windows operator already signed A–D/W conditional green on 0.3.89; you own Gate M + Mac availability parity.
+Contact context: Windows operator already signed A, D/W conditional green on 0.3.89; you own Gate M + Mac availability parity.

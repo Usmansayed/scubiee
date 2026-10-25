@@ -1,4 +1,4 @@
-# Mac session notes — workspace token + related fixes (2026-08-26)
+# Mac session notes: workspace token + related fixes (2026-08-26)
 
 **Machine:** Apple Silicon, macOS 26.5.2  
 **Repo:** `hidden-context-engine-` (tree ~0.2.82)  
@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Cursor does not expand `${workspaceFolder}` in global MCP env — **FIXED**
+## 1. Cursor does not expand `${workspaceFolder}` in global MCP env: **FIXED**
 
 ### Symptom (live, after disconnect → connect)
 
@@ -48,8 +48,8 @@ With unexpanded tokens + cwd=`$HOME`, step 5 wins → home → `managed=false`.
 
 ### Fix shipped (0.2.85+)
 
-1. **Cursor is in `_GLOBAL_OMIT_CTX_REPO_SLUGS`** — global `~/.cursor/mcp.json` no longer gets `CTX_REPO` / `CURSOR_*` tokens (same pattern as special-4).
-2. **Project pin remains** — `connect --cursor` writes `.cursor/mcp.json` with absolute `CTX_REPO` (+ project id) so the workspace-attached MCP resolves correctly.
+1. **Cursor is in `_GLOBAL_OMIT_CTX_REPO_SLUGS`**: global `~/.cursor/mcp.json` no longer gets `CTX_REPO` / `CURSOR_*` tokens (same pattern as special-4).
+2. **Project pin remains**: `connect --cursor` writes `.cursor/mcp.json` with absolute `CTX_REPO` (+ project id) so the workspace-attached MCP resolves correctly.
 3. Resolver still ignores unexpanded placeholders if an old global config remains.
 
 **Acceptance:** after `scubiee connect --cursor` in a managed repo, agent `status()` reports that repo path and `managed=true` (attach to project MCP / reload MCP).
@@ -63,7 +63,7 @@ Special-4 unchanged: **kiro, copilot, cline, roo-code** (project absolute pins).
 ### A. MCP workspace resolution (`packages/pipeline/mcp_locate.py`)
 
 - Extended `_IDE_WORKSPACE_ENV_KEYS`: `CURSOR_CWD`, `CLAUDE_PROJECT_DIR`, `CODEX_WORKSPACE_ROOT`, `OPENCODE_DEFAULT_PROJECT`, …
-- Added `_is_unexpanded_placeholder()` — ignore literal `${workspaceFolder}` / `$(…)` / `%{…}`
+- Added `_is_unexpanded_placeholder()`, ignore literal `${workspaceFolder}` / `$(…)` / `%{…}`
 - `_ide_workspace_candidates` / `_ctx_repo_raw`: skip `/`, unexpanded tokens, nonexistent paths
 
 ### B. Connect writers (`packages/pipeline/rules_installer.py`)
@@ -77,26 +77,26 @@ Special-4 unchanged: **kiro, copilot, cline, roo-code** (project absolute pins).
 
 ### C. Mac accel / Core ML pytest fixes
 
-- `packages/pipeline/accel.py` — Darwin host fallback must not override explicit Linux/Windows `detected.os`; `CTX_EMBED_BACKEND=mlx` overlay must not rewrite `accel.json`
-- `packages/pipeline/coreml_mac.py` — topological sort after `bypass_empty_rotary_remainders` patch
+- `packages/pipeline/accel.py`: Darwin host fallback must not override explicit Linux/Windows `detected.os`; `CTX_EMBED_BACKEND=mlx` overlay must not rewrite `accel.json`
+- `packages/pipeline/coreml_mac.py`: topological sort after `bypass_empty_rotary_remainders` patch
 
 ### D. Wipe
 
-- `packages/pipeline/wipe.py` — avoid recreating FastEmbed cache during audit; MLX under `CTX_HOME` listed in model targets
-- `packages/pipeline/__main__.py` — `--yes` alias for wipe `--confirm`
-- `tests/test_wipe.py` — coverage for wipe behavior
+- `packages/pipeline/wipe.py`: avoid recreating FastEmbed cache during audit; MLX under `CTX_HOME` listed in model targets
+- `packages/pipeline/__main__.py`: `--yes` alias for wipe `--confirm`
+- `tests/test_wipe.py`: coverage for wipe behavior
 
 ### E. Tests
 
-- `tests/test_connect_formats.py` — global entries assert `${workspaceFolder}` for non-special-4; absolute pins forbidden; windsurf/continue/zed install smoke; Mac/Windows path cases retained
-- `tests/test_mcp_repo_resolution.py` — ignore unexpanded tokens; prefer `CLAUDE_PROJECT_DIR` / `CODEX_WORKSPACE_ROOT`
+- `tests/test_connect_formats.py`: global entries assert `${workspaceFolder}` for non-special-4; absolute pins forbidden; windsurf/continue/zed install smoke; Mac/Windows path cases retained
+- `tests/test_mcp_repo_resolution.py`: ignore unexpanded tokens; prefer `CLAUDE_PROJECT_DIR` / `CODEX_WORKSPACE_ROOT`
 
 ### F. Docs (research + handoff)
 
 - `docs/cursor-mcp-workspace-resolution-research.md` (new)
 - `docs/mcp-workspace-mismatch-all-hosts-research.md` (new)
 - Minor updates: `docs/mac-cursor-session-handoff-2026-08-26.md`, `docs/macos-deferred-verification.md`
-- **This file** — issue write-up + change log
+- **This file**: issue write-up + change log
 
 ---
 
@@ -106,7 +106,7 @@ Special-4 unchanged: **kiro, copilot, cline, roo-code** (project absolute pins).
 |-------|--------|
 | `pytest` connect formats + mcp repo resolution | **41 passed** (via `uv run --with pytest`) |
 | Live `disconnect --cursor` → `connect --cursor` | Config write OK; tokens present in `~/.cursor/mcp.json` |
-| Live agent `status()` after reconnect | **FAIL** — home / unmanaged (issue §1) |
+| Live agent `status()` after reconnect | **FAIL**, home / unmanaged (issue §1) |
 | Process env inspection | Confirms unexpanded `${workspaceFolder}` |
 
 ---

@@ -2,7 +2,7 @@
 
 **Agent:** [Native collect](15507cc0-5b32-4d4a-8101-c0d275f93433)  
 **Mode:** no Scubiee (Grep/Glob/Read only)  
-**Status:** complete — Scubiee twin done: [Scubiee collect](1c93487b-459d-4f90-93e7-9193543197a6). Compare: `2026-09-06-compare-native-vs-scubiee-cli-heatmap-collect.md`.
+**Status:** complete, Scubiee twin done: [Scubiee collect](1c93487b-459d-4f90-93e7-9193543197a6). Compare: `2026-09-06-compare-native-vs-scubiee-cli-heatmap-collect.md`.
 
 ## Work prompt
 

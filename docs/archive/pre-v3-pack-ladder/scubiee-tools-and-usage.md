@@ -23,17 +23,17 @@ Before the per-tool detail, a few concepts recur throughout.
   bind the request to the right repo and chat.
 
 - **The repo IR (`_RepoTrace`).** On first use Scubiee builds an in-memory intermediate
-  representation of the repository: `nodes` (a dict of `TraceNode` — every function/method/
+  representation of the repository: `nodes` (a dict of `TraceNode`, every function/method/
   class/const with its file, symbol, kind, line span, and body text), an **AST graph**, an
   **LSP index**, a **lexical index**, and optionally a **Graphify** graph. This is expensive to
   build once (seconds), so it is pickled to a disk **bundle** keyed by a `corpus_fingerprint`,
   served stale-while-revalidate, and cached in memory with a 600s TTL. The MCP worker **never
-  cold-bakes on the request thread** — if the bundle isn't ready it kicks off a background bake
+  cold-bakes on the request thread**, if the bundle isn't ready it kicks off a background bake
   and returns `status:"warming"` so the agent retries rather than blocking.
 
 - **Heatmap → cards.** The tracer produces a `Heatmap` of scored nodes. `heatmap_to_cards`
   turns those into **cards**: `{id, file, symbol, kind, role, start_line, end_line, loc, score,
-  heat, rank, why, path}`. A card is a *pointer with a reason* — a `loc` like
+  heat, rank, why, path}`. A card is a *pointer with a reason* - a `loc` like
   `packages/pipeline/engine.py:120-176`, a relevance `score`, a `heat` label, and a short `why`
   string explaining the edge that admitted it. Cards deliberately carry **no code body**.
 
@@ -55,7 +55,7 @@ Before the per-tool detail, a few concepts recur throughout.
 
 ## 2. The tools
 
-### 2.1 `gate` — the ~5-token managed check
+### 2.1 `gate`: the ~5-token managed check
 
 **What it does.** The cheapest possible signal of whether Scubiee should be used at all. Call
 it once at the start of a chat instead of a full `status()`.
@@ -64,17 +64,17 @@ it once at the start of a chat instead of a full `status()`.
 awake without waiting) then `_gate_line()`. It reads `.scubiee/id.json` and the pause state and
 returns a tiny string:
 
-- `0` — not managed; use native tools, don't poll.
-- `0:r` — not managed, but the status TTL elapsed; call `gate()` once more.
-- `1:ce_…` — managed; reuse that `ce_…` as `project_id` on subsequent locate calls.
-- `p` — Scubiee is paused/stopped; **do not** call locate tools, use native Read/Grep/Glob.
+- `0`: not managed; use native tools, don't poll.
+- `0:r`: not managed, but the status TTL elapsed; call `gate()` once more.
+- `1:ce_…`: managed; reuse that `ce_…` as `project_id` on subsequent locate calls.
+- `p`: Scubiee is paused/stopped; **do not** call locate tools, use native Read/Grep/Glob.
 
 When managed it also probes engine health and may append ` warming retry:3`, ` sid:<session>`,
 and ` shared` (with a hint) if it detects several chats sharing one MCP process.
 
 **Returns.** A single short line (a handful of tokens). No code, no bodies.
 
-### 2.2 `status` — engine and session health
+### 2.2 `status`: engine and session health
 
 **What it does.** Reports whether the engine is up, warm, and which tools the surface exposes.
 It is for health, **not** for finding code.
@@ -90,7 +90,7 @@ If paused, it returns lifecycle guidance (how to resume) with `should_use_mcp:fa
 `agent_ready`, `sync_state`, …), the surface's tool list, and session info. It honestly reports
 `warming` rather than faking readiness.
 
-### 2.3 `map` — Call 1: soft, ranked pointers (no bodies)
+### 2.3 `map`: Call 1: soft, ranked pointers (no bodies)
 
 **What it does.** Turns a natural-language, code-vocabulary query into a ranked list of ~12
 candidate spans plus **suggested seeds** to start a pack from. This is the cold-start /
@@ -98,32 +98,32 @@ new-topic entry point.
 
 **How it works internally.**
 1. Validates and normalizes the query. Checks a process-local dense cache
-   (`map_result_cache`) and a per-session duplicate cache — an identical query returns
+   (`map_result_cache`) and a per-session duplicate cache, an identical query returns
    instantly with `cached:true`.
 2. Otherwise it runs **dense semantic retrieval**: `search_impl(mode="soft", include="hits")`
    → `tool_search_code`, which **requires FastEmbed dense retrieval (`D_channel_best`)**. If the
-   embedder isn't loaded yet it returns `dense_embed_loading`/`warming` — it deliberately does
+   embedder isn't loaded yet it returns `dense_embed_loading`/`warming`, it deliberately does
    **not** fall back to BM25-only, so `map` results are always embedding-quality.
 3. `_enrich_map_cards` builds the cards; `_assess_map_confidence` may trim to the top 3 and set
    `weak_match` when confidence is low.
 4. **Seed selection.** `pick_suggested_seed` (primary) and `pick_suggested_seeds(limit=3)` pick
-   1–3 *distinct production* seeds: they prefer separate `packages/|src/|app/|lib/` files, skip
+   1-3 *distinct production* seeds: they prefer separate `packages/|src/|app/|lib/` files, skip
    test/docs/eval/scripts, penalize weak/leaf/private symbols, and boost query-named files and
    symbols. `finalize_suggested_seed` fills each seed's `symbol`/`loc`/`kind` by resolving the
-   public class/entrypoint in that file — but on the map path with `load_repo=False`, so map
+   public class/entrypoint in that file, but on the map path with `load_repo=False`, so map
    stays search-bound (~2s) instead of building the AST graph (~16s). Unresolved seeds are
    returned file-only with `seed_incomplete:true`.
 
 **Returns.** `{ok, tool:"map", query, k, cards:[…], count, scope:"indexed_chunks",
 ranked_only:true, suggested_seed, suggested_seeds:[≤3], ladder, next, dense:true,
 retrieve_mode:"D_channel_best", timings, confidence, elapsed_ms, session_id}`. Cards are
-pointers only — file, symbol, loc, score, heat, why — no bodies.
+pointers only, file, symbol, loc, score, heat, why, no bodies.
 
-### 2.4 `pack_context` — Call 2: the heatmap around a seed
+### 2.4 `pack_context`: Call 2: the heatmap around a seed
 
 **What it does.** Given a seed (a file + symbol/line, usually a `suggested_seed` from `map`) and
 an enriched query, it traces the code around that seed and returns a ranked **heatmap** of the
-call/data neighborhood — the spans an agent should read to understand and edit this area. By
+call/data neighborhood, the spans an agent should read to understand and edit this area. By
 default it returns **locs only, no bodies** (the agent Native-Reads the hot spans).
 
 **How it works internally.**
@@ -153,8 +153,8 @@ default it returns **locs only, no bodies** (the agent Native-Reads the hot span
   later `collect_hot_context`).
 - Builds a bodiless **`chain`** (a call-chain outline), a **`cold`** list (low-score unpacked
   locs), and flags **`thin`** when the neighborhood is too sparse or seed coverage is
-  incomplete — steering the agent to `expand_context` rather than re-packing.
-- `mode` (lean/full) and `policy` (strict/broad) **do not change the ranker** — both stay on
+  incomplete, steering the agent to `expand_context` rather than re-packing.
+- `mode` (lean/full) and `policy` (strict/broad) **do not change the ranker**, both stay on
   `composite_v1`. `broad` may one-shot reseed a leaf method to its enclosing public class; a
   class seed that packs file-local may hop to a richer subclass (`seed_promoted`).
 
@@ -163,23 +163,23 @@ heatmap:[slim cards], chain:[…], pack:[bodies], cold:[locs], count, packed, ch
 hot_threshold, thin, prefer, engine, escape, graphify, n_nodes, guide, next,
 next_actions:[{tool,when,args}], ladder, sla, elapsed_ms, session_id}`.
 
-### 2.5 `expand_context` — Call 3: delta cards in a direction
+### 2.5 `expand_context`: Call 3: delta cards in a direction
 
 **What it does.** Grows the map from a specific node in a chosen **direction**, returning only
-the **new (delta)** cards — the hops the first pack didn't include. This is how an agent chases
+the **new (delta)** cards, the hops the first pack didn't include. This is how an agent chases
 "who calls this," "what does this call," "what are the side effects," etc., without re-running a
 whole pack.
 
 **How it works internally.** Resolves the node from `node` / `seed_file+seed_symbol` / the
 hottest prior card. Direction (alias `intent`) is one of:
-- **`callees` / `flow`** — direct outgoing calls first; the tracer only fills real call hops.
-- **`callers` / `refs`** — incoming calls: lexical callers + structural reverse edges + tracer
+- **`callees` / `flow`**: direct outgoing calls first; the tracer only fills real call hops.
+- **`callers` / `refs`**: incoming calls: lexical callers + structural reverse edges + tracer
   results filtered to reverse `why` (tagged `evidence: text_call|used_by|called_by`). This
   deliberately escapes the strict forward-only composite pack.
-- **`effects` / `site`** — nodes whose symbol looks like a side effect (log/print/track/send +
+- **`effects` / `site`**: nodes whose symbol looks like a side effect (log/print/track/send +
   file-writing calls).
-- **`config`** — `const` nodes, `uses` edges, and calls touching settings / `mcp.json`.
-- **`broad` / `all`** — structural 1-hop + same-file public siblings (no expensive poly trace).
+- **`config`**: `const` nodes, `uses` edges, and calls touching settings / `mcp.json`.
+- **`broad` / `all`**: structural 1-hop + same-file public siblings (no expensive poly trace).
 
 Cards already on the pack heatmap are annotated `already_in_pack:true` rather than dropped;
 already-expanded ids are skipped to avoid thrash. `rank_expand_delta` orders the merged set and
@@ -190,25 +190,25 @@ already-expanded ids are skipped to avoid thrash. `rank_expand_delta` orders the
 pack:[bodies], empty_reason?, guide, next, next_actions, session_id, hydrate_ms}`. The delta is
 merged into the session trace.
 
-### 2.6 `collect_hot_context` — bodies on demand
+### 2.6 `collect_hot_context`: bodies on demand
 
 **What it does.** Materializes the actual **code text** for session heatmap cards above a score
 threshold, or for explicit `ids=` (comma-separated `file::symbol`). It's the batched "give me
-the bodies" escape hatch — the docs still nudge agents to prefer native Read of the loc spans.
+the bodies" escape hatch, the docs still nudge agents to prefer native Read of the loc spans.
 
 **How it works internally.** Loads the session cards. If the AST is cold, it span-reads from the
 card locs (never sync-loading the large pickle); if warm, `run_collect_hot` selects cards ≥
 `threshold` (default 0.45 for session cards, 0.0 when explicit `ids=`), sorts them (preferred
 ids first, then real functions before consts/helpers, then by score), refreshes each node's text
 from disk, and fits bodies into `max_chars` (default 8000) with a fair per-body share. Explicit
-`ids=` always win — even below threshold or minted straight from the node table — and
+`ids=` always win, even below threshold or minted straight from the node table, and
 already-packed ids are skipped unless explicitly requested.
 
 **Returns.** `{ok, tool:"collect_hot_context", threshold, bodies:[{id, file, symbol,
 start_line, end_line, loc, score, heat, why, text}], count, chars, empty_bodies, guide, next,
 session_id}`. Collected ids are folded into `packed_ids`.
 
-### 2.7 `workspace` — mid-session reorient (show / pin / clear)
+### 2.7 `workspace`: mid-session reorient (show / pin / clear)
 
 **What it does.** The session "brain." `show` (default) surfaces what the agent has already
 touched; `pin` marks a file as important; `clear` resets for a new topic.
@@ -222,7 +222,7 @@ session store and work session.
 **Returns.** `{ok, tool:"workspace", action, session_id, topic, pins, heatmap, spans,
 focus_seen, map_queries, next}` for `show`; confirmation payloads for `pin`/`clear`.
 
-### 2.8 `expand` — re-materialize a stored span by handle
+### 2.8 `expand`: re-materialize a stored span by handle
 
 **What it does.** Fetches the body for a previously seen span **handle** (e.g. a heatmap id
 `file::symbol`, a `file:start-end`, or a handle returned by a prior read/recall). Distinct from
@@ -255,7 +255,7 @@ gate (once)                         → am I managed? get project_id
 map(query, k=12)                    → ranked cards + suggested_seeds  (no bodies)
    ↓  fold suggested_seed + hot card names into a denser query
 pack_context(query, seed_*, lean)   → heatmap locs around the seed   (no bodies)
-   ↓  Native-Read the top ~4–6 hot loc spans
+   ↓  Native-Read the top ~4-6 hot loc spans
 expand_context(node, direction)     → only if a hop is missing (callers/callees/effects)
 collect_hot_context(ids=…)          → only if you need bodies batched instead of native Read
 ```
@@ -264,7 +264,7 @@ collect_hot_context(ids=…)          → only if you need bodies batched instea
 
 1. `map("<X> with concrete symbols, paths, APIs, error strings, verbs>")`.
 2. If the cards already cluster in one module and you only need to *explain* it, Native-Read the
-   top card `loc` spans — you can skip pack (the "explain escape").
+   top card `loc` spans, you can skip pack (the "explain escape").
 3. If you need the neighborhood, `pack_context(seed = suggested_seed, mode=lean)` and read the
    `chain` + hottest locs.
 4. `expand_context(direction=callers)` to see who uses it, or `callees` for what it calls.
@@ -272,7 +272,7 @@ collect_hot_context(ids=…)          → only if you need bodies batched instea
 ### 3.2 "Fix a bug in X" / "change behavior of X" (edit / debug)
 
 1. `map` with the symptom + symbols + error text.
-2. **`pack_context` is mandatory for an edit** — get the heatmap around the seed so you see the
+2. **`pack_context` is mandatory for an edit**: get the heatmap around the seed so you see the
    call chain and the spans that will be affected.
 3. Native-Read the hot loc spans; edit with host tools.
 4. `expand_context(direction=effects)` to catch logging/IO side effects, `callers` to find
@@ -290,7 +290,7 @@ collect_hot_context(ids=…)          → only if you need bodies batched instea
 
 Do **not** use `map`/`pack`. Use the host: **Grep** for literals/imports/error strings,
 **Glob** for filenames, **Read** for a known `path:line`. Scubiee's own docs forbid soft
-map/pack for needle lookups — it's slower and less precise than grep for exact strings.
+map/pack for needle lookups, it's slower and less precise than grep for exact strings.
 
 ### 3.5 Multi-module change
 
@@ -306,7 +306,7 @@ next `map`.
 ### 3.7 Health / warming
 
 If `gate` says warming or a tool returns `status:"warming"`, **retry** the same tool in a few
-seconds — don't fall back to native and don't spam `status`. If `gate` returns `p` (paused),
+seconds, don't fall back to native and don't spam `status`. If `gate` returns `p` (paused),
 stop calling Scubiee entirely and use native tools.
 
 ---
@@ -317,14 +317,14 @@ The whole surface is engineered so the agent pays for **pointers first, bodies l
 the bodies it needs.**
 
 1. **Ranked pointers instead of file dumps.** `map` and `pack_context` return `loc` + `score` +
-   `why` with **no code bodies** by default. A heatmap of 12–16 cards is a few hundred tokens;
+   `why` with **no code bodies** by default. A heatmap of 12-16 cards is a few hundred tokens;
    the equivalent "read the 6 candidate files to find the right one" is tens of thousands. The
    agent reads only the handful of hot spans the heatmap points to.
 
 2. **Precision ranking removes noise before it reaches the model.** `composite_v1` demotes sinks
    the query didn't ask for (×0.18), tiny/private helpers, and known noise files, while boosting
    the DFG spine and pinning the seed. The agent's context fills with the *load-bearing* spans,
-   not accessor/logging clutter — higher signal per token.
+   not accessor/logging clutter, higher signal per token.
 
 3. **The ladder caps fan-out.** map → pack(lean) → expand, ≤ 3 locate calls per beat, is a
    bounded trajectory. `expand_context` returns **only delta** cards and the session tracks
@@ -335,7 +335,7 @@ the bodies it needs.**
 4. **Bodies are opt-in and budgeted.** Default pack is heatmap-only. When bodies are needed,
    `budget_chars` / `max_bodies` cap the payload, bodies are fit to a fair share, and the seed is
    always preferred. `collect_hot_context` fetches bodies **by id** so the agent pulls exactly
-   the spans it will edit — not their whole files.
+   the spans it will edit, not their whole files.
 
 5. **Loc-guided native Read replaces whole-file Read.** Every guide says *Native-Read the hot
    `loc` spans, BAN whole-file Read of heatmap paths.* Reading `engine.py:120-176` costs a
@@ -357,7 +357,7 @@ the bodies it needs.**
 **Net effect.** The agent spends tokens on *reasoning and editing* the correct ~5% of the code,
 not on discovering it by reading the other 95%. Measured on the internal Claude Code SDK A/B
 pipeline, routing retrieval through this surface cut code-reading tokens substantially while
-preserving answer recall — the model still gets every span it needs, just not the spans it
+preserving answer recall, the model still gets every span it needs, just not the spans it
 doesn't.
 
 ---

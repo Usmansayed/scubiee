@@ -1,6 +1,6 @@
 # Deep dive: does Scubiee save tokens, why it didn't here, and how to make it
 
-This documents everything learned across the Claude Code SDK A/B session — the
+This documents everything learned across the Claude Code SDK A/B session, the
 mistakes in the first design, what the traces actually showed, *why* the
 Scubiee arm burned more tokens, and concrete, testable changes to flip Scubiee
 from a token *cost* into a token *saving*.
@@ -19,9 +19,9 @@ Everything below is grounded in real runs under
 - The cause is **not** that Scubiee's locate is bad. It's that:
   1. Early prompts were **grep-able** (they leaked class/field names), so the
      agent never needed locate at all.
-  2. The Scubiee **rule text is re-sent every turn** as cached context — a flat
+  2. The Scubiee **rule text is re-sent every turn** as cached context, a flat
      tax even when Scubiee is never called.
-  3. When the agent *did* call `map`, it used it **additively** — it ran `map`
+  3. When the agent *did* call `map`, it used it **additively**, it ran `map`
      and then **grepped the same thing anyway** to verify, paying for both.
 - Making Scubiee actually save tokens is a **product + prompting** problem, not
   a "run it again" problem. Concrete fixes are in §6.
@@ -45,7 +45,7 @@ finds the code*.
 
 ---
 
-## 2. Mistake #1 — the prompt leaked keywords (the big one)
+## 2. Mistake #1: the prompt leaked keywords (the big one)
 
 The first prompts named the exact structures:
 
@@ -55,15 +55,15 @@ The first prompts named the exact structures:
 and even for the "broad" task: "`truncate(text, max_chars=...)`",
 "`DEFAULT_MAX_CHARS`".
 
-With names like that, Sonnet 5 just runs one precise grep — e.g.
-`class.*Comparison|tokens_saved` or `def truncate\(` — and lands on the file in
+With names like that, Sonnet 5 just runs one precise grep, e.g.
+`class.*Comparison|tokens_saved` or `def truncate\(`, and lands on the file in
 a single shot. **There is nothing for a semantic locate tool to do.** A locate
 system only earns its keep when the agent does *not* already know the symbols.
 
 So the first experiment was rigged against Scubiee: it measured "grep-able task
 + extra rules" and unsurprisingly found the rules were dead weight.
 
-**Fix applied:** rewrote to ONE vague, human-worded request — a Slack-style
+**Fix applied:** rewrote to ONE vague, human-worded request, a Slack-style
 message describing the *goal and the pain*, with **no symbol, file, class, or
 formula**:
 
@@ -73,26 +73,26 @@ formula**:
 > basically free but counted at full price. Can you make that comparison
 > cache-aware…"
 
-Effect (run `20260929T131109Z_vague`): discovery exploded — the WITHOUT arm did
+Effect (run `20260929T131109Z_vague`): discovery exploded, the WITHOUT arm did
 **14 greps**, the WITH arm did 9 greps **plus** Scubiee. This is finally the
 regime where locate *could* matter.
 
 ---
 
-## 3. Mistake #2 — the oracle graded field names, not behavior
+## 3. Mistake #2: the oracle graded field names, not behavior
 
 Making the prompt vague created a new problem: a vague prompt lets the agent
 choose its *own valid design*. In the vague run the WITH agent implemented
 cache-awareness as a **rate model** (`cache_hit_rate`, `billed_*` fields)
 instead of the count model (`cached_tokens`, `effective_tokens`) my oracle
-probed for. That is a perfectly reasonable reading of the request — but the
+probed for. That is a perfectly reasonable reading of the request, but the
 oracle only gave it 2/5 because it looked for specific accessor names.
 
 Lesson: **when the prompt is vague, the oracle must grade pure outcome behavior
 through whatever public surface the agent built**, e.g. "construct the
 comparison with equal raw tokens but more cache on the smart arm; assert the
 reported paid/effective saving goes up." It must not assume names. (This is the
-next fix to land in `harness_task.py`'s oracle — see §6.4.)
+next fix to land in `harness_task.py`'s oracle, see §6.4.)
 
 This is itself a finding: **vague prompt ⇄ deterministic oracle is a real
 tension.** You buy locate-relevance at the cost of grading strictness, and the
@@ -100,7 +100,7 @@ oracle has to be written to only depend on observable behavior.
 
 ---
 
-## 4. Why the Scubiee arm burned MORE tokens — mechanism, with receipts
+## 4. Why the Scubiee arm burned MORE tokens: mechanism, with receipts
 
 Three compounding effects, all visible in traces.
 
@@ -109,7 +109,7 @@ The WITH arm's `CLAUDE.md` carries the full Scubiee GATE policy ("MUST Use
 Scubiee MCP for locate", the ladder, the forbid-first rules…). That text is part
 of the system/context and is **re-billed as `cacheRead` on every turn**. In the
 one early run where WITH used the *exact same 5 tools* as baseline, it still
-cost **+9.9%** — that delta is essentially pure rule tax.
+cost **+9.9%**, that delta is essentially pure rule tax.
 
 ### 4b. Additive use, not substitutive (the expensive failure mode)
 Run `20260928T234149Z` (scoped) and `20260929T131109Z_vague` (vague) both show
@@ -129,11 +129,11 @@ more turns (30 vs 24). Net: **1.34M vs 750k tokens (+79%)**.
 ### 4c. Turn inflation dominates
 Because cost ≈ turns × transcript size, the extra Scubiee turns (gate/status/
 map/map + a ToolSearch) each drag the whole growing transcript through cache
-again. Scubiee added ~6 turns; at a ~40–50k-token transcript that alone is
+again. Scubiee added ~6 turns; at a ~40-50k-token transcript that alone is
 hundreds of thousands of `cacheRead` tokens.
 
 ### 4d. `ToolSearch` overhead
-Under the Claude Code SDK, MCP tools aren't free to have available — the agent
+Under the Claude Code SDK, MCP tools aren't free to have available, the agent
 emitted a `ToolSearch` call (`select:mcp__scubiee__map,…`) to discover the
 Scubiee tools before using them. That's an extra turn + tokens that the WITHOUT
 arm never pays.
@@ -152,9 +152,9 @@ arm never pays.
 - **`pack_context` has a cold-AST penalty.** First call after idle returns
   `error: "ast_warming"`; it must be retried. Any client (or the agent) that
   treats the first empty pack as "no results" will wrongly fall back to grep.
-- **Claude Code always bills a little `claude-haiku-4-5`** (~1.1–1.5k tokens/run)
+- **Claude Code always bills a little `claude-haiku-4-5`** (~1.1-1.5k tokens/run)
   for internal bookkeeping. Include it in totals; it's ~equal across arms.
-- **Variance is large.** Baseline totals for the *same* task ranged 161k–750k
+- **Variance is large.** Baseline totals for the *same* task ranged 161k, 750k
   depending on how the exploration went. Any real claim needs n ≥ 10 per cell.
 - **Correctness was a wash / prompt-sensitive.** With grep-able prompts both
   arms passed 5/5. With the vague prompt neither fully passed the strict oracle
@@ -171,7 +171,7 @@ addition to it, and stop paying for it when it isn't used. Concrete levers:
 The agent greps *after* `map` because it doesn't trust the cards enough to edit.
 Two ways to fix:
 - **Return editable evidence, not just pointers.** `pack_context` already
-  returns a heatmap with `loc` spans — if the pack response includes the actual
+  returns a heatmap with `loc` spans, if the pack response includes the actual
   code bodies of the top spans (bounded), the agent can go straight to `Edit`
   with no confirming grep/read. The rule "after a heatmap → Read `loc` spans
   only; re-Grep of packed ground = FAIL" is correct; the product should make
@@ -181,7 +181,7 @@ Two ways to fix:
   hedges.
 
 ### 6.2 Stop paying the rule tax when idle
-The GATE block is ~40–60 lines re-sent every turn. Options:
+The GATE block is ~40-60 lines re-sent every turn. Options:
 - **Shrink the always-on rule to a one-liner** ("For locating unfamiliar code,
   prefer the Scubiee `map`→`pack` tools; details on demand") and move the full
   ladder into the tool descriptions / a `gate` response the agent fetches only
@@ -199,7 +199,7 @@ pass `allowed_tools`), and consider fewer exposed Scubiee tools (just
 - Use tasks that are **genuinely un-greppable**: the target is described by
   behavior, lives among many similar-named modules, and the *right* file shares
   no distinctive token with the prompt. That's when a 1-turn `map` beats a
-  10-grep hunt — and 6 saved turns is a real token win.
+  10-grep hunt, and 6 saved turns is a real token win.
 - Rewrite the oracle to assert **outcome through the public surface** (construct
   the comparison, vary cache, assert the paid/effective saving moves the right
   way) without probing field names, so a correct-but-differently-named solution
@@ -218,7 +218,7 @@ To measure Scubiee's *best case* (not its adopted case), add a third arm whose
 system prompt requires locating via `map`/`pack` and forbids grep for discovery.
 Compare its turn count to the baseline's grep hunt. This won't be "fair
 adoption", but it answers "if the agent fully trusted Scubiee, would it be
-cheaper?" — which tells us whether 6.1 is worth building.
+cheaper?", which tells us whether 6.1 is worth building.
 
 ---
 
@@ -252,9 +252,9 @@ names (§3), two full vague-prompt runs both reproduced the same result:
 Both arms produced *working* cache-aware implementations (different designs:
 the WITHOUT arm built a `CachePricing` rate model on the comparison; the WITH
 arm added `cache_hit_rate`/`billed_*`). The token verdict is unchanged and now
-reproduced under the fair prompt: **WITH costs 30–79% more, every time,** and
+reproduced under the fair prompt: **WITH costs 30-79% more, every time,** and
 the extra spend traces directly to Scubiee being used *on top of* the same grep
-hunt the baseline did — plus the `ToolSearch` + rule-tax turns.
+hunt the baseline did, plus the `ToolSearch` + rule-tax turns.
 
 ## 7c. Root cause: it's the PACK PAYLOAD FORMAT, not retrieval quality
 
@@ -263,7 +263,7 @@ agent's exact `map` query against the warm engine over raw MCP stdio and
 inspected what `map` and `pack_context` actually return
 (`scripts/claude_sdk_harness/_probe_quality.py`). Result:
 
-**Map quality is excellent — not the problem.** For query
+**Map quality is excellent, not the problem.** For query
 `"retrieval benchmark token savings comparison smart retrieval vs grep dump
 baseline"`:
 
@@ -278,12 +278,12 @@ The target ranked **#0 by a ~9× score margin**, with a correct "why"
 embedding/ranking model found exactly the right file first. **Your "embedding
 not good enough" hypothesis is ruled out.**
 
-**Pack targeting is also correct — not the problem.** `pack_context` returned 7
+**Pack targeting is also correct, not the problem.** `pack_context` returned 7
 spans, all inside `token_meter.py`, at exactly the right lines: `45-58`
 (`QueryCompare`), `18-28` (`estimate_tokens`), `32-41` (`ArmResult`), `66-126`
 and `129-190` (the two functions). Semantically it pinpointed the code the task
 needed. **Your "pack has no semantic understanding" hypothesis is also ruled
-out** — pack pointed at precisely the right structures.
+out**, pack pointed at precisely the right structures.
 
 **The actual defect is the pack RESPONSE PAYLOAD:**
 
@@ -293,12 +293,12 @@ pack_returns_bodies = false          # ← coordinates only, no code text
 per-span "file"     = ""             # ← human-readable file blank on each span
 ```
 
-So `pack_context` hands back **pointers without bodies** — `loc:
+So `pack_context` hands back **pointers without bodies**, `loc:
 "packages/pipeline/token_meter.py:45-58"` and terse scores (`r`,`s`,`sc`), but
 **not the code at those lines**. Consequences:
 
 1. To actually see what it's editing, the agent must now **open the file and
-   read those line ranges** — i.e. exactly the Read/Grep round-trip it would
+   read those line ranges**, i.e. exactly the Read/Grep round-trip it would
    have done natively. Pack did the hard semantic locating and then made the
    agent pay a *second* trip to materialize it.
 2. The keys are opaque and the per-span `file` is blank, so the model can't
@@ -307,25 +307,25 @@ So `pack_context` hands back **pointers without bodies** — `loc:
 
 **That is the whole token-waste mechanism, precisely located:** map + pack are
 *correct and high quality*, but because pack returns **locations, not code**,
-the agent still performs the full read/grep hunt on top of the Scubiee calls —
+the agent still performs the full read/grep hunt on top of the Scubiee calls
 so Scubiee's tokens are pure addition, not substitution. It's a **payload/
 contract problem, not a model-quality problem.**
 
 ### The fix (now specific, and verified against the live engine)
 I probed whether the bodies are even reachable (`_probe_bodies.py`):
 
-- `pack_context(..., include_bodies=1)` — **did NOT return bodies.** The
+- `pack_context(..., include_bodies=1)`: **did NOT return bodies.** The
   response morphed to keys `["chain","cold","pack","seed",...]` and still
   carried no code text. So the advertised `include_bodies` knob does not put
   code into the pack the agent first sees.
-- `collect_hot_context` — **DOES return real code**, e.g.
+- `collect_hot_context`: **DOES return real code**, e.g.
   `{"id":"…token_meter.py::QueryCompare.tokens_saved","loc":"…:51-52",
   "text":"def tokens_saved(self)…return max(0, …)"}`. So the bodies exist, but
   only via a **separate third tool call**.
 
 So the agent's natural flow is `map → pack`, and **`pack` returns pointers only**.
 To actually see code it must make a *third* call (`collect_hot_context`) that
-the default flow doesn't push it toward — so it falls back to native Read/Grep
+the default flow doesn't push it toward, so it falls back to native Read/Grep
 every time, and Scubiee's tokens become pure addition.
 
 Concrete fixes, in priority order:
@@ -336,7 +336,7 @@ Concrete fixes, in priority order:
    `collect_hot_context` on those spans and edit from its `text`; do NOT re-open
    or re-grep packed ground." Right now the ladder stops at pointers.
 3. Only then does `map`+`pack(+collect)` **replace** the grep+read hunt instead
-   of adding to it — the only way turn count, and thus token count, drops below
+   of adding to it, the only way turn count, and thus token count, drops below
    baseline.
 
 ## 7d. Experiment: pack heatmap-only vs pack-with-bodies (testing the fix)
@@ -357,20 +357,20 @@ task). Byte-identical snapshots per arm.
 
 **Interpretation (careful about signal vs noise):**
 
-- **Run 1 is the valid test** — the agent actually called `pack`. Giving it
+- **Run 1 is the valid test**: the agent actually called `pack`. Giving it
   bodies **cut tokens 23.7%**, **halved the confirming reads after pack (6→3)**,
   cut 9 turns (31→22), and the bodies arm **passed the task while the
-  heatmap-only arm failed** (it thrashed — 6 reads, 5 greps, a stray
-  `WebSearch`/`Skill` — trying to reconstruct what pack had already found). This
+  heatmap-only arm failed** (it thrashed, 6 reads, 5 greps, a stray
+  `WebSearch`/`Skill`, trying to reconstruct what pack had already found). This
   is exactly the predicted mechanism: bodies → fewer confirming round-trips →
   fewer turns → fewer tokens.
-- **Run 2 is NOT evidence about bodies** — neither arm called `pack` (0 calls),
+- **Run 2 is NOT evidence about bodies**: neither arm called `pack` (0 calls),
   so the −15.9% is pure exploration variance, not the bodies effect. Honest
   reporting: only count runs where pack is on the path.
 
 **Takeaway:** the single clean run supports the fix strongly (−24% + a
 correctness flip), and the mechanism (reads-after-pack 6→3) is visible rather
-than inferred. But n=1 on the pack-used condition — to make it a firm claim,
+than inferred. But n=1 on the pack-used condition, to make it a firm claim,
 run ~10 pairs and keep only the pack-used ones. The direction is consistent with
 §7c: **the bottleneck is pack handing over pointers, and inlining bodies fixes
 it.** It also confirms the product change is worth building (return bounded span
@@ -381,7 +381,7 @@ bodies from the first `pack`, or make `include_bodies=1` actually populate them)
 On every task measured, **Scubiee increased token usage** (from +10% up to +79%),
 while never improving correctness. But the *reason* is specific and fixable:
 under a neutral/vague prompt Sonnet 5 either ignores Scubiee (paying only the
-rule tax) or uses it **on top of** its own grep hunt (paying twice) — because the
+rule tax) or uses it **on top of** its own grep hunt (paying twice), because the
 current flow gives it pointers it doesn't trust enough to skip grepping. It is
 **not** evidence that semantic locate is inherently wasteful.
 

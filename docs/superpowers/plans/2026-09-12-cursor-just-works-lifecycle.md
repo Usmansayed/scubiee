@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Opening Cursor and using Scubiee requires zero process babysitting — one engine, one supervisor, locate never fights sync, MCP never parents the engine.
+**Goal:** Opening Cursor and using Scubiee requires zero process babysitting, one engine, one supervisor, locate never fights sync, MCP never parents the engine.
 
 **Architecture:** Supervisor/watchdog is the only process allowed to `Popen` the engine. MCP attaches over HTTP and may only request run-mode + ensure a detached supervisor. Lock/pid always bind to the TCP listener PID. Keeper defers *all* sync during an active locate streak. Duplicate Cursor MCP clients coalesce to one primary.
 
 **Tech Stack:** Python (`pipeline.daemon`, `lifecycle_runtime`, `watchdog`, `mcp_lifecycle`, `sync_loop`, `context_trace`), Windows DETACHED/BREAKAWAY + schtasks logon supervisor, pytest.
 
-**Spec:** User request 2026-09-11/12 — prevent 30s pack contention, dual Python/MCP trees, and “messed up” ownership so Cursor open → natural use.
+**Spec:** User request 2026-09-11/12, prevent 30s pack contention, dual Python/MCP trees, and “messed up” ownership so Cursor open → natural use.
 
 ## Global Constraints
 
@@ -40,7 +40,7 @@
 
 ### Task 1: Listener PID identity
 
-- [x] Add `bind_engine_identity_to_listener()` — after healthy start/heal, set lock+pid+meta.pid to port listener.
+- [x] Add `bind_engine_identity_to_listener()`, after healthy start/heal, set lock+pid+meta.pid to port listener.
 - [x] Update `heal_engine_lock` to rewrite when lock PID ≠ listener but listener alive.
 - [x] Test: heal rewrites wrapper → listener.
 
@@ -68,7 +68,7 @@
 ### Task 5: Warm UX + multi-seed cap
 
 - [x] While engine `warm_state` in indexing/warming or keeper syncing: cap resolved seeds to 2 (or serialize).
-- [x] Status already exposes warming — keep agents retrying without treating as hard fail in ship check if needed.
+- [x] Status already exposes warming, keep agents retrying without treating as hard fail in ship check if needed.
 
 ### Task 6: connect ensures supervisor
 

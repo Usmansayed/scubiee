@@ -1,4 +1,4 @@
-# Phase 1 — Parser & Overlap Comparison
+# Phase 1: Parser & Overlap Comparison
 
 Date: 2026-07-31  
 Test corpus: `fixtures/mini-repo` + `testdata/scubiee-news-flow`  
@@ -24,7 +24,7 @@ Bake-off winner: **`graphify`** (`out/scubiee/bakeoff.json`).
 |--|----------------|----------|
 | Parser | tree-sitter (native Node) | tree-sitter (Python) |
 | Babel / tsc | Not used for AST | Not used for code AST |
-| Role | `AstCodeSplitter` — chunk boundaries | Full structural extract + resolve |
+| Role | `AstCodeSplitter`, chunk boundaries | Full structural extract + resolve |
 | Languages (AST) | ~9 (JS/TS, Py, Java, C/C++, Go, Rust, C#, Scala); else LangChain fallback | ~36 grammars; TS/TSX first-class |
 | Incremental parse cache | No AST cache; Merkle file hashes for reindex | AST content-hash cache under `graphify-out/cache` |
 | Speed (scubiee-news-flow) | N/A for IR (no IR) | ~3.3s cold-ish extract → 553 symbols, 841 edges |
@@ -62,7 +62,7 @@ On `scubiee-news-flow` (Graphify): 76 files, 70 callables, 155 imports, 227 impo
 
 - Designed for embedding-sized units with AST-aware boundaries (`SPLITTABLE_NODE_TYPES`), overlap, and LangChain fallback.
 - Preserves semantic boundaries better than naive line splits for supported languages.
-- Metadata can be prepended **without changing chunk boundaries** — inject string before embed only.
+- Metadata can be prepended **without changing chunk boundaries**, inject string before embed only.
 
 ---
 

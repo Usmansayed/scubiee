@@ -6,7 +6,7 @@ Avg agent read chars: **10402.3**
 Avg pack body chars: **4322.0**
 Avg pack file-cover of agent reads: **0.417**
 
-## p01 — I need to figure out how the tool gets wired into my editor when I connect it.
+## p01: I need to figure out how the tool gets wired into my editor when I connect it.
 
 **Judgment:** pack_partially_useful
 
@@ -19,12 +19,12 @@ Avg pack file-cover of agent reads: **0.417**
 
 ### Agent would read
 
-- packages/pipeline/__main__.py:1706-1744 — cmd_connect entry (1567 chars)
-- packages/pipeline/rules_installer.py:1627-1680 — install_tools fan-out (1481 chars)
-- packages/pipeline/rules_installer.py:1487-1553 — apply_connected_tools_to_repo (2241 chars)
-- packages/pipeline/rules_installer.py:1139-1202 — write_project_gate_rules (2152 chars)
-- packages/pipeline/mcp_permissions.py:518-531 — apply_permissions_to_repo_tool_surface (397 chars)
-- packages/pipeline/mcp_permissions.py:253-320 — merge_cursor_permissions allowlist (2327 chars)
+- packages/pipeline/__main__.py:1706-1744, cmd_connect entry (1567 chars)
+- packages/pipeline/rules_installer.py:1627-1680, install_tools fan-out (1481 chars)
+- packages/pipeline/rules_installer.py:1487-1553, apply_connected_tools_to_repo (2241 chars)
+- packages/pipeline/rules_installer.py:1139-1202, write_project_gate_rules (2152 chars)
+- packages/pipeline/mcp_permissions.py:518-531, apply_permissions_to_repo_tool_surface (397 chars)
+- packages/pipeline/mcp_permissions.py:253-320, merge_cursor_permissions allowlist (2327 chars)
 
 ### Pack returned
 
@@ -33,7 +33,7 @@ Avg pack file-cover of agent reads: **0.417**
 - packages/pipeline/rules_installer.py:283-289 _project_rules_eligible (220 chars)
 - packages/pipeline/rules_installer.py:1487-1553 apply_connected_tools_to_repo (2241 chars)
 
-## p02 — Search feels stale after I edit files — how does refresh / sync decide to update?
+## p02: Search feels stale after I edit files, how does refresh / sync decide to update?
 
 **Judgment:** pack_missed_key_reads
 
@@ -46,10 +46,10 @@ Avg pack file-cover of agent reads: **0.417**
 
 ### Agent would read
 
-- packages/pipeline/freshness.py:202-282 — check_freshness strategies (3371 chars)
-- packages/pipeline/incremental.py:769-860 — ensure_fresh_for_search gate (3319 chars)
-- packages/pipeline/sync_loop.py:713-752 — BackgroundSyncLoop.sync_once (1760 chars)
-- packages/pipeline/upgrade_supervisor.py:151-176 — rebuild_embeddings_if_needed (1122 chars)
+- packages/pipeline/freshness.py:202-282, check_freshness strategies (3371 chars)
+- packages/pipeline/incremental.py:769-860, ensure_fresh_for_search gate (3319 chars)
+- packages/pipeline/sync_loop.py:713-752, BackgroundSyncLoop.sync_once (1760 chars)
+- packages/pipeline/upgrade_supervisor.py:151-176, rebuild_embeddings_if_needed (1122 chars)
 
 ### Pack returned
 
@@ -58,7 +58,7 @@ Avg pack file-cover of agent reads: **0.417**
 - packages/pipeline/repo_lifecycle.py:98-107 _entry_managed (384 chars)
 - packages/pipeline/repo_lifecycle.py:34-35 _root (68 chars)
 
-## p03 — I want to understand how a pack request turns a seed into a small set of code bodies.
+## p03: I want to understand how a pack request turns a seed into a small set of code bodies.
 
 **Judgment:** pack_highly_useful
 
@@ -71,11 +71,11 @@ Avg pack file-cover of agent reads: **0.417**
 
 ### Agent would read
 
-- packages/pipeline/locate_cli.py:179-227 — cli_pack wrapper (1627 chars)
-- packages/pipeline/__main__.py:1655-1695 — cmd_pack CLI (1551 chars)
-- packages/pipeline/context_trace.py:1100-1220 — run_pack_context core (4464 chars)
-- packages/pipeline/context_trace.py:955-1035 — run_collect_hot bodies (2873 chars)
-- packages/pipeline/locate_cli.py:230-258 — cli_expand follow-up (955 chars)
+- packages/pipeline/locate_cli.py:179-227, cli_pack wrapper (1627 chars)
+- packages/pipeline/__main__.py:1655-1695, cmd_pack CLI (1551 chars)
+- packages/pipeline/context_trace.py:1100-1220, run_pack_context core (4464 chars)
+- packages/pipeline/context_trace.py:955-1035, run_collect_hot bodies (2873 chars)
+- packages/pipeline/locate_cli.py:230-258, cli_expand follow-up (955 chars)
 
 ### Pack returned
 

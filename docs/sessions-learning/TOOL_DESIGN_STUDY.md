@@ -1,7 +1,7 @@
 # What tools would actually save tokens? A session-grounded study
 
 Question: given everything we've logged (118 cells), what tool shape lets the agent retrieve what
-it needs in the FEWEST API calls? This is analysis only — no new Claude-token-costing runs.
+it needs in the FEWEST API calls? This is analysis only, no new Claude-token-costing runs.
 Sources: `data/sessions.jsonl`, `CALL_PURPOSES.md`, `TRAJECTORIES.md`.
 
 ---
@@ -17,7 +17,7 @@ Sources: `data/sessions.jsonl`, `CALL_PURPOSES.md`, `TRAJECTORIES.md`.
 
 **newmap is NOT consistently better.** It wins the easy task (within overlapping noise) and
 consistently LOSES the hard task (median 554k vs 403k). The earlier "newmap won both" runs were the
-low tail of a high-variance distribution. mini_v3 — one map, one whole-file Read, edit — is the
+low tail of a high-variance distribution. mini_v3, one map, one whole-file Read, edit, is the
 tighter, cheaper arm on the task that matters (multi-symbol edits).
 
 ---
@@ -46,7 +46,7 @@ Most common consecutive retrieval steps (collapse targets):
 Two cost engines, in order of size:
 
 1. **Wiring traces dominate (`locate_wire -> locate_wire`, 79x).** The agent chains callers/callees/
-   uses lookups — grep->grep->grep in the native arms, refs->refs->refs in newmap. This is the
+   uses lookups, grep->grep->grep in the native arms, refs->refs->refs in newmap. This is the
    single biggest repeated step across every arm. In `without` it's 5.2 calls/cell.
 2. **Locate-then-read round-trips (`find -> read` 29, `wire -> read` 28).** The agent finds a
    location, then spends a SEPARATE call to see the code. newmap's signature `find -> view` is
@@ -64,9 +64,9 @@ The data does NOT support "more configs." newmap has 3 configs and its cost came
 USING them (find+view+refs = 3 calls). The data supports **fewer calls that each return more of
 the right shape**. Two tool capabilities would collapse the two cost engines above:
 
-### Tool A — one call returns code + wiring together (kills `find->read` and `wire->wire`)
+### Tool A: one call returns code + wiring together (kills `find->read` and `wire->wire`)
 The winning move must be: **one call that returns the target symbol's body AND its one-hop wiring
-(callers + callees with their file:line) AND the sibling symbol names in the same file** — so the
+(callers + callees with their file:line) AND the sibling symbol names in the same file**, so the
 agent never needs a second `view`/`refs`/grep to understand the neighborhood. This is the
 `locate_wire -> locate_wire` (79) and `find -> read` (29) collapse in one object:
 
@@ -80,19 +80,19 @@ mini_v3 already approximates this by accident (it reads the whole file, which co
 and often the callees). The explicit version is cheaper than a whole-file Read because it's
 names+bodies-of-the-relevant-few, not the entire file.
 
-### Tool B — a cheap, wide "neighborhood overview" for the UNKNOWN-location opener
+### Tool B: a cheap, wide "neighborhood overview" for the UNKNOWN-location opener
 When the agent does NOT know where to go, the expensive pattern is explore-by-grep. A single
 **overview**: top file + 3-5 related files, each as a LIST OF FUNCTION/CLASS NAMES (no bodies),
 is a one-call abstract map that replaces the opening grep/find/view exploration. ~1.5-3k chars,
 far cheaper than reading files to orient. This is your "small graph of files around it with
-function names" idea — and the call-purpose data backs it: it attacks the pre-edit locate steps
+function names" idea, and the call-purpose data backs it: it attacks the pre-edit locate steps
 (3.8-7.9) by giving orientation in one wide-but-shallow call instead of several narrow ones.
 
 ### What NOT to add
-- Not a separate `callers` config and a separate `view` config and a separate `find` config — the
+- Not a separate `callers` config and a separate `view` config and a separate `find` config, the
   agent spends one call on each (that is literally newmap's 3-call loss). Fold wiring INTO the
   body-returning call (Tool A).
-- Not bodies-only (that was mini_plus — it still grepped for call sites, `read_body->locate_wire`
+- Not bodies-only (that was mini_plus, it still grepped for call sites, `read_body->locate_wire`
   = 19). Wiring must ride along with the body.
 
 ---
@@ -126,7 +126,7 @@ a multi-file change; one for a single-file change. The instruction must forbid t
 
 Build ONE arm that is **mini_v3's cheap single-call instinct + Tool A's wiring-in-the-body-call**:
 a map that, on `include_bodies`, returns the clustered bodies PLUS a compact `wiring` block
-(callers/callees file:line) PLUS `siblings` (symbol names in the file) — so the agent gets the
+(callers/callees file:line) PLUS `siblings` (symbol names in the file), so the agent gets the
 whole neighborhood in ONE call and never chains `wire->wire` or splits `find->read`. Keep `overview`
 as the only other output, for the unknown-location opener. Rules: pick one, stop, edit.
 

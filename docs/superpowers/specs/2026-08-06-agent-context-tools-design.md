@@ -5,7 +5,7 @@
 
 ## Aim
 
-After `search_code` (blind arrow), the agent gathers **minimum complete context** via span tools — not full-file dumps, not architecture bake-offs.
+After `search_code` (blind arrow), the agent gathers **minimum complete context** via span tools, not full-file dumps, not architecture bake-offs.
 
 ```text
 search_code  →  entry spans

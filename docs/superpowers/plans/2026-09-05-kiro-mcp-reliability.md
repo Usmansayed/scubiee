@@ -12,7 +12,7 @@
 | User MCP | `~/.kiro/settings/mcp.json` **without** `CTX_REPO` (correct) |
 | Project MCP | `CTX_REPO` pinned + `CTX_TRACE_ENGINE=composite_v1` |
 | `kiro-cli mcp` | `scubiee` on `kiro_default` |
-| Stdio probe (Kiro env) | **all green** — see JSON below |
+| Stdio probe (Kiro env) | **all green**, see JSON below |
 
 ### Probe (`scripts/kiro_mcp_reliability_probe.py`)
 

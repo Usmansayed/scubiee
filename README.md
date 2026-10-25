@@ -14,7 +14,7 @@
 
 <p align="center">
   <b>A local code-context engine for AI coding agents.</b><br>
-  Index your repository on your own machine, and let agents find code by <i>meaning</i> —
+  Index your repository on your own machine, and let agents find code by <i>meaning</i>
   so they read the few spans that matter instead of grepping blindly through files.
 </p>
 
@@ -30,20 +30,20 @@
 ---
 
 Run `scubiee connect` once and your AI assistant gets a **local, always-fresh index** of your
-repo — ranked discovery and deep symbol focus — without uploading a single line of code.
+repo (ranked discovery and deep symbol focus) without uploading a single line of code.
 
 - **Local-first.** Tree-sitter parsing + on-disk embeddings. Code never leaves your machine; the
   only network step is a one-time model download (~270 MB) during setup.
-- **Built for agents.** Ships as an [MCP](https://modelcontextprotocol.io) server — works in
+- **Built for agents.** Ships as an [MCP](https://modelcontextprotocol.io) server and works in
   Cursor, Claude Code, Copilot, Kiro, and other MCP clients.
 - **A real engine, not cloud RAG.** A local daemon with live Merkle sync keeps the index current
-  as you edit and pull — index once, stay fresh.
+  as you edit and pull. Index once, stay fresh.
 
 <p align="center">
   <img src="visuals/image.png" alt="Scubiee map find and focus against a local index" width="900">
 </p>
 <p align="center">
-  <em>Ranked <code>map find</code> hits and focused symbol spans — all against a local index.</em>
+  <em>Ranked <code>map find</code> hits and focused symbol spans, all against a local index.</em>
 </p>
 
 ---
@@ -56,7 +56,7 @@ repo — ranked discovery and deep symbol focus — without uploading a single l
   dense embeddings stored in FAISS.
 - **Tree-sitter parsing** for Python, JavaScript, TypeScript, Go, Rust, Java, C, C++, C#, Ruby,
   and JSON.
-- **Live sync** — a background daemon diffs the repo (Merkle tree) and re-indexes only what
+- **Live sync**: a background daemon diffs the repo (Merkle tree) and re-indexes only what
   changed.
 - **One-command MCP setup** for Cursor, Claude Code, Codex, Copilot, Kiro, Windsurf, Cline,
   Roo Code, Continue, Zed, OpenCode, Amp, Devin Desktop, and Pi (`scubiee connect --<tool>` or
@@ -96,7 +96,7 @@ scubiee connect --cursor
 pip install -U scubiee
 ```
 
-On **Windows with a GPU**, install so DirectML isn't clobbered on upgrade — see
+On **Windows with a GPU**, install so DirectML isn't clobbered on upgrade. See
 [Windows / DirectML install](docs/scubiee-install-windows-dml.md).
 
 </details>
@@ -105,17 +105,17 @@ On **Windows with a GPU**, install so DirectML isn't clobbered on upgrade — se
 
 ## What your agent gets
 
-One MCP tool — **`map`** — with two configs. The agent picks one by what it knows, acts on the
+One MCP tool (**`map`**) with two configs. The agent picks one by what it knows, acts on the
 first good answer, and stops.
 
 | `map` config | Use when | Returns |
 |---|---|---|
-| **`find`** | You don't know where the code lives | Ranked locations **with the top result's code inline** — usually no follow-up read |
+| **`find`** | You don't know where the code lives | Ranked locations **with the top result's code inline**, so usually no follow-up read |
 | **`focus`** | You know the symbol name(s) | The symbol's full body **+ callers/callees + sibling names**, in one unit |
 | **`gate` / `status`** | At session start | A tiny managed-repo check + engine health |
 
 Scubiee is a **locate layer**, not a replacement for your editor. Exact string / path lookups stay
-on the host's native **Grep / Glob / Read**, and history stays on **git** — a one-line grep is
+on the host's native **Grep / Glob / Read**, and history stays on **git**. A one-line grep is
 faster and more precise than a semantic search for a known string. The CLI mirrors the tool:
 `scubiee map --config find|focus`.
 
@@ -135,7 +135,7 @@ average** (median 32%, mean 39% per task).
 | Claude Code | Hard cross-module changes | 939,252 tokens | **316,681 tokens** | **66%** |
 | Kiro CLI | Three dev tasks | 6.42 credits | **2.65 credits** | **54%** |
 
-These are internal benchmarks on one codebase, not a guarantee: savings vary by task — small or
+These are internal benchmarks on one codebase, not a guarantee: savings vary by task. They are small or
 none on simple exact-name edits, largest on changes that span several modules.
 
 → Per-task results and methodology: [benchmarks/](benchmarks/README.md)
@@ -155,10 +155,10 @@ none on simple exact-name edits, largest on changes that span several modules.
   AI coding tool  ──MCP──►  Scubiee daemon (localhost)  ──►  local index (~/.scubiee)
 ```
 
-A small local daemon serves retrieval over three fused channels — a code **graph**
+A small local daemon serves retrieval over three fused channels: a code **graph**
 (calls/imports/defines), **BM25** lexical match, and **dense** embeddings (CodeRankEmbed, FAISS).
 Background sync keeps enrolled repos fresh with a Merkle diff, so edits show up in seconds without
-a full reindex. Everything — indexing, embedding, retrieval — runs on your machine.
+a full reindex. Indexing, embedding, and retrieval all run on your machine.
 
 → Architecture deep-dive: [how everything works](web-info/how-everything-works.md) ·
 [system overview](docs/scubiee-overview.md)
@@ -182,7 +182,7 @@ Every command and flag: [commands reference](docs/web-info/commands-reference.md
 
 ## Privacy
 
-- **Your code** is parsed and embedded locally and stays on disk — nothing is sent anywhere for
+- **Your code** is parsed and embedded locally and stays on disk. Nothing is sent anywhere for
   search.
 - **The model** downloads once during `scubiee setup` (~270 MB); after that, indexing works offline.
 - Data lives under `~/.scubiee` (engine state) and `<repo>/.scubiee` (per-repo index).
@@ -193,7 +193,7 @@ Every command and flag: [commands reference](docs/web-info/commands-reference.md
 
 Scubiee works without any configuration file or API key. The optional knobs are:
 
-- **`.scubieeignore`** in a repo root — gitignore-style patterns for files Scubiee should not
+- **`.scubieeignore`** in a repo root: gitignore-style patterns for files Scubiee should not
   index (dependency trees and git-ignored files are already skipped).
 - **Environment variables** (all optional):
 
@@ -251,7 +251,7 @@ Cline / Roo, run `connect` inside each repo.
 <details>
 <summary><b>Windows: GPU acceleration stopped working after an upgrade.</b></summary>
 
-Run `scubiee setup --repair`. To prevent it recurring, install with the DirectML override — see
+Run `scubiee setup --repair`. To prevent it recurring, install with the DirectML override. See
 [Windows / DirectML install](docs/scubiee-install-windows-dml.md).
 </details>
 
@@ -264,7 +264,7 @@ Run `scubiee unlock-tool`, then retry. Quitting the IDE first helps.
 <details>
 <summary><b>How do I file a bug with context?</b></summary>
 
-`scubiee diagnose --no-tests --desktop` — attach the Desktop JSON plus a tail of
+`scubiee diagnose --no-tests --desktop`: attach the Desktop JSON plus a tail of
 `~/.scubiee/engine.log`.
 </details>
 

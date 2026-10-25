@@ -1,16 +1,16 @@
 # Design: Incremental Context Ladder (≤3 calls, lean tokens)
 
 **Date:** 2026-09-05  
-**Status:** approved — implementing
+**Status:** approved, implementing
 
 ## Problem
-One fat `pack_context` wastes tokens when the seed is wrong. Soft `map` at k=8 often buries the real seed. Agents need a **set of tools** that reach full understanding in **2–3 calls** with **minimal re-send**.
+One fat `pack_context` wastes tokens when the seed is wrong. Soft `map` at k=8 often buries the real seed. Agents need a **set of tools** that reach full understanding in **2-3 calls** with **minimal re-send**.
 
 ## Insight
 Full context is **incremental disclosure**, not one oracle:
 1. Locate seed cheaply (cards only)
 2. Trace structure + few hottest bodies
-3. Expand **delta only** if thin — never re-pack what was already sent
+3. Expand **delta only** if thin, never re-pack what was already sent
 
 ## Ladder (agent recipe)
 

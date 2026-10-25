@@ -1,8 +1,8 @@
-# Phase R4 — Completeness stress test (seal gaps) + paper toolset
+# Phase R4: Completeness stress test (seal gaps) + paper toolset
 
 **Date:** 2026-08-10  
-**Status:** research complete for R4 — **paper proposal only; do not implement until approved**  
-**Inputs:** R1–R3 reports; 16 Cursor trial arms (8 runs); current CE surface `search | read | status`
+**Status:** research complete for R4, **paper proposal only; do not implement until approved**  
+**Inputs:** R1, R3 reports; 16 Cursor trial arms (8 runs); current CE surface `search | read | status`
 
 ---
 
@@ -18,10 +18,10 @@ Counts across the 8 focus runs (CE + raw arms):
 | `native_grep` unscoped | 30 | **N3** | Repo-wide exact/regex |
 | `shell_read` (cat/type/…) | 11 | **N6** | Bypass Read tool |
 | `shell_grep` (rg) | 5 | **N3** | Bypass Grep |
-| `shell_git_read` | 4 | *(defer)* | History/branch context — not code-locate |
+| `shell_git_read` | 4 | *(defer)* | History/branch context, not code-locate |
 | `shell_ls` | 2 | **N1** | Orient (rare in Cursor vs TraceLab) |
 
-**CE arms still leak heavily to natives** even with CE-first instructions: typically **50–80** native locate calls per CE arm (grep+glob+read). Thrash arm cut native reads but kept **grep+glob+shell_rg**.
+**CE arms still leak heavily to natives** even with CE-first instructions: typically **50-80** native locate calls per CE arm (grep+glob+read). Thrash arm cut native reads but kept **grep+glob+shell_rg**.
 
 MCP modes seen: `search` (soft-dominant), `read`, rare `read(neighbors)`. **outline = 0**.
 
@@ -40,37 +40,37 @@ Assume: agent may use **only** CE for locate; natives allowed **only** if MCP ha
 | **N5** Structure skim | Yes (cheap pre-read) | Only on `rich` surface; unused | **GAP** (or fold) |
 | **N6** Span open | Yes (dominant volume) | `read` | Covered (must stay budgeted + deduped) |
 | **N7** Neighbors | Secondary | `read(neighbors=true)` | Covered as **mode** |
-| **N8** Session memory | Yes (ROI) | Re-read → `unchanged` stub only | **PARTIAL** — no explicit recall/list |
-| **N9** Widen once | Policy | Instruction only | Not a tool — grammar |
-| **N10** Stop collect | Policy + eval | Missing / inverted by “ALWAYS read” | Not a tool — grammar + KPIs |
-| Git read-only | Out of scope (R0) | — | Escape = native shell |
+| **N8** Session memory | Yes (ROI) | Re-read → `unchanged` stub only | **PARTIAL**, no explicit recall/list |
+| **N9** Widen once | Policy | Instruction only | Not a tool, grammar |
+| **N10** Stop collect | Policy + eval | Missing / inverted by “ALWAYS read” | Not a tool, grammar + KPIs |
+| Git read-only | Out of scope (R0) | - | Escape = native shell |
 
 ### Seal blockers (must close before forcing MCP-only)
 
-1. **N3 exact locate** — without it, agents Grep or fail tasks.  
-2. **N4 name locate** — without it, agents Glob.  
-3. **N1 orient** — without it, agents `ls`/`find` (TraceLab) or Glob cascades.  
-4. **N8 recall** — without it, multi-turn re-pays (R1) and post-edit locate tax (R3).  
-5. **N10 grammar** — without it, completeness + compliance → thrash (R2/R3).
+1. **N3 exact locate**: without it, agents Grep or fail tasks.  
+2. **N4 name locate**: without it, agents Glob.  
+3. **N1 orient**: without it, agents `ls`/`find` (TraceLab) or Glob cascades.  
+4. **N8 recall**: without it, multi-turn re-pays (R1) and post-edit locate tax (R3).  
+5. **N10 grammar**: without it, completeness + compliance → thrash (R2/R3).
 
-N5 can be a **mode of span-open** (outline in response / `detail=outline`) rather than its own tool — agents never called outline when it was separate.
+N5 can be a **mode of span-open** (outline in response / `detail=outline`) rather than its own tool, agents never called outline when it was separate.
 
 ---
 
-## 3. Design constraints from R1–R3 (carry into tool count)
+## 3. Design constraints from R1: R3 (carry into tool count)
 
 | Constraint | Why |
 |---|---|
 | ≤6 agent-facing tools | User target; instruction &lt;300 tok |
-| Cover N1–N8 in tools/modes; N9–N10 in grammar | Completeness + anti-thrash |
+| Cover N1, N8 in tools/modes; N9, N10 in grammar | Completeness + anti-thrash |
 | Prefer **modes over twin tools** | outline/neighbors unused as separate discoverables |
 | Exact locate **inside** seal | Prior “drop MCP grep” was for soft-insert; seal flips it |
-| Unique payload already saturates | Don’t optimize for fatter results — fewer calls, earlier edit |
+| Unique payload already saturates | Don’t optimize for fatter results, fewer calls, earlier edit |
 | Complexity stays server-side | Hybrid index, budgets, dedup, heatmap invisible to agent |
 
 ---
 
-## 4. Paper proposal — 5 tools (+ status) = 6
+## 4. Paper proposal: 5 tools (+ status) = 6
 
 **Working name: sealed retrieval surface `nav`.** Names are provisional.
 
@@ -81,10 +81,10 @@ N5 can be a **mode of span-open** (outline in response / `detail=outline`) rathe
 | 3 | **`read(target, detail?)`** | N6 span; N5 if `detail=outline`; N7 if `detail=neighbors` | Read / cat / outline / neighbors |
 | 4 | **`recall(need?)`** | N8 session memory | Re-Grep / re-Read / “what do we know” |
 | 5 | **`expand(handle)`** | N6 materialize stored span at edit time | Full re-read of known span |
-| 6 | **`status()`** | Health / surface / session size — not locate | — |
+| 6 | **`status()`** | Health / surface / session size, not locate | - |
 
 **Why not 3 tools?** Under seal, folding exact+files+recall into `search` recreates ambiguous mega-tool and thrash (agent can’t route).  
-**Why not map/focus/workspace alone?** Those assumed native Read for bodies; seal forbids that — need explicit span + exact + files.
+**Why not map/focus/workspace alone?** Those assumed native Read for bodies; seal forbids that, need explicit span + exact + files.
 
 ### Suggested defaults (server-enforced)
 
@@ -94,7 +94,7 @@ N5 can be a **mode of span-open** (outline in response / `detail=outline`) rathe
 - `recall` before new `search` on follow-ups (grammar).  
 - `expand` only when editing that handle.
 
-### Trajectory grammar (&lt;300 tok sketch — not final copy)
+### Trajectory grammar (&lt;300 tok sketch: not final copy)
 
 ```text
 CE nav = search | files | read | recall | expand | status. Locate only here unless MCP errors.
@@ -124,7 +124,7 @@ Do not re-fetch unchanged spans. Shell = tests/git only.
 
 | Option | Tools | Weakness |
 |---|---|---|
-| A. Keep `search/read/status` + ban natives | 3 | **Fails seal** — N3/N4/N1/N8 gaps |
+| A. Keep `search/read/status` + ban natives | 3 | **Fails seal**, N3/N4/N1/N8 gaps |
 | B. Add only `grep` + `glob` to current | 5 | No recall/expand → multi-turn tax remains |
 | C. Classic map/focus/workspace/recall/expand | 5+status | Weak explicit exact/files; historically assumed native Read |
 | D. One mega `retrieve(op=…)` | 1+status | Routing errors; thrash risk; bad for &lt;300 tok clarity |
@@ -148,8 +148,8 @@ Do not re-fetch unchanged spans. Shell = tests/git only.
 - [x] R2 Cursor labels  
 - [x] R3 information diet  
 - [x] R4 gap list + paper ≤6 tools  
-- [x] User approves §4 toolset (or picks alternative) — **approved 2026-08-10**
-- [x] R5 instruction grammar + sealed trial harness — design + Tasks 1–5 in plan
+- [x] User approves §4 toolset (or picks alternative), **approved 2026-08-10**
+- [x] R5 instruction grammar + sealed trial harness, design + Tasks 1-5 in plan
 
 **Approved next docs:**
 - Design: `docs/superpowers/specs/2026-08-10-sealed-retrieval-nav-design.md`

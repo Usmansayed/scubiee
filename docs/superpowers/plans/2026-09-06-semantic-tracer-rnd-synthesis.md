@@ -1,4 +1,4 @@
-# Semantic tracer R&D synthesis (Cycles 1–3 + fuse)
+# Semantic tracer R&D synthesis (Cycles 1-3 + fuse)
 
 **Date:** 2026-09-06  
 **Artifact:** `semantic_tracer_fuse` (opt-in research arm)  
@@ -56,4 +56,4 @@ Ship gate (must↑ + F1/prec/acc bounds): **not met**. Ranking quality improved;
 
 1. Keep **`composite_v1`** as MCP/CLI default.  
 2. Keep **`semantic_tracer_fuse`** (= comparator + centroid/hub + info-gain, no teleport) as the research composite for further cycles.  
-3. Next: multi-rep behavior docs (Cycle 3) or **stricter** teleport with must_not-aware admission — not looser ANN dumps.
+3. Next: multi-rep behavior docs (Cycle 3) or **stricter** teleport with must_not-aware admission, not looser ANN dumps.

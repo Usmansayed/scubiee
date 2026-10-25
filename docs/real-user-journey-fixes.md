@@ -23,7 +23,7 @@ root cause, the patch, and how it was verified.
 ## 1. `wipe --all` always exits 1 on a clean machine
 
 **Symptom.** Every `scubiee wipe --all --confirm` ended with
-"! Some Scubiee files remain — quit Cursor completely so MCP releases locks,
+"! Some Scubiee files remain, quit Cursor completely so MCP releases locks,
 then run wipe again" and exit code 1, even in a container with no Cursor.
 `~/.scubiee/` existed after the wipe with two files: `engine.log` and
 `engine_transition.json`.
@@ -65,7 +65,7 @@ Normal stops on an installed machine still log and record exactly as before.
 `setup` printed "note: another scubiee install found at
 /root/.local/share/uv/tools/scubiee/bin/scubiee", and `doctor` returned
 `ok: false` (exit 1) with "Multiple scubiee installs on PATH… Expected for
-this Python: /usr/local/bin/scubiee" — a file that does not exist.
+this Python: /usr/local/bin/scubiee", a file that does not exist.
 
 **Root cause.** `env_guard.current_python()` returned
 `Path(sys.executable).resolve()`. A uv tool environment (like any Linux/macOS
@@ -76,8 +76,8 @@ resolved to the tool's real binary, which no longer matched "expected" and was
 counted as an extra install. The uv-shim exception did not apply either,
 because the resolved interpreter path no longer contained `uv/tools/`.
 
-**Fix.** `current_python()` uses `Path(sys.executable).absolute()` — no symlink
-resolution — so the interpreter path keeps identifying the environment that
+**Fix.** `current_python()` uses `Path(sys.executable).absolute()`, no symlink
+resolution, so the interpreter path keeps identifying the environment that
 is actually running. This corrects every symlinked venv, not only uv tools.
 
 **Verification.**
@@ -100,7 +100,7 @@ right after it did not find the new function (it showed up minutes later).
 
 **Root cause.** With an engine running, the CLI forwards to `POST /v1/sync`.
 That endpoint is intentionally fire-and-forget: it only calls
-`sync_loop.request_poll()` (sets a flag) so the HTTP thread — shared with MCP —
+`sync_loop.request_poll()` (sets a flag) so the HTTP thread, shared with MCP
 never walks files or embeds. The CLI printed that "accepted" reply as the sync
 result, so `sync` never actually waited for anything.
 
@@ -116,7 +116,7 @@ HTTP thread doing any indexing work:
 - `graph_catchup` entries do not block settle: they run after the chunks are
   already published (search is fresh) and are held back ~30s on purpose. They
   are reported as `graph_pending`.
-- Paths already in flight when the requested poll runs count as synced — the
+- Paths already in flight when the requested poll runs count as synced, the
   periodic poll can queue an edit a moment earlier, and its folder watch then
   no longer reports it.
 - `POST /v1/sync` with `"wait": true` waits (default 90s, capped at 110s,
@@ -138,9 +138,9 @@ HTTP thread doing any indexing work:
   | Case | Before | After |
   |------|--------|-------|
   | edit existing file → `sync` | `deferred`, edit not searchable | 5.4 s, `refreshed: true`, `files: [src/orders_2.py]`, search rank 1 |
-  | new file → `sync` | — | 1.4 s (32.7 s before the graph-catch-up exclusion), `files: [src/delivery.py]`, search rank 1 |
-  | edit → `sync` in a terminal | — | spinner, then "✓ Synced 1 file(s) updated" in 1.4 s; search rank 1 |
-  | no changes → `sync` | — | 0.8 s, `refreshed: false` |
+  | new file → `sync` | - | 1.4 s (32.7 s before the graph-catch-up exclusion), `files: [src/delivery.py]`, search rank 1 |
+  | edit → `sync` in a terminal | - | spinner, then "✓ Synced 1 file(s) updated" in 1.4 s; search rank 1 |
+  | no changes → `sync` | - | 0.8 s, `refreshed: false` |
 
   If the background watcher has already published an edit before `sync`
   asks (it hot-syncs saves in ~0.55 s), `sync` correctly says
@@ -153,9 +153,9 @@ files (est. ~1 min)" and then ran for 5 minutes on an 8-CPU machine without a
 GPU.
 
 **Root cause.** `cli_ui.format_index_eta(n_files)` was a flat
-0.45–0.55 s *per file* tuned on a GPU box. It ignored the two things that set
+0.45-0.55 s *per file* tuned on a GPU box. It ignored the two things that set
 the time: how much code there is (embedding is ~95% of a CPU init, and it
-scales with chunks, not files — flask is 89 files but 918 chunks) and how fast
+scales with chunks, not files, flask is 89 files but 918 chunks) and how fast
 this machine embeds. Setup does measure speed (`accel.json` →
 `texts_per_sec`), and `workload.record_embed_throughput` existed, but nothing
 called it and the prompt never used either.
@@ -167,13 +167,13 @@ called it and the prompt never used either.
   second walk). Chunks ≈ bytes / 690 (flask 646, requests 734 B/chunk), plus
   10 s + 0.08 s/file for scan/parse/link/write/engine start.
 - **Speed.** `workload.machine_embed_cps()` prefers the rate *measured by real
-  indexes on this machine* — the indexer now records fresh (non-cached) chunks
+  indexes on this machine*, the indexer now records fresh (non-cached) chunks
   ÷ embed seconds into `~/.scubiee/embed_throughput.json` (running average,
   samples under 64 chunks ignored). Before the first index it falls back to
   setup's calibration, which embeds single-threaded and is therefore a lower
   bound on speed.
-- **Range.** Measured speed → 0.8–1.25× of the embed estimate; calibration only
-  → 0.5–1.05× (the real run can be up to ~2× faster than calibration).
+- **Range.** Measured speed → 0.8-1.25× of the embed estimate; calibration only
+  → 0.5-1.05× (the real run can be up to ~2× faster than calibration).
   Under a minute shows "<1 min". With no speed known (no setup), the old
   per-file formula remains the fallback.
 
@@ -185,14 +185,14 @@ called it and the prompt never used either.
 
   | Repo | Speed source | Prompt said | Real |
   |------|--------------|-------------|------|
-  | flask (89 files, 918 chunks) | setup calibration 1.76 t/s | ~5–9 min (old: ~1 min) | 5.4 min |
-  | requests (50 files, 666 chunks) | measured 2.97 chunk/s | ~4–6 min | 3.8 min |
+  | flask (89 files, 918 chunks) | setup calibration 1.76 t/s | ~5-9 min (old: ~1 min) | 5.4 min |
+  | requests (50 files, 666 chunks) | measured 2.97 chunk/s | ~4-6 min | 3.8 min |
 
   `embed_throughput.json` recorded 2.97 then 3.05 chunk/s. The requests run
   showed the 650 B/chunk first guess was slightly high for that repo, so the
   ratio was recalibrated to the two-repo average (690) and the measured band
-  widened to 0.8×; with those values the same inputs give ~4–9 min and
-  ~3–5 min (computed by the parameterised test from the measured inputs).
+  widened to 0.8×; with those values the same inputs give ~4-9 min and
+  ~3-5 min (computed by the parameterised test from the measured inputs).
 
 ## 5. `resume` hangs ~90 s and the engine silently fails to start
 
@@ -206,7 +206,7 @@ failed engine start that was reported as success.
 `ensure_daemon`, which spawns the engine as `scubiee engine run <repo>`. That
 child process hits the CLI's global-stop guard: `paused_blocks_command` (and
 `guard_engine_action("run")`) refused `engine run` whenever `is_paused()` was
-true — they did not know about the `resuming` state. The engine exited at
+true, they did not know about the `resuming` state. The engine exited at
 once, and `ensure_daemon` waited out its ~90 s health timeout.
 `daemon.py`, `watchdog.py`, `rules_installer.py` and `gate_cli.py` already used
 `is_paused() and not is_resuming()`; the guard and
@@ -216,7 +216,7 @@ Separately, `resume()` never looked at the engine result before returning
 
 **Fix.**
 
-- `pause_resume.is_stopped()` = paused **and not** resuming — the one state that
+- `pause_resume.is_stopped()` = paused **and not** resuming, the one state that
   must refuse engine starts. `lifecycle_guard.paused_blocks_command`,
   `guard_engine_action`, and `engine_should_be_running` use it. A real
   `scubiee stop` still blocks `engine run/start/ensure` exactly as before.
@@ -239,7 +239,7 @@ Separately, `resume()` never looked at the engine result before returning
   |---|--------|-------|
   | `resume` wall time | 91.3 s | **1.7 s** (piped), **1.9 s** (terminal) |
   | engine after resume | health check timed out, `ok: true` reported | `/health` ok right away, `engine.ok: true` |
-  | search right after resume | — | top hit `src/m_2.py` |
+  | search right after resume | - | top hit `src/m_2.py` |
   | terminal output | silent | "⠋ Resuming Scubiee" → "✓ Resumed" |
 
 ## 6. `connect` / `resume` report paths that were never written
@@ -355,9 +355,9 @@ folder finished, but took 112 s.
   | Step | Before (PyPI 0.3.154) | After |
   |------|------|-------|
   | `wipe --all` from home | rc 0, 8.9 s | rc 0, **3.8 s** (rerun with the depth cap: **3.9 s**) |
-  | right after wipe | — | `~/.scubiee`, model cache, repo `.scubiee` gone; `scubiee` not on PATH |
-  | background delete | — | trash drained in **0.2 s** |
-  | reinstall + `scubiee setup` right after | — | rc 0 (0.1 s install, setup ready) |
+  | right after wipe | - | `~/.scubiee`, model cache, repo `.scubiee` gone; `scubiee` not on PATH |
+  | background delete | - | trash drained in **0.2 s** |
+  | reinstall + `scubiee setup` right after | - | rc 0 (0.1 s install, setup ready) |
 
   On Linux the old walk over 300k files costs seconds, not hours. The hang is a
   Windows effect (NTFS plus antivirus on every directory read), and the Windows
@@ -385,7 +385,7 @@ every identifier (`pub`, `type`, `var`, `fun`, ...), so almost every file passed
 - Character classes are blanked before group handling: a class matches one
   unknown character and never holds required text.
 - Identifiers outside every group are ANDed when the pattern has no top-level
-  `|` — each is a literal the match must contain. Alternations stay OR.
+  `|`: each is a literal the match must contain. Alternations stay OR.
 
 The prefilter is still only a necessary condition, so grep results cannot change.
 
@@ -402,7 +402,7 @@ The prefilter is still only a necessary condition, so grep results cannot change
   |------|------|-------|
   | bare-word grep (lookaround) | 644 ms | 24 ms |
   | `_resolve_symbol_name` | 1,270 ms | 77 ms |
-  | `map focus` bare name, through the MCP bridge | 1,291–1,326 ms | 112–124 ms |
+  | `map focus` bare name, through the MCP bridge | 1,291-1,326 ms | 112-124 ms |
 
 - Release batteries on the laptop (fixed wheel installed with `uv tool install`):
 
@@ -416,9 +416,9 @@ The prefilter is still only a necessary condition, so grep results cannot change
 returns plain text, so the bridge host reads `dense_ready` from engine `/health`,
 and the scenario ignores the non-dict placeholder card when picking the pack seed.
 
-**Known margin.** `map find` with a new query is ~260–600 ms steady state but
-800–1,000 ms in the first minute after the engine starts, and it spikes while
-the engine hot-syncs a changed file. Lane A's `map_second` passed at 962–979 ms
+**Known margin.** `map find` with a new query is ~260-600 ms steady state but
+800-1,000 ms in the first minute after the engine starts, and it spikes while
+the engine hot-syncs a changed file. Lane A's `map_second` passed at 962-979 ms
 against a 1 s budget. Run the battery with `--out-dir` outside the repo: by
 default it writes its report into `docs/superpowers/plans/`, so the next run
 starts by re-indexing that report, right when the locate calls are timed.

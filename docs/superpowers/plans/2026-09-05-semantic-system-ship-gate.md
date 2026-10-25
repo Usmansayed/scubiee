@@ -1,4 +1,4 @@
-# Semantic system tracer — verify_prod bakeoff (2026-09-05)
+# Semantic system tracer: verify_prod bakeoff (2026-09-05)
 
 Board: `fixtures/trace-lab/verify_prod.json` (10 cases)  
 Full JSON: `docs/superpowers/plans/2026-09-05-semantic-system-verify-prod.json`

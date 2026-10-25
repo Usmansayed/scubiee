@@ -48,7 +48,7 @@ Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`.
 | **MCP (user scope)** | `~/.claude.json` → top-level `mcpServers` | `%USERPROFILE%\.claude.json` |
 | **Rules (global)** | `~/.claude/CLAUDE.md` | `%USERPROFILE%\.claude\CLAUDE.md` |
 
-- **Schema:** Claude Desktop–style `mcpServers` / `command` / `args` / `env` (no `type` required for stdio).
+- **Schema:** Claude Desktop, style `mcpServers` / `command` / `args` / `env` (no `type` required for stdio).
 - **Notes:** `--scope user` is the forever-global scope. Do **not** write project `.mcp.json`. Do **not** put servers under a per-project key inside `~/.claude.json` (that is “local” scope, tied to one folder).
 - **Refs:** [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp)
 
@@ -121,7 +121,7 @@ Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`.
 | | Mac | Windows | Linux |
 |---|---|---|---|
 | **MCP** | `~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json` | `%APPDATA%\Code\User\globalStorage\rooveterinaryinc.roo-cline\settings\mcp_settings.json` | `~/.config/Code/User/globalStorage/.../mcp_settings.json` |
-| **Rules** | _(project `.roo/rules` only — skip for global connect)_ | | |
+| **Rules** | _(project `.roo/rules` only, skip for global connect)_ | | |
 
 - **Schema:** `mcpServers` (Claude-style). Distinct from Cline extension id/filename.
 - **Notes:** Global MCP spawn cwd may be wrong; run `scubiee connect --roo-code` inside each project for `.roo/mcp.json`.
@@ -173,7 +173,7 @@ Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`.
   }
   ```
 - **Critical:** Key is `environment` (not `env`). `command` is a **single array**. Global file name is **`opencode.json`**, not `config.json`.
-- **Caveat:** Some OpenCode versions shallow-replace `mcp` when a project `opencode.json` defines `mcp` — avoid project MCP files if you rely on global servers.
+- **Caveat:** Some OpenCode versions shallow-replace `mcp` when a project `opencode.json` defines `mcp`, avoid project MCP files if you rely on global servers.
 - **OpenCode v2 (2026):** newer docs use `mcp.servers.{name}` with `disabled` instead of top-level `mcp.{name}` with `enabled`. Scubiee currently emits **v1** shape; verify on your OpenCode version or track [scubiee-connect-e2e-manual-test.md](./scubiee-connect-e2e-manual-test.md).
 - **Refs:** [opencode.ai/docs/config](https://opencode.ai/docs/config/), [opencode.ai/docs/mcp-servers](https://opencode.ai/docs/mcp-servers/)
 
@@ -181,7 +181,7 @@ Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`.
 
 | | Mac / Linux | Windows |
 |---|---|---|
-| **MCP** | `~/.config/amp/settings.json` | `%USERPROFILE%\.config\amp\settings.json` (also seen: `%APPDATA%\amp\settings.json` in older guides — prefer `~/.config/amp`) |
+| **MCP** | `~/.config/amp/settings.json` | `%USERPROFILE%\.config\amp\settings.json` (also seen: `%APPDATA%\amp\settings.json` in older guides, prefer `~/.config/amp`) |
 | **Rules** | `~/.config/amp/AGENTS.md` | same |
 
 - **Schema:** Literal dotted key **`"amp.mcpServers"`** (not nested `amp: { mcpServers }`).
@@ -206,7 +206,7 @@ Base shape from `pipeline.mcp_install.server_entry(repo=None)`:
 
 - `command`: interpreter that can `import pipeline`
 - `args`: `["-u", "-m", "pipeline.mcp_locate"]`
-- `env`: engine URL, surfaces, sync flags — **no `CTX_REPO`**
+- `env`: engine URL, surfaces, sync flags, **no `CTX_REPO`**
 
 Adapters transform this into OpenCode / VS Code / Codex / Amp / Continue / Zed shapes.
 

@@ -1,4 +1,4 @@
-# MacBook embed speed vs Windows — full session notes
+# MacBook embed speed vs Windows: full session notes
 
 > Written 2026-08-19 from the Mac install + speed debugging chat on `feat/production-certification`.
 > Companion install handoff: [`mac-gpu-install-handoff.md`](./mac-gpu-install-handoff.md).
@@ -9,7 +9,7 @@
 
 A complete recap of everything we hit while putting Context Engine (`scubiee`) on an Apple Silicon MacBook Air, why embedding looked “on GPU” but was painfully slow, and why an older Windows laptop felt faster.
 
-If you only need the punchline: **Mac CoreML was not a real Metal win.** It ran the CodeRank ONNX graph as ~49 tiny GPU/CPU partitions because of empty RoPE slices. That was ~0.4 chunks/s. **Apple Silicon CPU FastEmbed is the fast path today** (~13–18 chunks/s, ~2,100 tok/s). Indexing this repo finished in about **3.4 minutes**. Windows DirectML at ~30 texts/s was faster than broken CoreML, not faster than this Mac’s CPU.
+If you only need the punchline: **Mac CoreML was not a real Metal win.** It ran the CodeRank ONNX graph as ~49 tiny GPU/CPU partitions because of empty RoPE slices. That was ~0.4 chunks/s. **Apple Silicon CPU FastEmbed is the fast path today** (~13-18 chunks/s, ~2,100 tok/s). Indexing this repo finished in about **3.4 minutes**. Windows DirectML at ~30 texts/s was faster than broken CoreML, not faster than this Mac’s CPU.
 
 ---
 
@@ -19,8 +19,8 @@ If you only need the punchline: **Mac CoreML was not a real Metal win.** It ran 
 |---|---|---|
 | OS | Windows | macOS 26.5.2 (darwin 25.5.0), arm64 |
 | GPU path | DirectML (`DmlExecutionProvider`) | CoreML → Metal (`CoreMLExecutionProvider`) |
-| Typical speed (project `t/s`) | ~30 texts/s on an older laptop | CoreML ~0.4 texts/s (broken); CPU ~13.5–17.6 texts/s |
-| Python | — | 3.12.14 (Homebrew) |
+| Typical speed (project `t/s`) | ~30 texts/s on an older laptop | CoreML ~0.4 texts/s (broken); CPU ~13.5-17.6 texts/s |
+| Python | - | 3.12.14 (Homebrew) |
 | Package | scubiee 0.2.6 → 0.2.7 on PyPI | this branch as editable **0.2.8** |
 | ONNX Runtime | DirectML wheel | `onnxruntime` 1.29.0 (includes CoreML EP) |
 | FastEmbed | 0.8.0 | 0.8.0 |
@@ -31,9 +31,9 @@ If you only need the punchline: **Mac CoreML was not a real Metal win.** It ran 
 | Path | Reality |
 |---|---|
 | `~/scubiee` | Does **not** exist (handoff doc assumed this) |
-| `~/.scubiee/venv` | Created first; **Python 3.9.6, empty** — do not use |
+| `~/.scubiee/venv` | Created first; **Python 3.9.6, empty**, do not use |
 | **`~/venv`** | The real env: Python 3.12.14, `scubiee[coreml]==0.2.7` then editable 0.2.8 |
-| `~/.context-engine/venv` | Default npm/mac-install.sh location — **not used** |
+| `~/.context-engine/venv` | Default npm/mac-install.sh location, **not used** |
 | `~/.context-engine/` | Runtime state: `accel.json`, indexes, vectordb |
 
 Always:
@@ -61,14 +61,14 @@ Later, once CoreML “worked,” indexing this folder was so slow it would take 
 
 ## Timeline
 
-### 1. Windows → Mac install (0.2.5 – 0.2.7)
+### 1. Windows → Mac install (0.2.5-0.2.7)
 
 On Windows the engine was already production-hardening: search CLI, daemon health, live reindex, PyPI 0.2.6.
 
 Mac install journey:
 
-1. `pip install scubiee` (0.2.6) — install OK.
-2. `ctx setup` — **failed** with CoreML errors: `E5RT`, dynamic shapes, `runtime shape ({1,6,12,0}) has zero elements`.
+1. `pip install scubiee` (0.2.6): install OK.
+2. `ctx setup`: **failed** with CoreML errors: `E5RT`, dynamic shapes, `runtime shape ({1,6,12,0}) has zero elements`.
 3. Advice was CPU profile. User refused.
 
 Research conclusion: Mac has no CUDA. GPU = **ONNX Runtime CoreML EP → Metal**. Transformers need:
@@ -109,7 +109,7 @@ Falling back to ['CPUExecutionProvider'] and retrying.
 
 | Bad option | Why wrong |
 |---|---|
-| `UseCPUAndGPU` | `COREML_FLAG_USE_CPU_AND_GPU` — not an ORT string option |
+| `UseCPUAndGPU` | `COREML_FLAG_USE_CPU_AND_GPU`, not an ORT string option |
 | `CreateMLProgram` | Wrong; `ModelFormat=MLProgram` already covers this |
 
 Valid options: `MLComputeUnits`, `ModelFormat`, `RequireStaticInputShapes`, `EnableOnSubgraphs`.
@@ -118,7 +118,7 @@ Valid options: `MLComputeUnits`, `ModelFormat`, `RequireStaticInputShapes`, `Ena
 
 Branch **0.2.8** removed the bad options and set `shape = [batch, seq]`.
 
-### 3. This Mac session — make CoreML actually attach
+### 3. This Mac session: make CoreML actually attach
 
 Checkout was `feat/production-certification` (already had the 0.2.8 option/shape fixes). Work on this machine:
 
@@ -160,7 +160,7 @@ FastEmbed pads to the **longest sequence in the batch**, not to 512. The static 
 
 After that, `ctx setup --repair` succeeded on CoreML. Calibration: **0.71 t/s**. Smoke embed produced a 768-d vector. That looked like “GPU works.”
 
-### 4. Index this folder — speed falls apart
+### 4. Index this folder: speed falls apart
 
 User asked to index this repo and report tokens/s.
 
@@ -211,7 +211,7 @@ Same 0-dim showed up in 0.2.6 as `runtime shape ({1,6,12,0}) has zero elements`.
 
 ### Side cost of the static CoreML recipe
 
-Even without partitions, the Mac GPU path always runs **batch 20 × seq 512**. Index chunks are compressed (~512 chars ≈ 100–200 tokens). Windows DML uses **real batch and real sequence length**. Padding to 512 is several times more FLOPs per chunk.
+Even without partitions, the Mac GPU path always runs **batch 20 × seq 512**. Index chunks are compressed (~512 chars ≈ 100-200 tokens). Windows DML uses **real batch and real sequence length**. Padding to 512 is several times more FLOPs per chunk.
 
 ---
 
@@ -252,18 +252,18 @@ wall clock for ctx index --force: ~3.4 minutes
 So:
 
 - Windows **was** faster than Mac **CoreML**. That comparison was real.
-- Windows was **not** faster than this Mac’s **CPU**. Apple Silicon CPU is in the same order as that old DirectML box (13–18 vs ~30 texts/s). DirectML still wins on texts/s; CoreML lost by two orders of magnitude.
-- If “30 tokens per second” was meant literally (tokenizer tokens), this Mac CPU is ~2,100 tok/s — much higher. In this repo, **`t/s` almost always means texts/chunks per second**, not tokenizer tokens.
+- Windows was **not** faster than this Mac’s **CPU**. Apple Silicon CPU is in the same order as that old DirectML box (13-18 vs ~30 texts/s). DirectML still wins on texts/s; CoreML lost by two orders of magnitude.
+- If “30 tokens per second” was meant literally (tokenizer tokens), this Mac CPU is ~2,100 tok/s, much higher. In this repo, **`t/s` almost always means texts/chunks per second**, not tokenizer tokens.
 
 ---
 
 ## Why Windows felt fast and Mac did not
 
 1. **Different accelerators.** Windows used DirectML on a discrete/iGPU path that **can run 0-width slices**. Mac CoreML cannot.
-2. **Silent CPU on 0.2.7.** First Mac “success” at 21 t/s was CPU after CoreML option rejection. That was actually OK speed — then we “fixed GPU” and speed collapsed.
-3. **“GPU working” ≠ GPU fast.** After 0.2.8, CoreML was the first provider, 501/646 nodes assigned to it, embeddings numerically fine — and 40 s/batch because of 49 partitions.
+2. **Silent CPU on 0.2.7.** First Mac “success” at 21 t/s was CPU after CoreML option rejection. That was actually OK speed, then we “fixed GPU” and speed collapsed.
+3. **“GPU working” ≠ GPU fast.** After 0.2.8, CoreML was the first provider, 501/646 nodes assigned to it, embeddings numerically fine, and 40 s/batch because of 49 partitions.
 4. **Static 20×512** is a CoreML compiler requirement, not how DML runs. DML embeds the real token length.
-5. **Target in code is 10 texts/s** (`CTX_TARGET_TPS`). Windows ~30 clears it. CoreML 0.4 does not. CPU ~14–18 does.
+5. **Target in code is 10 texts/s** (`CTX_TARGET_TPS`). Windows ~30 clears it. CoreML 0.4 does not. CPU ~14-18 does.
 
 There is no CUDA on Mac. Metal-via-CoreML is the only GPU story, and **this ONNX is not CoreML-friendly until empty RoPE concats are removed**.
 
@@ -305,8 +305,8 @@ ctx index /path/to/repo --force
 Success checks for a **fast** Mac install:
 
 - [x] Index of this repo in well under 5 minutes
-- [x] `[embed] ... device=cpu` at ~10–18 chunk/s, ~2k tok/s
-- [ ] CoreML session with **few partitions** (not 49) and calibrate ≥ 10 t/s — **not true yet**
+- [x] `[embed] ... device=cpu` at ~10-18 chunk/s, ~2k tok/s
+- [ ] CoreML session with **few partitions** (not 49) and calibrate ≥ 10 t/s, **not true yet**
 
 ---
 
@@ -318,7 +318,7 @@ Success checks for a **fast** Mac install:
 2. Confirm ORT log: partitions should drop far below 49; **no** `dimension values of 0` on Slice_5/11.
 3. Microbench CoreML vs CPU on the same 16/64 chunks.
 4. Only keep `profile=coreml` if it beats ~10 t/s (ideally approaches Windows ~30).
-5. If CoreML is still slow, likely leftover dynamic Slice/RoPE ops or 20×512 padding vs short chunks — consider a CoreML-oriented export, or smaller static seq for index-sized chunks.
+5. If CoreML is still slow, likely leftover dynamic Slice/RoPE ops or 20×512 padding vs short chunks, consider a CoreML-oriented export, or smaller static seq for index-sized chunks.
 
 Until then, **Mac production embed = CPU FastEmbed.** That is not a cop-out: it is faster than the Metal path we actually got, and in the same league as the Windows DML laptop.
 

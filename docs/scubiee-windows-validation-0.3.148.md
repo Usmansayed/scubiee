@@ -1,4 +1,4 @@
-# Scubiee Windows/DirectML validation — 0.3.148
+# Scubiee Windows/DirectML validation: 0.3.148
 
 _Platform: Windows, AMD Ryzen 7 5800H + Radeon, DirectML (DmlExecutionProvider),
 Python 3.13.5 (uv-tool engine), scubiee 0.3.148. All results are from live runs
@@ -11,12 +11,12 @@ On **Windows / DirectML**, scubiee 0.3.148 is solid across repo structures and
 languages: `find`/`focus` resolve correctly in Python, JS/TS (`.ts/.mjs/.jsx`),
 Go, Rust, Java, C, C++, and a 7-language polyglot repo; every sync lane
 reconciles correctly; response times are in the expected range; and **zero
-crashes** across the whole matrix — including an adversarial repo with a NUL-byte
+crashes** across the whole matrix, including an adversarial repo with a NUL-byte
 source file and an 80k-field minified single line. One new hardening fix landed
 this pass (find size-cap). The Mac-side find NUL-byte fix (`098f520`) is present
 and confirmed.
 
-## New fix this pass — find size-cap (`map_v3_helpers._lines`)
+## New fix this pass: find size-cap (`map_v3_helpers._lines`)
 
 The macOS 0.3.148 bug-bounty pass fixed a `find` crash on NUL-byte source files
 (the C tokenizer raised a `SystemError` that escaped the guard). Reviewing that
@@ -31,7 +31,7 @@ fix, two **sibling paths** in the same `find` flow still had the same class of
    lazy `[\s\S]*?` scan super-linear and could stall `find`.
 
 **Fix:** `_lines` now caps text at `_MAX_FILE_BYTES` (2 MB) and truncates any
-single line over `_MAX_LINE_CHARS` (200 KB) — the single read point every
+single line over `_MAX_LINE_CHARS` (200 KB), the single read point every
 non-grep locate helper flows through. Closes both at once; never crashes, never
 OOMs, never stalls on a pathological file. A file big enough to exceed these is
 generated/minified/vendored and not worth masking precisely.
@@ -54,16 +54,16 @@ Nine test repos covering single-language and polyglot structures. Each was
 | java_app | Java, deep `com/example` package | 5 | UserService/UserRepository ✓ | findUser ✓ |
 | cpp_app | C++ `.cc`/`.hpp` | 3 | vector_math.cc ✓ | dot_product ✓ |
 | c_app | C | 2 | hashmap.c ✓ | hash_key ✓ |
-| polyglot | 7 langs in one repo (py/ts/go/rust/java/cpp/sh) | 9 | all 4 queried langs disambiguated ✓ | — |
-| adversarial | NUL-byte file + 80k-field minified line + real symbol | 4 | normal.py ✓ (no crash) | — |
+| polyglot | 7 langs in one repo (py/ts/go/rust/java/cpp/sh) | 9 | all 4 queried langs disambiguated ✓ | - |
+| adversarial | NUL-byte file + 80k-field minified line + real symbol | 4 | normal.py ✓ (no crash) | - |
 
 - **find: 15/16** semantic queries returned the correct top file. The one miss
   (java "user service that loads a user by id" → `UserRepository.java` rather than
-  `UserService.java`) is a reasonable semantic result — the repository holds the
-  `load(id)` method the query describes — not a defect; both files are in the hit
+  `UserService.java`) is a reasonable semantic result, the repository holds the
+  `load(id)` method the query describes, not a defect; both files are in the hit
   set.
 - **focus: all languages PASS** via the CLI (`map --config focus --names <sym>`),
-  each returning `file::symbol`, the line range, and the body — Python, TS, Go,
+  each returning `file::symbol`, the line range, and the body, Python, TS, Go,
   Rust, Java, C++, C all resolve bare names correctly.
 - **adversarial repo indexed and searched with zero crashes**, exercising both the
   Mac NUL-byte fix and the new size-cap fix end-to-end.
@@ -78,17 +78,17 @@ Small repo (py_app), warm engine:
 | `tool status` | p50 **14 ms** |
 | `tool gate` | p50 **80 ms** (first-call project check) |
 | `find` cold-first | **148 ms** |
-| `find` warm steady | p50 **150 ms** (135–278) |
+| `find` warm steady | p50 **150 ms** (135-278) |
 | `focus` file::symbol | p50 **<1 ms** |
 | `focus` bare name | p50 **1 ms** (small repo) |
 
 Cold start (small repo): **soft-ready 1.8 s, dense-ready 3.0 s**. (The main
-~8.9k-chunk workspace repo is ~9 s soft / ~24 s dense — scale-dependent, as
+~8.9k-chunk workspace repo is ~9 s soft / ~24 s dense, scale-dependent, as
 documented in the perf-timings doc.) `focus` bare-name is the known latency
 outlier on large repos (whole-tree grep+outline, ~236 ms there); the qualified
 `file::symbol` form is far faster.
 
-## Sync — every lane (on a polyglot copy)
+## Sync: every lane (on a polyglot copy)
 
 | Lane | Result |
 |---|---|
@@ -111,14 +111,14 @@ repeated warm/cold cycles). Engine healthy throughout.
 
 ## NOT covered here (same caveats as the macOS handoff)
 
-1. **First-run `scubiee setup`** on a brand-new machine — this pass ran against an
+1. **First-run `scubiee setup`** on a brand-new machine, this pass ran against an
    already-set-up tool. (A prior session validated `setup --repair` end-to-end on
    a clean python.org venv after the numpy no-deps fix.)
-2. **Very large monorepos** (100k+ files) — largest exercised here is the ~8.9k-chunk
+2. **Very large monorepos** (100k+ files): largest exercised here is the ~8.9k-chunk
    workspace repo.
-3. **Grammar-less languages** (`.kt .swift .php .scala .sh`) — index and `find`
+3. **Grammar-less languages** (`.kt .swift .php .scala .sh`): index and `find`
    work; `focus` uses the grep fallback, not full tree-sitter.
-4. **Linux (CUDA/CPU)** — untested on this machine.
+4. **Linux (CUDA/CPU)**: untested on this machine.
 
 ## State
 

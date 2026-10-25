@@ -1,4 +1,4 @@
-# Scubiee adversarial MCP stress — findings
+# Scubiee adversarial MCP stress: findings
 
 Ran an adversarial stress harness (`scripts/perf/adversarial_mcp_stress.py`)
 against the **real** Scubiee engine + **real** `scubiee-mcp-bridge` (the same
@@ -31,15 +31,15 @@ contract sane).
 |----------|---------|-------|
 | S2 flap | **PASS** | 8/8 opens OK, no wedge, no crash |
 | S4 concurrent | **PASS** | 24/24 map OK, 24/24 status OK, 0 errors across 3 hosts |
-| S7 churn_in_warm | **PASS** | both pre-warm and added-during-warm files searchable — no files lost to the race |
+| S7 churn_in_warm | **PASS** | both pre-warm and added-during-warm files searchable, no files lost to the race |
 | S1 big_offline | **PASS (after fix)** | now surfaces substantial pending for a 300-file paste |
 | S6 huge_file | **FIXED** | was an infinite retry loop; now quarantines after a cap |
 
 ## Bugs found and fixed
 
-### BUG 1 — large file-count paste under-estimated → stayed silent (fixed)
+### BUG 1: large file-count paste under-estimated → stayed silent (fixed)
 A 300-file offline paste estimated ~15s of work and classified as **not
-substantial**, so the agent-facing `pending` contract stayed silent — yet the
+substantial**, so the agent-facing `pending` contract stayed silent, yet the
 batch genuinely took ~150s to drain. The workload estimate counted only chunk
 content and ignored per-file pipeline overhead (parse, graph participation,
 session invalidation, publish), which scale with the *number* of files.
@@ -52,10 +52,10 @@ pending `total_units` to the estimated embed units (not the raw file count), so
 `tests/test_workload.py` (`test_many_tiny_files_is_substantial_via_per_file_overhead`,
 `test_a_dozen_small_files_still_silent`).
 
-### BUG 2 — infinite retry loop on an unindexable file (fixed) — SEVERE
+### BUG 2: infinite retry loop on an unindexable file (fixed), SEVERE
 A single pathologically large file (~36k lines, ~12k functions) wedged the
 background keeper in an **infinite retry loop**. The engine log showed, forever,
-every ~4–5 minutes:
+every ~4-5 minutes:
 
 ```
 [keeper] bulk sync starting: 1 files in ~1 sub-batches [bulk_slice]
@@ -63,13 +63,13 @@ every ~4–5 minutes:
 ```
 
 The file spent ~291s in `incremental_sync`, produced 0 chunks, was re-queued,
-and retried indefinitely — never indexed, keeper pinned.
+and retried indefinitely, never indexed, keeper pinned.
 
 **Root cause:** `sync_loop._bulk_sync_paths` only escalated when the result
 strategy was exactly `"explicit_full_index_required"`. A huge/failing file
 returns `strategy="incremental"` (or `"none"`, or raises), so it fell through to
-the `else` branch (re-queue `bulk_deferred`) — or the `except` branch (re-queue
-`bulk_retry`) — with **no retry cap**. Both branches looped forever. There is no
+the `else` branch (re-queue `bulk_deferred`), or the `except` branch (re-queue
+`bulk_retry`), with **no retry cap**. Both branches looped forever. There is no
 pre-chunk file-size guard, so the file was never skipped.
 
 **Fix** (`dirty_ledger.py`, `dirty_journal.py`, `sync_loop.py`): added
@@ -83,7 +83,7 @@ serves everything else) and the gap is surfaced via `needs_full` + an error
 string pointing at `scubiee index . --force`.
 
 Resource-pressure deferrals (`strategy="deferred"`) do **not** count toward the
-cap — they are expected to clear and must keep retrying.
+cap, they are expected to clear and must keep retrying.
 
 **Subtlety:** the retry re-queue uses `defer()` not `mark()`. `mark()` on a
 non-queued entry creates a fresh `DirtyEntry`, resetting `fail_attempts`, so the
@@ -94,7 +94,7 @@ Tests: `tests/test_bulk_barren_quarantine.py`
 (`test_barren_file_is_quarantined_after_cap_not_looped`,
 `test_resource_deferral_does_not_count_toward_barren_cap`).
 
-## Second batch — S3 crash, S5 rename, S8 mixed cycles
+## Second batch: S3 crash, S5 rename, S8 mixed cycles
 
 | Scenario | Verdict | Notes |
 |----------|---------|-------|
@@ -104,7 +104,7 @@ Tests: `tests/test_bulk_barren_quarantine.py`
 
 With the earlier batch, **all 8 scenarios pass invariants** against the real MCP.
 
-### S5 deep-dive — rename detection is correct; prune is slow (not broken)
+### S5 deep-dive: rename detection is correct; prune is slow (not broken)
 
 An initial corrected probe showed the OLD `s5_old/` paths still searchable 128s
 after an offline folder rename, which looked like a prune failure. Investigation:
@@ -112,21 +112,21 @@ after an offline folder rename, which looked like a prune failure. Investigation
 - **Detection is correct.** An isolated repro of `root_probe(discover_newcomers=True)`
   on a renamed folder returns the old paths in `removed` and the new paths in
   `added` (rename = delete + add). The reconciler enqueues both halves.
-- **The removals DO publish** — the engine log shows `removed=165` / `removed=200`
+- **The removals DO publish**: the engine log shows `removed=165` / `removed=200`
   bulk cycles pruning the old paths. They are not lost.
 - **They drain slowly**, interleaved with the add-half and (in the contaminated
   multi-scenario run) a large accumulated backlog, so the old content stayed
   searchable past the 128s probe window. This is the **same `search_usable`
   during-reconcile behavior** as the big-batch case: the current generation keeps
   serving old content until the delete-half's generation publishes. Correct, but
-  slow — see the drain-throughput follow-up below.
+  slow, see the drain-throughput follow-up below.
 
 ## Harness artifacts fixed (not product bugs)
 
 Three harness weaknesses produced misleading verdicts and were corrected so the
 harness is trustworthy:
 
-1. **G4 generation check** compared the `/health` `generation` field — a volatile
+1. **G4 generation check** compared the `/health` `generation` field, a volatile
    in-memory counter that resets on every engine restart (so stop/start
    scenarios appeared to move it backward 5→3→1). Fixed to read the **durable**
    `(epoch, counter)` from `index_state.json`, monotonic within an epoch. The
@@ -141,14 +141,14 @@ harness is trustworthy:
    disappears (up to ~2 min) and to inspect returned PATHS, not shared body text
    (a rename keeps content identical in both paths).
 
-## Reliability hardening — the three follow-ups, now FIXED
+## Reliability hardening: the three follow-ups, now FIXED
 
-### 1. /health stayed responsive under embed load (fixed — GIL investigated, no process split needed)
+### 1. /health stayed responsive under embed load (fixed: GIL investigated, no process split needed)
 `/health` used to time out while the engine embedded a large backlog. The
 initial hypothesis was GIL starvation: the HTTP thread (ThreadingHTTPServer)
 contending with the embed loop. **That hypothesis was tested and disproved.** A
 GIL-heartbeat probe (a tight Python-level timer thread sampling its own wake
-latency) ran *through* a 9.5s DML embed batch and saw **p99 = 11ms** — the embed
+latency) ran *through* a 9.5s DML embed batch and saw **p99 = 11ms**, the embed
 runs in native fastembed/ONNX-Runtime code that releases the GIL, so a pure
 Python HTTP handler is **not** starved. A separate `/health` process was
 therefore **not** built; it would add failure modes (a second lifecycle, IPC,
@@ -161,13 +161,13 @@ disk reads + an `index_state.json` read per request. Fix (`ce_service.py` +
   `_refresh_health_disk_snapshot`): a daemon thread recomputes the disk-touching
   bits (project ref, `agent_pending`, cold `index_is_usable`) and the full
   `_compute_health()` payload every `CTX_HEALTH_REFRESH_S` (1s). The request path
-  does **zero disk I/O** once warm — it serves the prebuilt payload. Rollback:
+  does **zero disk I/O** once warm, it serves the prebuilt payload. Rollback:
   `CTX_HEALTH_REFRESHER=0` (falls back to inline TTL-cached compute).
 - `_health_disk_snapshot()` TTL-caches the disk bits (`CTX_HEALTH_CACHE_TTL_S=2`)
   and `health()` serves the last payload when <1s stale
   (`CTX_HEALTH_PAYLOAD_TTL_S=1`) as a backstop if the refresher is disabled.
 - HTTP transport hardening on `EngineHTTPServer`: access logging gated behind
-  `CTX_HTTP_ACCESS_LOG` (default off — no per-request log formatting on the hot
+  `CTX_HTTP_ACCESS_LOG` (default off, no per-request log formatting on the hot
   path), `daemon_threads`, `disable_nagle_algorithm` (TCP_NODELAY), and
   `request_queue_size=128` so connect storms queue instead of resetting.
 
@@ -180,7 +180,7 @@ calls across 50 reads once warm.
 ### 2. delete/rename prune latency (fixed)
 `_additions_before_deletions` returned `present + missing` (adds first), so a
 rename's deletes waited behind the embed-heavy add-half. Fix (`sync_loop.py`):
-return `missing + present` (deletes first) — a delete carries no embedding, so a
+return `missing + present` (deletes first), a delete carries no embedding, so a
 renamed-away path disappears from search almost immediately. Hot saves are still
 prioritized (they go through `_split_explicit_writes` as `writes`, ahead of the
 backlog, before this ordering matters). Rollback: `CTX_DELETES_FIRST=0`.
@@ -191,12 +191,12 @@ producing 0 usable chunks (and the barren cap then quarantined it after N
 attempts). Fix (`incremental.py`): `_oversized_file()` + a filter right after
 `_paths_for_files` drops files over `CTX_MAX_FILE_LINES` (25000) /
 `CTX_MAX_FILE_BYTES` (2 MB) **before** `extract()`. The skipped file stays in
-`touch_set` so the no-delta branch records its merkle hash (handled —
+`touch_set` so the no-delta branch records its merkle hash (handled
 `root_probe` never re-reports it) and clears any stale chunk-merkle entry.
-Verified live: `[sync] skip oversized file …/s6_huge.py (lines>25000) — not
+Verified live: `[sync] skip oversized file …/s6_huge.py (lines>25000), not
 indexed`, skipped in ~2.8s with `parse_ms=0`, hash recorded, not re-reported.
 
-Tests: `tests/test_reliability_hardening.py` (9 — deletes-first ordering + its
+Tests: `tests/test_reliability_hardening.py` (9, deletes-first ordering + its
 rollback, oversized detection by lines/bytes + disable, health TTL cache hit +
 refresh, zero-disk-IO request path, refresher payload freshness). 134 pass + 1
 skip across the touched suites after the final consolidated regression.
@@ -209,12 +209,12 @@ that sat in the OS connect-refused backoff. Fix (`runtime_controller.py`):
 and reports state from the lockfile/process signals it already has. Attach-return
 dropped from ~1.5s to **~23ms**. The slower full probe is still used where a live
 health read is actually needed. (An intermediate `_probe_health(fast=)` signature
-change was reverted — it broke two ast-hydrated tests whose monkeypatch lambdas
+change was reverted, it broke two ast-hydrated tests whose monkeypatch lambdas
 take only `repo`; the fix lives entirely in `snapshot`.)
 
 ### 5. offline ghost prune for disappeared files (added)
 `_reconcile_offline` now runs an `offline_ghost_prune` pass: it enqueues the
-corpus "ghosts" — paths present in `chunks.jsonl` but gone from disk — that the
+corpus "ghosts", paths present in `chunks.jsonl` but gone from disk, that the
 merkle-diff `root_probe` can miss when a whole subtree vanishes while the engine
 was off. This closes the gap where a bulk offline delete left tombstone-less rows
 owed. Removals carry no embedding, so they drain fast (deletes-first ordering,
@@ -226,13 +226,13 @@ follow-up #2 above).
 **Repro:** seed a folder online (let it go fresh), rename the folder while the
 engine is OFF, reopen. The old paths are correctly **removed from
 `chunks.jsonl` on disk** (verified `..._in_chunks_jsonl=0`), the reconcile logs
-`removed=N`, and the graph prunes the old nodes — yet `/v1/search` still returns
+`removed=N`, and the graph prunes the old nodes, yet `/v1/search` still returns
 the OLD paths for a while.
 
 **Root cause (as far as isolated repro took it):** the removal persists to disk
 correctly, but the **served in-memory binder** retains the stale rows.
-`_ensure_engine` (ce_service.py) returns `runtime.engine` — the *published*
-binder — not the `load_engine` cache, so a `clear_engines()` on the cache does
+`_ensure_engine` (ce_service.py) returns `runtime.engine`, the *published*
+binder, not the `load_engine` cache, so a `clear_engines()` on the cache does
 not refresh what search reads. The full `_publish_runtime` reload path *does*
 rebuild a clean binder from disk and clears the staleness; a plain engine restart
 clears it too.
@@ -245,8 +245,8 @@ of this hardening run carries real regression risk to the verified-good search
 path, for a narrow, self-clearing, non-data-loss edge case.
 
 **Impact / mitigation:** `index_usable` / `search_usable` hold throughout (search
-keeps serving the current generation), there is **no data loss** — the on-disk
-corpus is correct — and the stale rows clear on the next full publish or an
+keeps serving the current generation), there is **no data loss**, the on-disk
+corpus is correct, and the stale rows clear on the next full publish or an
 engine restart. Tracked for a follow-up that reloads the published binder from
 disk after a bulk offline removal, with a focused test, rather than a hot-path
 guess.

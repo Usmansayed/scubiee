@@ -1,7 +1,7 @@
-# Locate calibration — research framework (token + call efficiency)
+# Locate calibration: research framework (token + call efficiency)
 
 **Date:** 2026-09-06  
-**Status:** framework **approved**; Phases A–E complete; Prefer/Forbid GATE+MCP shipped; live C09 needle over_use **0** after MCP reload  
+**Status:** framework **approved**; Phases A, E complete; Prefer/Forbid GATE+MCP shipped; live C09 needle over_use **0** after MCP reload  
 **Ship tools in scope:** `map` · `pack_context` · `expand_context` · `collect_hot_context` · (support: `gate` / `status` / `workspace` / `expand`)
 
 **Phase A artifact:** `docs/superpowers/plans/locate-calibration-corpus-v1.json` (65 cases) · summary `docs/superpowers/plans/2026-09-06-locate-calibration-phase-a.md`  
@@ -11,7 +11,7 @@
 
 ## 0. North star (why we exist)
 
-**Ultimate goal:** help the coding agent collect the context it needs while **minimizing total token usage** and **minimizing API / tool-round trips** — without wrecking the agent’s natural exploration trajectory (especially Grep / Glob / span-Read).
+**Ultimate goal:** help the coding agent collect the context it needs while **minimizing total token usage** and **minimizing API / tool-round trips**, without wrecking the agent’s natural exploration trajectory (especially Grep / Glob / span-Read).
 
 This is **not** “add more MCP tools” or “always win vs native.”  
 This is a **calibration** problem: when Scubiee should enter the trajectory, how densely it should return context, and when it should **get out of the way**.
@@ -43,7 +43,7 @@ not just “Scubiee response was small.”
 | **Under-use** | Agent skips Scubiee when it would have compressed locate | Shotgun Grep/explore thrash; many native calls; high chars |
 | **Over-use** | Agent is pushed into Scubiee when Grep/Glob/Read was already optimal | Schema/map/pack tax; disrupted reasoning; sometimes worse recall |
 
-**Both increase total token consumption.** Research must measure and bound both — never optimize only under-use (hard MUST theater) or only over-use (invisible product).
+**Both increase total token consumption.** Research must measure and bound both, never optimize only under-use (hard MUST theater) or only over-use (invisible product).
 
 ### 0.3 Integration stance (not replacement)
 
@@ -56,7 +56,7 @@ Therefore Scubiee must:
 
 1. **Defer** to host Grep / Glob / span-Read when the task is already a literal/name/path problem.  
 2. **Enter** when soft/structural locate would otherwise cause thrash.  
-3. **Guide** native tools after a heatmap (Grep *inside* card files) — do not ban native after Scubiee.  
+3. **Guide** native tools after a heatmap (Grep *inside* card files), do not ban native after Scubiee.  
 4. Prefer **one denser beat** (map→pack→optional expand/collect) over parallel explore + Scubiee thrash.
 
 Host system prompts that say “always explore with built-in retrieval first” may conflict. Policy language should:
@@ -70,14 +70,14 @@ Host system prompts that say “always explore with built-in retrieval first” 
 ## 1. Research principles
 
 1. **Optimize end-to-end tokens + rounds**, not MCP-local size alone.  
-2. **Tool-POV studies** — each experiment answers when a tool helps *or hurts* the trajectory.  
-3. **Task taxonomy first** — never one global MUST ladder.  
-4. **Dual-error reporting** — every A/B logs under-use rate and over-use rate.  
-5. **Native-compatible arms** — always include Grep/Glob/Read-first arms for needle/name classes.  
-6. **Density experiments** — compare “many small reads” vs “one collect/pack bodies” on same heatmap.  
-7. **Seed quality covariate** — never average poison-seed packs with good-seed packs.  
-8. **Live compliance ≠ offline recall** — Phase C required before shipping text.  
-9. **Decision gate** — no production GATE/MCP change until Phase D checklist is green.
+2. **Tool-POV studies**: each experiment answers when a tool helps *or hurts* the trajectory.  
+3. **Task taxonomy first**: never one global MUST ladder.  
+4. **Dual-error reporting**: every A/B logs under-use rate and over-use rate.  
+5. **Native-compatible arms**: always include Grep/Glob/Read-first arms for needle/name classes.  
+6. **Density experiments**: compare “many small reads” vs “one collect/pack bodies” on same heatmap.  
+7. **Seed quality covariate**: never average poison-seed packs with good-seed packs.  
+8. **Live compliance ≠ offline recall**: Phase C required before shipping text.  
+9. **Decision gate**: no production GATE/MCP change until Phase D checklist is green.
 
 ---
 
@@ -109,8 +109,8 @@ Host system prompts that say “always explore with built-in retrieval first” 
 |-------|--------|----------------------------------|
 | `soft_understand` | how/where/who, no exact symbol | Scubiee map→conditional pack; native Read on locs |
 | `exact_edit` | change/wire behavior | Scubiee pack when `seed_ok`; else map then pack; expand if thin |
-| `literal_needle` | exact string / import / error | **Native Grep first** — Scubiee off path |
-| `known_seed` | file::symbol already known | Pack (or Read) — skip soft map |
+| `literal_needle` | exact string / import / error | **Native Grep first**, Scubiee off path |
+| `known_seed` | file::symbol already known | Pack (or Read), skip soft map |
 | `name_path` | filename / glob | **Native Glob** |
 | `rematerialize` | prior handle | workspace / expand(handle) |
 
@@ -159,7 +159,7 @@ Policies are **per-class**. Global “always use MCP” is out of scope.
 | C1 | One collect(threshold) vs K span-Reads | Classic “fewer richer calls” test |
 | C2 | Heat-band thresholds (hot/warm) | Avoid over-collect token blowups |
 
-**Calibration hypothesis:** Collect wins when ≥3–4 hot bodies needed; otherwise native span-Read on `read.top`.
+**Calibration hypothesis:** Collect wins when ≥3-4 hot bodies needed; otherwise native span-Read on `read.top`.
 
 ### 4.5 Native Grep / Glob / Read (first-class in the framework)
 
@@ -173,31 +173,31 @@ Policies are **per-class**. Global “always use MCP” is out of scope.
 
 ## 5. Research phases
 
-### Phase A — Corpus + labels ✅
+### Phase A: Corpus + labels ✅
 
 ≥40 cases across taxonomy; gold must files/symbols or human path; freeze baseline agent policy.  
 Artifact: `docs/superpowers/plans/locate-calibration-corpus-v1.json` (built 2026-09-06, **65 cases**).  
 Summary: `docs/superpowers/plans/2026-09-06-locate-calibration-phase-a.md`.  
 Rebuild: `python scripts/build_locate_calibration_corpus_v1.py`.
 
-**Note:** taxonomy is mostly heuristic — spot-check before treating Phase B class metrics as final. Soft_understand is over-represented; anchors cover needle/name/known_seed.
+**Note:** taxonomy is mostly heuristic, spot-check before treating Phase B class metrics as final. Soft_understand is over-represented; anchors cover needle/name/known_seed.
 
-### Phase B — Offline / harness arms
+### Phase B: Offline / harness arms
 
 Per-tool tables (§4) with frozen outputs; score §2 metrics including `total_proxy`.  
 Artifact: `docs/superpowers/plans/locate-calibration-runs/`.
 
-### Phase C — Live trajectory A/Bs
+### Phase C: Live trajectory A/Bs
 
 Same tasks under:
 
-- **Baseline** — current GATE/MCP  
-- **Calibrated draft** — taxonomy routing + authority-prefer (below)  
-- **Native-heavy** — Scubiee available but soft-preferred native  
+- **Baseline**: current GATE/MCP  
+- **Calibrated draft**: taxonomy routing + authority-prefer (below)  
+- **Native-heavy**: Scubiee available but soft-preferred native  
 
 Measure under-use, over-use, rounds, total_proxy, traj_break.
 
-### Phase D — Decision gate (ship only if green)
+### Phase D: Decision gate (ship only if green)
 
 - [ ] mean `total_proxy` ↓ vs baseline  
 - [ ] `must_*` within −5pp (or human path parity)  
@@ -209,13 +209,13 @@ Measure under-use, over-use, rounds, total_proxy, traj_break.
 
 Fail any box → revise policy strength (suggest → prefer → require) or L1/L2 mechanisms; re-run C.
 
-### Phase E — Apply text (after D only)
+### Phase E: Apply text (after D only)
 
 GATE + MCP ship instructions + tests in one PR.
 
 ---
 
-## 6. Candidate policy language (Phase C only — not live)
+## 6. Candidate policy language (Phase C only: not live)
 
 ### 6.1 Authority / preference (calibrated, not totalitarian)
 
@@ -248,14 +248,14 @@ Phase C tests Prefer vs Require; Prefer is default bias to avoid over-use.
 ### 6.3 Per-tool Prefer/Require/Forbid (hypothesis)
 
 ```text
-map     — PREFER on soft_understand / exact_edit without seed.
+map     - PREFER on soft_understand / exact_edit without seed.
           FORBID-FIRST on literal_needle / name_path / known_seed.
-pack    — REQUIRE on exact_edit when seed_ok; PREFER after map when seed_ok.
+pack    - REQUIRE on exact_edit when seed_ok; PREFER after map when seed_ok.
           FORBID packing empty/_/test seeds (remake map).
-expand  — PREFER when pack thin or hop missing (≤2).
+expand  - PREFER when pack thin or hop missing (≤2).
           FORBID before pack; FORBID as substitute for Grep-on-needle.
-collect — SUGGEST when ≥3 hot bodies needed in one shot.
-native  — REQUIRE-FIRST on literal_needle / name_path / known path:lines.
+collect - SUGGEST when ≥3 hot bodies needed in one shot.
+native  - REQUIRE-FIRST on literal_needle / name_path / known path:lines.
 ```
 
 ### 6.4 Mechanism ladder (if Prefer under-uses)
@@ -265,7 +265,7 @@ native  — REQUIRE-FIRST on literal_needle / name_path / known path:lines.
 | L0 | Calibrated Prefer/Forbid text | Under-use remains |
 | L1 | next_actions density hints | Mild over-steer |
 | L2 | Server refuse poison seeds | Low (correctness) |
-| L3 | Hard REQUIRE on exact_edit | Over-use risk — needs Phase C proof |
+| L3 | Hard REQUIRE on exact_edit | Over-use risk, needs Phase C proof |
 
 ---
 
@@ -307,5 +307,5 @@ native  — REQUIRE-FIRST on literal_needle / name_path / known path:lines.
 Reply with one of:
 
 - **approve calibration framework**  
-- **edit metrics / taxonomy / Prefer–Require scale**  
+- **edit metrics / taxonomy / Prefer, Require scale**  
 - **start Phase A corpus** under this north star  

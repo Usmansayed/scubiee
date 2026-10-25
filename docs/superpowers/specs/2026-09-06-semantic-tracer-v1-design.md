@@ -1,7 +1,7 @@
-# Semantic Tracer v1 — Cycle 1 Design
+# Semantic Tracer v1: Cycle 1 Design
 
 **Date:** 2026-09-06  
-**Status:** Cycle 1–3 lite + `semantic_tracer_fuse` implemented (research arm)
+**Status:** Cycle 1-3 lite + `semantic_tracer_fuse` implemented (research arm)
 **Mission:** R&D semantic tracer using embeddings as **comparators** inside expansion, not post-hoc island rescore.
 
 ## Thesis

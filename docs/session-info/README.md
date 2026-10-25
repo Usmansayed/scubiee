@@ -5,7 +5,7 @@ Read **this folder first** when a new Cursor chat starts on Context Engine / Scu
 | File | What |
 |------|------|
 | [session-summary.md](./session-summary.md) | Progress, Mac work, remaining work, repos, env |
-| [issue-log.md](./issue-log.md) | Every issue we hit, cause, fix, files — do not re-solve |
+| [issue-log.md](./issue-log.md) | Every issue we hit, cause, fix, files, do not re-solve |
 
 Engineering how-it-works: [`../engg/`](../engg/).  
 User-facing ops (uninstall, Windows locks): [`../web-info/`](../web-info/).

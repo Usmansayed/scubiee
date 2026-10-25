@@ -1,4 +1,4 @@
-# Context Engine — full retrieval pipeline
+# Context Engine: full retrieval pipeline
 
 Date: 2026-08-02
 
@@ -11,7 +11,7 @@ repo files
    ├─ Graphify AST → RepoIR + graph.json
    ├─ Symbol-span chunks + graph metadata injection
    ├─ Embed (Ollama nomic-embed-text, with offline fallback)
-   ├─ TurboQuant compress (Google ICLR 2026–style, 4-bit default)
+   ├─ TurboQuant compress (Google ICLR 2026-style, 4-bit default)
    └─ FAISS IndexIDMap2(IndexFlatIP) for cosine/IP search
          │
          ▼
@@ -34,7 +34,7 @@ vectordb/
       payloads.jsonl     # file/line/symbol per vector id
 ```
 
-API: `pipeline.vectordb.VectorDatabase` — `create_collection`, `get_or_create_for_cwd`, `list_collections`, `drop_collection`; collection `add` / `delete` / `search` / `save`.
+API: `pipeline.vectordb.VectorDatabase`, `create_collection`, `get_or_create_for_cwd`, `list_collections`, `drop_collection`; collection `add` / `delete` / `search` / `save`.
 
 Each working directory gets its own collection (isolated vector space).
 

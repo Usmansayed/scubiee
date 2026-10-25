@@ -1,4 +1,4 @@
-# Locate calibration — Phase C (policy trajectories)
+# Locate calibration: Phase C (policy trajectories)
 
 **Status:** draft complete · scripted Prefer/Forbid · **not GATE ship**  
 **Tax:** 2500/round · **Cases:** 14 · **Elapsed:** ~295s  
@@ -8,7 +8,7 @@
 | Policy | Behavior |
 |--------|----------|
 | `baseline` | Always map→pack (current ladder habit) |
-| `calibrated` | Prefer/Forbid §6.3 — Grep needles; map→read soft; map→pack exact+seed_ok |
+| `calibrated` | Prefer/Forbid §6.3, Grep needles; map→read soft; map→pack exact+seed_ok |
 | `native_heavy` | Blind Grep first; escalate to map→pack on miss |
 
 ## Scoreboard
@@ -31,20 +31,20 @@
 ## Draft findings
 
 - Calibrated beats baseline on `total_proxy` with same file recall and half the Scubiee calls.
-- Native-heavy is *worse* once Grep is blind to gold symbols — soft/exact often miss then pay grep+map thrash (`traj_break` ≈ 0.64).
+- Native-heavy is *worse* once Grep is blind to gold symbols, soft/exact often miss then pay grep+map thrash (`traj_break` ≈ 0.64).
 - Forbid-first map on needles is the clear win (baseline over-use 75% → calibrated 0%).
 - Prefer map→read (not always pack) on soft matches Phase B cost evidence.
 
 ## Caveats
 
-- Scripted policies — not live LLM agents (compliance / traj_break under real prompts still open).
+- Scripted policies, not live LLM agents (compliance / traj_break under real prompts still open).
 - Soft/exact native Grep uses enrich tokens only (no gold-symbol oracle).
 - Enrich queries are code-vocab rich, so blind Grep can still hit files.
 
 ## Next
 
-- Optional live Kiro/Cursor A/B on 3–5 tasks for real compliance.
-- Phase D: treat this scripted preview as **yellow-green** — still need live traj before Prefer text ships.
+- Optional live Kiro/Cursor A/B on 3-5 tasks for real compliance.
+- Phase D: treat this scripted preview as **yellow-green**, still need live traj before Prefer text ships.
 - Do **not** ship GATE/MCP Prefer text until Phase D explicitly greens live compliance.
 
 Harness: `scripts/locate_calibration_phase_c.py`  

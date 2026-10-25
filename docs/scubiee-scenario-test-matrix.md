@@ -1,4 +1,4 @@
-# Scubiee scenario test matrix — real-world situations the engine must handle
+# Scubiee scenario test matrix: real-world situations the engine must handle
 
 **Purpose.** Enumerate, from a **user's perspective**, every situation the Scubiee engine can land
 in during normal (and abnormal) use, state the **expected behavior** for each, and give a concrete
@@ -14,10 +14,10 @@ Many scenarios below are new and need their own small probes (noted). All HTTP v
 **Global invariants (must hold in EVERY scenario):**
 - G1. The engine process never crashes (no `Fatal Python error` / `Segmentation` / `0xC0000005`).
 - G2. `/health` either returns a coherent payload or is cleanly down→restarting (never a torn/500).
-- G3. Search never returns a **confident wrong/empty** answer — an incomplete scan reports
+- G3. Search never returns a **confident wrong/empty** answer, an incomplete scan reports
   `complete:false`, a warming engine reports `warming`, never silent emptiness.
 - G4. The index is never left in a mixed/torn generation (manifest fail-closed).
-- G5. No unbounded growth — `graph_pending`, sessions, memory stay bounded over a long run.
+- G5. No unbounded growth, `graph_pending`, sessions, memory stay bounded over a long run.
 
 ---
 
@@ -45,7 +45,7 @@ Many scenarios below are new and need their own small probes (noted). All HTTP v
 
 ---
 
-## C. Editing (the hot path — most common)
+## C. Editing (the hot path: most common)
 
 | # | User did | Expected behavior | Simulate | Pass criteria |
 |---|---|---|---|---|
@@ -60,7 +60,7 @@ Many scenarios below are new and need their own small probes (noted). All HTTP v
 
 ---
 
-## D. Git operations (the "big pull" class — the user's example)
+## D. Git operations (the "big pull" class: the user's example)
 
 | # | User did | Expected behavior | Simulate | Pass criteria |
 |---|---|---|---|---|
@@ -123,16 +123,16 @@ Many scenarios below are new and need their own small probes (noted). All HTTP v
 
 ## I. The user's headline examples, spelled out
 
-**"A big pull — how does Scubiee respond?"** → scenarios **D2 / D3**. Expected: for a pull within
+**"A big pull, how does Scubiee respond?"** → scenarios **D2 / D3**. Expected: for a pull within
 the caps, incremental sync absorbs it and the engine keeps serving the old generation until the new
 content publishes (seconds to minutes depending on size), never going down. For a pull *beyond* the
-auto caps (10k changed chunks / 25k touched files — a massive rebase or submodule bump), Scubiee
+auto caps (10k changed chunks / 25k touched files, a massive rebase or submodule bump), Scubiee
 **refuses to silently publish a half-index**: it flags `needs_full`, keeps serving the previous
 index as explicitly **stale**, and tells the user to run `scubiee index . --force` (which is then
 zero-downtime). The failure mode we explicitly prevent is the old BUG-1 "17308 chunks exceeding
 10000 → publish nothing silently."
 
-**"Lots more such scenarios"** → the matrix above (A–H), 50+ situations, each with a simulation and
+**"Lots more such scenarios"** → the matrix above (A, H), 50+ situations, each with a simulation and
 a pass criterion.
 
 ---
@@ -143,19 +143,19 @@ a pass criterion.
 |---|---|---|
 | A (enroll) | A2 (init works) | A1, A3 (big-repo confirm gate), A4, A5 |
 | B (warm) | B1 (Win 0/30, mac 0/120), B3 (concurrent-during-warm no crash) | B2, B4 (idle→requery), B5 (watchdog) |
-| C (editing) | C1–C4, C7 (battery), C8 (UTF-8 fix) | C5 (rename), C6 (debounce burst) |
-| D (git) | D6 (newcomer BUG-1) | **D1, D2, D3 (the big-pull trio — HIGH priority), D4, D5, D7** |
+| C (editing) | C1, C4, C7 (battery), C8 (UTF-8 fix) | C5 (rename), C6 (debounce burst) |
+| D (git) | D6 (newcomer BUG-1) | **D1, D2, D3 (the big-pull trio, HIGH priority), D4, D5, D7** |
 | E (reindex) | E1 (zero-downtime), E2 (handoff), E4 (sync-now clean) | E3 (interrupt), E5 (upgrade) |
 | F (concurrency) | F2 (parallel+retry) | F1 (two IDEs), F3 (query during promote), F4 (multi-repo) |
-| G (failure) | G9 (GB file), G10 (huge ignored dir) | **G6, G7, G11 (crash/corrupt recovery — HIGH priority), G8, G12** |
+| G (failure) | G9 (GB file), G10 (huge ignored dir) | **G6, G7, G11 (crash/corrupt recovery, HIGH priority), G8, G12** |
 | H (scale) | H1 partial (soak) | H2, H3 (large-repo scale) |
 
 **Pre-production priority order (highest risk, user-visible):**
-1. **D2 / D3 — the big-pull trio** (the user's explicit example; the BUG-1 class lived here).
-2. **G7 / G11 — crash/corrupt recovery** (does the engine heal, or crash-loop?).
-3. **E3 — interrupted reindex** (torn generation safety).
-4. **B4 — idle→requery** (does the demote/re-warm cycle serve correctly?).
-5. **F3 — query during promote** (coherent-read-during-swap).
+1. **D2 / D3, the big-pull trio** (the user's explicit example; the BUG-1 class lived here).
+2. **G7 / G11, crash/corrupt recovery** (does the engine heal, or crash-loop?).
+3. **E3, interrupted reindex** (torn generation safety).
+4. **B4, idle→requery** (does the demote/re-warm cycle serve correctly?).
+5. **F3, query during promote** (coherent-read-during-swap).
 6. Remainder (C5/C6, F1/F4, H2/H3, A-group) as time allows.
 
 ---
@@ -163,7 +163,7 @@ a pass criterion.
 ## K. How we'll run this before production
 
 1. Extend `prod_sim.py` (or add `scenario_sim.py`) with runners for the HIGH-priority TODO rows
-   (D2/D3, G7/G11, E3, B4, F3), each asserting its pass criterion + the global invariants G1–G5.
+   (D2/D3, G7/G11, E3, B4, F3), each asserting its pass criterion + the global invariants G1, G5.
 2. Run on **both** Windows and macOS (the macOS agent re-runs via the committed harness).
 3. Each scenario emits PASS/FAIL + the measured numbers into a JSON report.
 4. A scenario is "production-signed-off" only when it passes on both platforms with the global

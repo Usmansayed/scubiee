@@ -14,10 +14,10 @@ Elapsed: 12.38s · boards: verify_ood_v2.json, verify_ood_v3.json, verify_ood_v4
 | Accuracy | 0.803 | **0.863** (+6pp) |
 | F1 | 0.785 | **0.797** |
 | Must | 0.976 | 0.976 (flat) |
-| Board wins | — | **3 / 3** |
+| Board wins | - | **3 / 3** |
 
 `hyb_comp_demote_noise_plus` ties it (same filter on composite base).  
-F1-max arm `hyb_fuse_demote_strict` hits F1 **0.87** but loses hard-acc on v3 — keep as ablation, not default.
+F1-max arm `hyb_fuse_demote_strict` hits F1 **0.87** but loses hard-acc on v3, keep as ablation, not default.
 
 Production default stays `composite_v1` until a prod MCP ship gate; this arm is wired in `compile_bundle(with_embed_power=True)`.
 

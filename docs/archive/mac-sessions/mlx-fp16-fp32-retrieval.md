@@ -1,7 +1,7 @@
 # MLX FP32 vs FP16 retrieval eval (M5, this repo)
 
 **Date:** 2026-08-19  
-**Corpus:** `hidden-context-engine-` — 2,927 chunks  
+**Corpus:** `hidden-context-engine-`, 2,927 chunks  
 **Queries:** 50 (35 soft NL, 15 hard symbol/confusable/multihop)  
 **Script:** `scripts/eval_mlx_fp16_fp32_retrieval.py`  
 **Raw JSON:** `docs/mlx-fp16-fp32-retrieval.json`
@@ -25,8 +25,8 @@ Retrieval: `WarmSearchEngine.search()` → `D_channel_best`, `CTX_CAPABILITY=off
 | **hit@5** | 72.0% | 72.0% | 0 |
 | **hit@1** | 52.0% | 52.0% | 0 |
 | **MRR** | 0.590 | 0.591 | +0.001 |
-| **Per-query agreement** | — | — | **100%** |
-| **Same top-1 file** | — | — | **100%** |
+| **Per-query agreement** | - | - | **100%** |
+| **Same top-1 file** | - | - | **100%** |
 
 FP16 introduced **zero** retrieval regressions and **zero** improvements vs FP32 on this suite.
 
@@ -70,9 +70,9 @@ These are **ground-truth / phrasing** gaps (BM25+dense ranked related test/docs 
 
 On CodeRankEmbed over this codebase:
 
-1. **FP16 is retrieval-equivalent to FP32** — 100% query-level agreement, identical hit rates at @1/@5/@8.
+1. **FP16 is retrieval-equivalent to FP32**: 100% query-level agreement, identical hit rates at @1/@5/@8.
 2. **Safe to ship FP16** for production MLX indexing (matches prior cosine-sim sanity ~0.999994 vs CPU ORT).
-3. **Soft-query recall (~66%)** is the quality ceiling to improve next — unrelated to dtype.
+3. **Soft-query recall (~66%)** is the quality ceiling to improve next, unrelated to dtype.
 
 ## Reproduce
 

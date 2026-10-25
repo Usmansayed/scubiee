@@ -1,4 +1,4 @@
-# Scubiee Website Content — quick reference
+# Scubiee Website Content: quick reference
 
 > **Version:** [0.3.14](https://pypi.org/project/scubiee/0.3.14/) (published on PyPI)  
 > **Purpose:** Short snippets, taglines, and SEO for marketing pages.  
@@ -24,20 +24,20 @@
 - "Give every AI coding tool semantic search. Locally."
 - "Index once, search from anywhere. No cloud required."
 - "The missing context layer for AI coding assistants."
-- "Your codebase, indexed once — ready for every AI tool."
+- "Your codebase, indexed once, ready for every AI tool."
 
 ## One-liner
 
-Scubiee is a local code context engine that gives AI coding tools semantic search, graph-aware retrieval, and live re-indexing — without uploading your code anywhere.
+Scubiee is a local code context engine that gives AI coding tools semantic search, graph-aware retrieval, and live re-indexing, without uploading your code anywhere.
 
 ## Hero subhead (2 lines)
 
 Index your repository on your machine. Connect Cursor, Copilot, Claude Code, or Kiro via MCP.  
-Agents find code by meaning — not random grepping — and stay current as you ship.
+Agents find code by meaning, not random grepping, and stay current as you ship.
 
 ---
 
-## Key features (feature grid — expand in product guide)
+## Key features (feature grid: expand in product guide)
 
 | Feature | One sentence |
 |---------|--------------|
@@ -99,7 +99,7 @@ Windows Access denied → `scubiee unlock-tool` then retry.
 
 | Tool | Hook for website |
 |------|------------------|
-| `map` | "Where is X handled?" — ranked code map |
+| `map` | "Where is X handled?", ranked code map |
 | `focus` | Deep-dive spans, neighbors, call sites |
 | `grep` | Exact literals when you know the string |
 | `gate` / `status` | One check: is this repo ready? |

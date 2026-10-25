@@ -28,7 +28,7 @@ Order: **mix > budget_c > budget_b > budget_a > card > skeleton**
 1. **Window size is not the bottleneck** (seq 128≡512 on mix). **Density / allocation is.**
 2. Within a fixed budget, **more rare-identifier body** (A→C) monotonically improves soft MRR and lifts R@5 at C.
 3. **Rare-ident fill** beats “first N body chars” as the body policy.
-4. Production `mix` still wins soft — allocation presets are the scientific ladder; mix is the engineered winner.
+4. Production `mix` still wins soft, allocation presets are the scientific ladder; mix is the engineered winner.
 
 ## Modes
 

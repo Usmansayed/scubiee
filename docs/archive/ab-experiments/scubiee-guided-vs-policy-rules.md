@@ -1,4 +1,4 @@
-# GUIDED vs POLICY — the two rule sets, side by side
+# GUIDED vs POLICY: the two rule sets, side by side
 
 Both are appended to the agent's workspace `CLAUDE.md`. Both expose the **same** tool surface
 (`map` + `gate`/`status` only). They differ **only** in the rule text below. Source of truth:
@@ -13,7 +13,7 @@ Both are appended to the agent's workspace `CLAUDE.md`. Both expose the **same**
 ## GUIDED (current)
 
 ```
-## Scubiee map — when to use it (map is the only Scubiee locate tool here)
+## Scubiee map - when to use it (map is the only Scubiee locate tool here)
 A managed Scubiee context system is available, but the ONLY Scubiee locate tool exposed is `map`
 (plus `gate`/`status`). Use your native tools (Read/Grep/Glob/Edit/Write/Bash) freely otherwise.
 `map` is a semantic code locator: a short code-vocabulary query returns ranked cards with `file`,
@@ -38,7 +38,7 @@ literal `"cache miss"` → grep; map returns `x.py:120-176` → read that span.
 ## Scubiee retrieval policy (map is the only Scubiee locate tool: `map`, plus `gate`/`status`)
 
 Goal: reach the next correct action with the LEAST unnecessary exploration. Retrieve the smallest
-context that removes your current uncertainty — not the most context. Native tools
+context that removes your current uncertainty - not the most context. Native tools
 (Read/Grep/Glob/Edit/Write/Bash) are always available; use whichever is cheapest for the situation.
 
 `map` is semantic code search: a short code-vocabulary query returns ranked cards
@@ -54,12 +54,12 @@ Choose the tool by what you already know (strong preferences, not a fixed sequen
 - You need an exact literal string, import, or identifier you already know → use Grep.
 
 After a `map` returns relevant locations: read those `loc` spans directly. Do not re-search the
-same concept to "confirm" it — the map already located it, so another search adds a turn and new
+same concept to "confirm" it - the map already located it, so another search adds a turn and new
 tokens without adding new evidence. Prefer the returned line range over reading the whole file.
 
 Retrieval is adaptive, not a ritual:
 - If a retrieval attempt doesn't reduce your uncertainty, CHANGE strategy based on what you learned
-  (different query, different tool, or read a neighbor) — do not repeat the same failed search.
+  (different query, different tool, or read a neighbor) - do not repeat the same failed search.
 - Do not re-map an area you already understand unless a genuinely new question needs different
   context.
 
@@ -90,6 +90,6 @@ Examples:
 
 **Hypotheses these deltas test** (from the research): goal-first framing + explicit boundaries +
 causal reasons + an anti-loop clause should reduce the `map→grep` redundancy and grep-walk loops we
-observed, without adding turns — i.e. keep GUIDED's low cost while improving correctness reliability.
+observed, without adding turns, i.e. keep GUIDED's low cost while improving correctness reliability.
 This is what the repeated-run benchmark (`run_policy_bench.py`) is set up to measure.
 ```

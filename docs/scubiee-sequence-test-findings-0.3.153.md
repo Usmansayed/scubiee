@@ -2,7 +2,7 @@
 
 _State-machine-driven testing: instead of running commands in isolation, I
 modelled the user's state vector `(machine, repo, engine, tools, pause)` and
-executed **command sequences** where state carries over — the class of bug that
+executed **command sequences** where state carries over, the class of bug that
 isolated tests miss. 12 sequences, ~45 command invocations, on a clean isolated
 home. Harness checks every step for: traceback, hang (>timeout), exit code,
 state consistency, install integrity._
@@ -14,7 +14,7 @@ prior fix was added to `preflight_index_scope`, but **the sequence test proved i
 did not work**: `S6 init HOME --confirm` still **HANG(>70s)**.
 
 **Why the first fix failed:** it placed the cap check *after*
-`n = len(collect_index_relpaths(root))`. That count is the expensive part — it
+`n = len(collect_index_relpaths(root))`. That count is the expensive part, it
 walks the entire home dir AND reads the first 8 KB of every candidate file (the
 text sniff) just to produce a number. On a ~400k-file home dir that is minutes of
 silent work, so the hang happened *before* the new cap check ever ran.
@@ -22,7 +22,7 @@ silent work, so the hang happened *before* the new cap check ever ran.
 **The real fix (this version):** a new bounded `exceeds_index_cap(root, cap)` in
 `pipeline/paths.py` does its own pruned `os.walk` (skips `node_modules`, `.git`,
 `.venv`, dotdirs via `is_builtin_ignored_dir_name`), counts only
-extension-matching files, and **early-exits the instant it passes the cap** — no
+extension-matching files, and **early-exits the instant it passes the cap**, no
 per-file content read. `preflight_index_scope` now calls it for the broad-root
 `--confirm` path *before* the full count. Verified against the real home dir:
 
@@ -69,12 +69,12 @@ Every error path returned a clean exit code.
   "unmanaged"}` with exit 1 and no actionable hint. Pointed at the managed repo
   it works (`ok:true, state:paused`, exit 0). Suggest a friendlier hint
   ("run inside a managed repo or pass a repo path"). Also note: **search/map on
-  the CLI still return results while paused** — pause gates the MCP/agent surface,
+  the CLI still return results while paused**, pause gates the MCP/agent surface,
   not your own CLI queries. Confirm this is intended and document it.
 
 ## Verdict
 
-The user-reported hang is a **real, now-genuinely-fixed** bug — and critically,
+The user-reported hang is a **real, now-genuinely-fixed** bug, and critically,
 it was the *sequence/state* test (broad-root with `--confirm`) that caught the
 first fix being ineffective, which the earlier isolated-command passes missed.
 No tracebacks or deadlocks anywhere across the state machine. Two minor UX nits

@@ -3,7 +3,7 @@
 **Date:** August 24, 2026
 **Repo:** `C:\Users\usman\Downloads\context-engine` (GitHub: Usmansayed/new-context-engine)
 **Package:** scubiee (PyPI), currently at v0.2.72
-**Product:** Local AI code context engine — semantic search, graph retrieval, live re-indexing. MCP server for IDE integration.
+**Product:** Local AI code context engine, semantic search, graph retrieval, live re-indexing. MCP server for IDE integration.
 
 ---
 
@@ -126,7 +126,7 @@ Running `scubiee connect --kiro` from the repo creates `<repo>/.kiro/settings/mc
 | `packages/pipeline/wipe.py` | .kiro cleanup, reordered wipe_all, --confirm only |
 | `packages/pipeline/accel.py` | Model download pulse thread, numbered progress, removed old threading |
 | `packages/pipeline/indexer.py` | All prints gated by `quiet` flag, emb_prog sends "Embedding done/total" |
-| `packages/pipeline/mcp_locate.py` | `_default_repo()` reordered — IDE vars first, CTX_REPO validated |
+| `packages/pipeline/mcp_locate.py` | `_default_repo()` reordered, IDE vars first, CTX_REPO validated |
 | `pyproject.toml` | Version bumped from 0.2.62 → 0.2.72 |
 | `web-info/website-content.md` | Added "Live search experience" section (test content) |
 | `scripts/eval_onnx_fp32_fp16_int8.py` | New: FP32/FP16/INT8 retrieval comparison eval script |
@@ -193,12 +193,12 @@ IDE spawns MCP   →  mcp_locate.py → _default_repo() → finds workspace → 
 ```
 
 Key files:
-- `packages/pipeline/mcp_locate.py` — MCP server entry point + workspace resolution
-- `packages/pipeline/__main__.py` — All CLI commands
-- `packages/pipeline/cli_ui.py` — Terminal UI (progress bars, status lines)
-- `packages/pipeline/indexer.py` — Full index pipeline
-- `packages/pipeline/accel.py` — Hardware detection + model management
-- `packages/pipeline/wipe.py` — Cleanup logic
-- `packages/pipeline/embedder.py` — Embedding (FastEmbed/MLX/ST)
-- `packages/pipeline/searcher.py` — Search dispatch (daemon vs local)
-- `packages/pipeline/tool_registry.py` — Definitions for all 13 supported tools
+- `packages/pipeline/mcp_locate.py`: MCP server entry point + workspace resolution
+- `packages/pipeline/__main__.py`: All CLI commands
+- `packages/pipeline/cli_ui.py`: Terminal UI (progress bars, status lines)
+- `packages/pipeline/indexer.py`: Full index pipeline
+- `packages/pipeline/accel.py`: Hardware detection + model management
+- `packages/pipeline/wipe.py`: Cleanup logic
+- `packages/pipeline/embedder.py`: Embedding (FastEmbed/MLX/ST)
+- `packages/pipeline/searcher.py`: Search dispatch (daemon vs local)
+- `packages/pipeline/tool_registry.py`: Definitions for all 13 supported tools

@@ -1,19 +1,19 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-10T03:25:37.139079+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `complex_retrieval` — complex multi-hop retrieval → single reasoning context file
+**Task:** `complex_retrieval`, complex multi-hop retrieval → single reasoning context file
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Retrieval challenge — assemble a reasoning context pack (NO code changes)
+# Retrieval challenge - assemble a reasoning context pack (NO code changes)
 
 ## Mission
 Retrieve enough multi-hop production evidence to answer a hard product question later.
 You will NOT implement anything. Your ONLY deliverable is one markdown context file.
 
-## Hard question (soft — do not answer in chat; put evidence in the file)
+## Hard question (soft - do not answer in chat; put evidence in the file)
 When a developer runs this product's **connect / enroll** flow for a Cursor-like IDE host,
 trace end-to-end how the repo becomes a managed coding surface:
 
@@ -37,7 +37,7 @@ That file MUST contain:
 - A short problem restatement (≤8 lines).
 - An ordered call/flow narrative (entry → writers → side effects).
 - A table or bullet list of concrete `path` + `symbol` (+ optional `loc` if known) for every
-  hop you rely on — only what you actually found.
+  hop you rely on - only what you actually found.
 - Short excerpts or paraphrases of the critical logic (enough to reason without re-opening the repo).
 - A final "open questions / unknowns" section if anything is still unclear.
 
@@ -66,7 +66,7 @@ That file MUST contain:
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

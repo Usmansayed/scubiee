@@ -1,4 +1,4 @@
-# Cursor subagent A/B — same mission, different search stack
+# Cursor subagent A/B: same mission, different search stack
 
 **Repo:** `C:\Users\usman\Downloads\context-engine\testdata\frontend-mcp`
 

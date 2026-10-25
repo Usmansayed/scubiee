@@ -1,10 +1,10 @@
-# INVALID — prior top-5 venture bakeoff (do not cite)
+# INVALID: prior top-5 venture bakeoff (do not cite)
 
 **Date invalidated:** 2026-09-06
 
 ## Why invalid
 
-1. **Product FAISS proposal was dead.** `_product_faiss_files` called `search_repo(..., mode="semantic")` — invalid kwarg. Exception swallowed → **always 0 hits**. Architecture A1 never used the vector DB.
+1. **Product FAISS proposal was dead.** `_product_faiss_files` called `search_repo(..., mode="semantic")`, invalid kwarg. Exception swallowed → **always 0 hits**. Architecture A1 never used the vector DB.
 2. No preflight gate: bakeoff could “succeed” without proving DML / real EmbedField / FAISS.
 3. Accidental fixture `index_repo` briefly overwrote the shared product collection (restored: **5779** chunks on main repo).
 

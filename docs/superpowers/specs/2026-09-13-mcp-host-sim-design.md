@@ -1,4 +1,4 @@
-# MCP Host Simulator — Design
+# MCP Host Simulator: Design
 
 **Date:** 2026-09-13  
 **Status:** draft (awaiting implementation plan)  
@@ -28,8 +28,8 @@ Hard fails while host is connected: `retire_self` / standby unload, `Connection 
 
 | Lane | Mechanism | When |
 |------|-----------|------|
-| **A — Bridge host** | Spawn real `scubiee-mcp-bridge` + env from `server_entry`; MCP JSON-RPC over stdio | Default / CI |
-| **B — Kiro host** | Real Kiro CLI session with Scubiee MCP enrolled | Nightly or `--kiro` |
+| **A, Bridge host** | Spawn real `scubiee-mcp-bridge` + env from `server_entry`; MCP JSON-RPC over stdio | Default / CI |
+| **B, Kiro host** | Real Kiro CLI session with Scubiee MCP enrolled | Nightly or `--kiro` |
 
 Shared scenario runner + observatory + report. In-process unit tests remain for policy math only; they are **not** the fidelity bar.
 
@@ -55,8 +55,8 @@ Shared scenario runner + observatory + report. In-process unit tests remain for 
 
 ### v1 extra scenarios (same runner)
 
-- `reconnect_storm` — drop/reopen bridge twice in 5s; stay warm; no blink-kill  
-- `double_host` — two bridge clients; one leave must not unload  
+- `reconnect_storm`: drop/reopen bridge twice in 5s; stay warm; no blink-kill  
+- `double_host`: two bridge clients; one leave must not unload  
 
 ### Deferred (not v1)
 
@@ -79,7 +79,7 @@ scripts/mcp_host_sim.py
 
 **Reuse**
 
-- `pipeline.mcp_install.server_entry` — exact bridge command/env  
+- `pipeline.mcp_install.server_entry`: exact bridge command/env  
 - JSON-RPC patterns from `scripts/kiro_mcp_reliability_probe.py`  
 - Kiro enrollment patterns from `scripts/kiro_mcp_ab_dev_eval.py`  
 - Lifecycle observatory via `load_clients`, `load_policy`, `daemon.is_running`, engine log tail  
@@ -123,18 +123,18 @@ Snapshot at least:
 
 The simulator will **fail until** these lifecycle bugs are fixed:
 
-1. **Unload only after a real leave** — do not treat “0 clients + no `last_client_left_at`” with a 10s `last_activity` clock as disconnect unload (that kills CLI/init and deferred MCP attach).  
-2. **Hold-warm on deferred attach** — if non-blocking ensure returns before `/health` is up, still register or stamp a hold so the 10s sweeper cannot `retire_self` mid-warm.  
-3. **Attach warm ≤30s** — first locate after `warm_ready` must be ≤1s; cold DML cost belongs in phase 2, not phase 3.
+1. **Unload only after a real leave**: do not treat “0 clients + no `last_client_left_at`” with a 10s `last_activity` clock as disconnect unload (that kills CLI/init and deferred MCP attach).  
+2. **Hold-warm on deferred attach**: if non-blocking ensure returns before `/health` is up, still register or stamp a hold so the 10s sweeper cannot `retire_self` mid-warm.  
+3. **Attach warm ≤30s**: first locate after `warm_ready` must be ≤1s; cold DML cost belongs in phase 2, not phase 3.
 
 These are product requirements discovered by the recent wipe/reboot incident; the sim makes them regressions.
 
 ## Rollout
 
-1. Land product holds (1–3 above).  
+1. Land product holds (1-3 above).  
 2. Lane A green on sandbox against `kiro_cold_attach_steady_leave`.  
 3. Enable Lane B via `--kiro`.  
-4. Add reliability inventory row (e.g. **R11 — MCP host sim SLAs**) in `docs/architecture/scubiee-reliability-issues.md`.  
+4. Add reliability inventory row (e.g. **R11, MCP host sim SLAs**) in `docs/architecture/scubiee-reliability-issues.md`.  
 5. Later: session-replay lane C.
 
 ## Non-goals (v1)

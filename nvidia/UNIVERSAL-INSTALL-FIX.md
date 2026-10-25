@@ -1,4 +1,4 @@
-# Universal NVIDIA Install Fix — Making `ctx setup` Work on Any Machine
+# Universal NVIDIA Install Fix: Making `ctx setup` Work on Any Machine
 
 ## Summary of Changes (August 21, 2026)
 
@@ -9,7 +9,7 @@ without manual intervention, even if the user has no CUDA Toolkit or cuDNN insta
 
 ## Changes Made
 
-### 1. `pyproject.toml` — Pin ORT + bundle CUDA DLLs
+### 1. `pyproject.toml`: Pin ORT + bundle CUDA DLLs
 
 ```toml
 # Before:
@@ -22,7 +22,7 @@ cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17,<1.20", "nvidia-cublas-cu12", "
 **Why**: ORT 1.20+ requires CUDA 13 cuBLAS which doesn't have a pip package yet.
 ORT 1.19.x works with CUDA 12 which has stable pip-installable runtime DLLs.
 
-### 2. `packages/pipeline/accel.py` — `_ensure_cuda_dll_paths()`
+### 2. `packages/pipeline/accel.py`: `_ensure_cuda_dll_paths()`
 
 Added discovery of `site-packages/nvidia/*/bin/` directories:
 
@@ -40,7 +40,7 @@ if nvidia_pkg_dir.is_dir():
 **Why**: Windows doesn't search pip package directories for DLLs. We must explicitly
 register them via `os.add_dll_directory()` + PATH before importing ORT.
 
-### 3. `packages/pipeline/accel.py` — `_ensure_cuda_runtime_packages()`
+### 3. `packages/pipeline/accel.py`: `_ensure_cuda_runtime_packages()`
 
 New function that auto-installs `nvidia-cublas-cu12` + `nvidia-cudnn-cu12` during
 `ctx setup` if the DLLs aren't already present:
@@ -56,7 +56,7 @@ Called from `_install_ort_wheel()` whenever profile=cuda.
 **Why**: Even if someone installs scubiee without `[cuda]` extras then runs `ctx setup`,
 the installer will self-repair by downloading the CUDA DLL packages automatically.
 
-### 4. `packages/pipeline/accel.py` — `ort_packages_for("cuda")`
+### 4. `packages/pipeline/accel.py`: `ort_packages_for("cuda")`
 
 ```python
 # Before:
@@ -89,7 +89,7 @@ return ["onnxruntime-gpu>=1.17,<1.20"]
 3. **NEW**: Checks for `nvidia/cublas/bin/cublasLt64_*.dll` in site-packages
 4. **NEW**: If missing, installs `nvidia-cublas-cu12` + `nvidia-cudnn-cu12` (~1.3GB)
 5. **NEW**: `_ensure_cuda_dll_paths()` registers nvidia package bin dirs via `os.add_dll_directory()`
-6. Probes CUDAExecutionProvider — now finds all required DLLs
+6. Probes CUDAExecutionProvider, now finds all required DLLs
 7. Downloads embedding model (CodeRankEmbed)
 8. Calibrates batch size with actual CUDA inference
 9. Saves profile with real GPU throughput (>100 t/s)
@@ -132,7 +132,7 @@ will resume from cached wheels.
 
 ### User on CUDA 11.x (very old)
 ORT 1.19.2 officially supports CUDA 12. Users on CUDA 11 will get CPU fallback with a
-clear message. The code won't break — it gracefully falls back.
+clear message. The code won't break, it gracefully falls back.
 
 ### Multiple Python envs / conda envs
 DLL discovery is relative to the ORT package location (`spec.origin.parent.parent`),
@@ -145,7 +145,7 @@ so it works correctly regardless of which env is active.
 | File | Change |
 |------|--------|
 | `pyproject.toml` | Pin ORT <1.20, add nvidia-cublas/cudnn to cuda extras |
-| `packages/pipeline/accel.py` | `_ensure_cuda_dll_paths()` — nvidia package discovery |
-| `packages/pipeline/accel.py` | `_ensure_cuda_runtime_packages()` — auto-install DLLs |
-| `packages/pipeline/accel.py` | `ort_packages_for()` — pin <1.20 |
-| `packages/pipeline/accel.py` | `_install_ort_wheel()` — call DLL package installer |
+| `packages/pipeline/accel.py` | `_ensure_cuda_dll_paths()`, nvidia package discovery |
+| `packages/pipeline/accel.py` | `_ensure_cuda_runtime_packages()`, auto-install DLLs |
+| `packages/pipeline/accel.py` | `ort_packages_for()`, pin <1.20 |
+| `packages/pipeline/accel.py` | `_install_ort_wheel()`, call DLL package installer |

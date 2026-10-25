@@ -1,4 +1,4 @@
-# Locate calibration — taxonomy spot-check (10 cases)
+# Locate calibration: taxonomy spot-check (10 cases)
 
 **Date:** 2026-09-07 · **Corpus:** `locate-calibration-corpus-v1.json`  
 **Purpose:** sanity-check heuristic labels before treating class metrics as final.
@@ -9,7 +9,7 @@
 | `blind20_t04` | soft_understand | **keep** | Understand composite rank flow |
 | `blind20_t05` | soft_understand | **keep** | Understand embed keep/drop |
 | `blind20_t06` | soft_understand | **keep** | Understand semantic tracer fuse |
-| `blind20_t08` | soft_understand | **borderline → exact_edit?** | Error-string → fix publication path; gold has files, no symbols — could be `literal_needle`+edit |
+| `blind20_t08` | soft_understand | **borderline → exact_edit?** | Error-string → fix publication path; gold has files, no symbols, could be `literal_needle`+edit |
 | `blind20_t01` | exact_edit | **keep** | Concrete session isolation symbols to change/verify |
 | `blind20_t02` | exact_edit | **keep** | Connect/install write path |
 | `blind20_t07` | exact_edit | **keep** | Pack CLI entry points |
@@ -19,7 +19,7 @@
 ## Summary
 
 - 9/10 labels look right for routing calibration.
-- 1 borderline (`blind20_t08`): soft vs needle/exact — leave as soft for now; do not reweight class means until relabeled.
+- 1 borderline (`blind20_t08`): soft vs needle/exact, leave as soft for now; do not reweight class means until relabeled.
 - Soft overweight in corpus remains real; spot-check did **not** find mass mislabels of soft↔exact.
 
 ## Action

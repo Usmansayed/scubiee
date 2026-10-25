@@ -1,9 +1,9 @@
-# mini+ : old map + include_bodies + names — arm test
+# mini+ : old map + include_bodies + names: arm test
 
 Tests the two additions the sessions study picked for the OLD single-tool map:
 1. **include_bodies** (output): return the top symbols' source inline, all of them when several
-   share one file — kills the `map -> Read` follow-up.
-2. **names** (input): exact identifiers anchor the ranking and are guaranteed to surface — folds
+   share one file, kills the `map -> Read` follow-up.
+2. **names** (input): exact identifiers anchor the ranking and are guaranteed to surface, folds
    in the `grep <name>` the agent would otherwise run.
 
 Framing in the rules/instructions: map is a PARTNER to native Grep/Read, not a replacement.
@@ -35,13 +35,13 @@ baseline old map.
 1. **The agent did not pass `names` on its own.** In both mini_plus traces it called
    `map(query, include_bodies=true)` with NO `names`, even on the easy task where it knew
    `git_dirty_files`. The input exists and works (verified offline), but the model didn't reach for
-   it. An input the agent won't use can't help — this is an instruction/affordance problem, not a
+   it. An input the agent won't use can't help, this is an instruction/affordance problem, not a
    bridge bug.
 2. **include_bodies returns the queried symbol's cluster, not the call sites.** On the easy task the
-   agent still grepped 3x — not to re-find the symbol, but to see the CALL SITES where the `cap`/
+   agent still grepped 3x, not to re-find the symbol, but to see the CALL SITES where the `cap`/
    slice behaviour had to change. The single returned body didn't contain them, so the agent fell
    back to grep. Bodies kill the `Read` call; they don't kill the "understand the call sites" greps.
-3. **mini_plus FAILED the hard task (oracle 0.33)** — same pricing-math confound as before. It got
+3. **mini_plus FAILED the hard task (oracle 0.33)**: same pricing-math confound as before. It got
    the body in one map, but botched the prompt-caching pricing calculation. Not a map issue; the
    task's Skill/pricing sub-question (M4) is still the dominant variable on cache_aware.
 
@@ -52,19 +52,19 @@ baseline old map.
   that made the old-map arms grep.
 - **mini_plus improved on plain old map on the easy task** (the include_bodies win) but did not
   catch newmap, because (a) the agent didn't use `names`, and (b) bodies alone don't supply call
-  sites — which is exactly what newmap's `refs`/connections give.
+  sites, which is exactly what newmap's `refs`/connections give.
 - **The hard task remains dominated by the pricing confound**, so its numbers don't cleanly measure
   map behaviour (M4 still open).
 
 ## Takeaways for the two additions
 
-- `include_bodies` is worth keeping — it measurably cut old-map cost on the clean task. It's the
+- `include_bodies` is worth keeping, it measurably cut old-map cost on the clean task. It's the
   high-value one, as predicted.
 - `names` as a *passive input* is not enough: the agent won't volunteer it. To get its value, the
   instruction must make passing known names non-optional, OR the bridge should auto-extract likely
   names from the query (so the lexical anchor happens without the agent's cooperation).
 - A body-only old map still greps for call sites. The gap between mini_plus and newmap IS the
-  call-site/wiring info — which is the argument FOR newmap's `refs`, used sparingly.
+  call-site/wiring info, which is the argument FOR newmap's `refs`, used sparingly.
 
 ## Files / run dirs
 - bridge: `scripts/claude_sdk_harness/mini_plus_bridge.py`

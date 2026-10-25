@@ -77,7 +77,7 @@ scubiee init .
 
 **Symptom:** Cannot replace files under `%APPDATA%\uv\tools\scubiee\Scripts`; afterward `No module named 'pipeline'` or broken CLI.
 
-**Cause:** File **locks** (Cursor MCP / daemon holding `python.exe`) — **not** ACLs. Admin PowerShell does not help.
+**Cause:** File **locks** (Cursor MCP / daemon holding `python.exe`), **not** ACLs. Admin PowerShell does not help.
 
 **Fix (CLI works):**
 
@@ -169,7 +169,7 @@ If you forced CPU: `scubiee setup --profile mlx --repair` (or `--repair` alone t
 scubiee setup --repair
 ```
 
-If still broken, purge ORT wheels — see [Windows guide](./windows.md).
+If still broken, purge ORT wheels, see [Windows guide](./windows.md).
 
 ---
 
@@ -193,7 +193,7 @@ Broken uv tool directory. Quit Cursor → [Uninstall on Windows](./uninstall-win
 
 ### Two Pythons on PATH (`pip` â‰  `scubiee`)
 
-Read `scubiee --version` — use **that** Python’s pip/uv, not conda’s.
+Read `scubiee --version`, use **that** Python’s pip/uv, not conda’s.
 
 ---
 
@@ -249,12 +249,12 @@ When healthy: `managed: true`, `ok: true`, `warming: false`.
 ### Agent fell back to native Grep forever
 
 1. Confirm MCP server is green  
-2. Re-run `scubiee connect --cursor` (refreshes rules — event-driven retry, not “ignore forever”)  
+2. Re-run `scubiee connect --cursor` (refreshes rules, event-driven retry, not “ignore forever”)  
 3. After mid-session `init`, ask the agent to call `status()` again once  
 
 ---
 
-### Paused / stopped — agent tells you to `wake`
+### Paused / stopped: agent tells you to `wake`
 
 Use:
 

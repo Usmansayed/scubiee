@@ -1,4 +1,4 @@
-# Claude Code — map-only Scubiee vs. without, on ONE large task
+# Claude Code: map-only Scubiee vs. without, on ONE large task
 
 A single substantial, cross-cutting coding task (not several small prompts), run once with and
 once without Scubiee's `map` tool, to see whether map-only still saves tokens when the task is big
@@ -9,12 +9,12 @@ enough to dominate the budget with *work* rather than *discovery*.
 - **Model:** `claude-sonnet-5` via the Claude Agent SDK; real `model_usage` token accounting.
 - **Task (one, vague, non-grep-able):** "add proper, consistent per-stage timing instrumentation
   across the whole locate/answer request path, and surface a structured per-stage rollup that sums
-  to the total." No file names / symbols / formulas in the prompt — genuinely cross-cutting, forces
+  to the total." No file names / symbols / formulas in the prompt, genuinely cross-cutting, forces
   broad exploration of the pipeline. Graded by a hidden, tolerant behavior+structural oracle.
 - **Two arms, identical conditions** (byte-identical `packages/` snapshot, same model, same system
   prompt, `max_turns=120`):
-  - **A — Without Scubiee:** native tools only.
-  - **B — Scubiee map-only:** native + `map` (+ `gate`/`status`), restricted via `allowed_tools`
+  - **A, Without Scubiee:** native tools only.
+  - **B, Scubiee map-only:** native + `map` (+ `gate`/`status`), restricted via `allowed_tools`
     **and** an explicit "use `map` for discovery, then Read the spans; no other Scubiee tool" rule
     in the workspace `CLAUDE.md`. The MCP server still exposes all tools.
 
@@ -23,7 +23,7 @@ enough to dominate the budget with *work* rather than *discovery*.
 | Metric | A: Without | B: map-only |
 |---|---:|---:|
 | **Total tokens** | 16,052,490 | 15,441,209 |
-| **% vs without** | — | **−3.8%** |
+| **% vs without** | - | **−3.8%** |
 | Input tokens | 1,517 | 1,525 |
 | Output tokens | 77,604 | 100,457 |
 | Cache-read tokens | 15,762,100 | 15,129,524 |
@@ -47,18 +47,18 @@ a new reusable timing helper `packages/pipeline/stage_timing.py` wired across th
 > the skip. On the evidence (real `stage_timing.py` + cross-module wiring + oracle 1.0 pass ratio,
 > 0 failures), **both arms genuinely succeeded.**
 
-## What this shows — and why it differs from the small-task result
+## What this shows: and why it differs from the small-task result
 
 On the earlier **small** task, map-only cut tokens **~45%**. On this **large** task it was a
 **statistical tie (−3.8%)**. The reason is structural, and it's the important finding:
 
-- **Total tokens are dominated by cache-read** (15.7M / 15.1M of the ~16M) — every turn re-sends
+- **Total tokens are dominated by cache-read** (15.7M / 15.1M of the ~16M): every turn re-sends
   the growing transcript. So cost ≈ a function of **how many turns of reading and editing** the
   task takes.
-- On a large task, **discovery is a small slice of the work.** The agent still spent ~52–57 native
-  Read/Grep/Glob calls and ~98–112 turns *doing the change* (understanding many files, editing 4–5,
+- On a large task, **discovery is a small slice of the work.** The agent still spent ~52-57 native
+  Read/Grep/Glob calls and ~98-112 turns *doing the change* (understanding many files, editing 4-5,
   re-reading to verify). `map` was called only **3 times** and shaved a little off discovery, but
-  discovery was never the bottleneck here — the sheer volume of read-edit-verify turns was.
+  discovery was never the bottleneck here, the sheer volume of read-edit-verify turns was.
 - On the small task, discovery *was* most of the work (find the one buried file), so replacing 16
   greps with one `map` collapsed the whole thing → big win. That leverage disappears as the task
   grows.
@@ -67,7 +67,7 @@ Put differently: **`map`'s savings scale with the discovery fraction of a task, 
 Big feature work is mostly comprehension-and-editing turns, which `map` doesn't touch.
 
 Two secondary observations:
-- Arm B did **more** turns (112 vs 98) and **more** output tokens — it wrote a slightly larger
+- Arm B did **more** turns (112 vs 98) and **more** output tokens, it wrote a slightly larger
   change (5 files vs 4, adding `engine.py`). Some of the "no savings" is that the two runs did not
   do byte-identical work; on a vague task the agents diverge in scope. This is expected variance,
   not a controlled per-edit comparison.
@@ -77,18 +77,18 @@ Two secondary observations:
 ## Caveats (important)
 
 - **n = 1 task, 1 run per arm.** At 16M tokens a single run costs a lot, so this is one sample. A
-  ±4% gap is **within run-to-run noise** for Sonnet agentic work — do not read −3.8% as "map hurts"
+  ±4% gap is **within run-to-run noise** for Sonnet agentic work, do not read −3.8% as "map hurts"
   or "map helps"; read it as **"no measurable effect at this scale, this run."**
 - The two arms did **not** produce identical diffs (4 vs 5 files), so token totals include a
   scope difference, not just a tool difference.
-- The task ran to ~16M tokens (far past the 1–2M ask) — it was more cross-cutting than intended,
+- The task ran to ~16M tokens (far past the 1-2M ask), it was more cross-cutting than intended,
   which actually strengthens the "discovery is a small fraction" point but makes the single-sample
   noise larger in absolute terms.
 
 ## Conclusion
 
 **On one large, realistic, cross-cutting task, map-only Scubiee showed no meaningful token
-difference vs. without (−3.8%, within noise) — both completed the task.** This does **not**
+difference vs. without (−3.8%, within noise), both completed the task.** This does **not**
 contradict the small-task 45% win; it refines it:
 
 > **`map` saves tokens in proportion to how much of a task is *finding the right code*. For a
@@ -97,7 +97,7 @@ contradict the small-task 45% win; it refines it:
 > total.**
 
 Where `map` (and Scubiee more broadly) is most worth it: **many small, discovery-heavy tasks**
-(bug triage, "where does X happen", targeted fixes) — not single mega-features where the token
+(bug triage, "where does X happen", targeted fixes), not single mega-features where the token
 bill is dominated by the editing loop. For a robust number, this large-task arm would need several
 repeats (expensive) and a controlled task where both arms must produce the same diff.
 

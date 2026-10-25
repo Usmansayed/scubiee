@@ -42,11 +42,11 @@
 
 - [x] **Step 1: Write failing tests** for `_active_surface()` accepting `nav`, `SERVER_INSTRUCTIONS_NAV` length ≤ ~1200 chars / tok budget consistent with existing caps, and `status` tool list for nav = six tools.
 
-- [x] **Step 2: Run tests — expect fail**
+- [x] **Step 2: Run tests, expect fail**
 
 - [x] **Step 3: Implement** `SERVER_INSTRUCTIONS_NAV` (copy from design §4), add `"nav"` to `_SURFACES`, `_server_instructions`, and `status` tool_lists.
 
-- [x] **Step 4: Run tests — expect pass**
+- [x] **Step 4: Run tests, expect pass**
 
 - [ ] **Step 5: Commit** (only if user requested)
 
@@ -58,13 +58,13 @@
 - Modify: `packages/pipeline/mcp_locate.py`
 - Modify: `tests/test_mcp_locate.py`
 
-- [x] **Step 1: Failing tests** — when `CTX_MCP_SURFACE=nav`, registered tool names == `{search, files, read, recall, expand, status}` (not outline/grep/neighbors as top-level).
+- [x] **Step 1: Failing tests**, when `CTX_MCP_SURFACE=nav`, registered tool names == `{search, files, read, recall, expand, status}` (not outline/grep/neighbors as top-level).
 
-- [x] **Step 2: Run — expect fail**
+- [x] **Step 2: Run, expect fail**
 
-- [x] **Step 3: Implement** — reuse `files_impl`; add thin `recall_impl` / `expand_impl` calling `session_store.recall` / `expand`; register only those six on `nav`. Keep rich/graph registrations unchanged.
+- [x] **Step 3: Implement**, reuse `files_impl`; add thin `recall_impl` / `expand_impl` calling `session_store.recall` / `expand`; register only those six on `nav`. Keep rich/graph registrations unchanged.
 
-- [x] **Step 4: Smoke call** each tool against a tiny fixture repo or existing locate tests — `ok: true` or validated error shape.
+- [x] **Step 4: Smoke call** each tool against a tiny fixture repo or existing locate tests, `ok: true` or validated error shape.
 
 - [x] **Step 5: Tests pass**
 
@@ -82,7 +82,7 @@
   - `read(detail="neighbors")` equivalent to `neighbors=true`.
   - Default `mode=soft` / `detail=body` preserves current behavior.
 
-- [x] **Step 2: Run — expect fail**
+- [x] **Step 2: Run, expect fail**
 
 - [x] **Step 3: Implement** exact via existing `grep` client path; outline via `outline` client path inside `read`; map `detail` ↔ neighbors flag. Update tool descriptions for nav.
 
@@ -115,7 +115,7 @@
 
 - [x] **Step 1: Failing tests** for flags e.g. `--surface nav` / `--seal-locate` setting env `CTX_MCP_SURFACE=nav` and recording `native_locate_count`; seal mode treats native grep/glob/read as score violations (or blocks via rules text + post-hoc fail).
 
-- [x] **Step 2: Implement** arm config: inject NAV instructions; set surface; extend scoring with thrash KPIs (`first_edit_step`, `pre_locate_calls`, `post_locate_calls`) already partially available via analyzers — wire into arm JSON summary.
+- [x] **Step 2: Implement** arm config: inject NAV instructions; set surface; extend scoring with thrash KPIs (`first_edit_step`, `pre_locate_calls`, `post_locate_calls`) already partially available via analyzers, wire into arm JSON summary.
 
 - [x] **Step 3: Unit tests pass** (no full paid trial required in CI).
 

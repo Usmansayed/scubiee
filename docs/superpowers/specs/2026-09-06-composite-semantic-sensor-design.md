@@ -1,7 +1,7 @@
-# Composite Semantic Sensor — Phase 0 Design
+# Composite Semantic Sensor: Phase 0 Design
 
 **Date:** 2026-09-06  
-**Status:** Phase 0 implemented — bakeoff flat vs composite_v1; keep as opt-in scaffold, do not default  
+**Status:** Phase 0 implemented, bakeoff flat vs composite_v1; keep as opt-in scaffold, do not default  
 **Parent research:** `SCUBIEE_SEMANTIC_TRACER_RESEARCH.md`, user prompt (vector as sensor)
 
 ## 1. Thesis

@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Do not modify production indexer / MCP / daemon / `chunk_compress` defaults.
-- No LLMs — rule-based only.
+- No LLMs, rule-based only.
 - Hard cap default 512 chars per chunk text.
 - Corpus: `testdata/frontend-mcp`.
 - Gold: `HARD_V2` (`files_substr` hit).
@@ -75,7 +75,7 @@ def test_spans_from_fixture(tmp_path: Path):
 - Produces: `ARMS`, `render(arm: str, span: SpanContext, *, max_chars: int = 512, graph=None, baseline_text: str | None = None) -> str`
 
 **Arm rules:**
-- `baseline`: `baseline_text` if provided else `mix`-style compress of `File/Symbol` + source (import `compress_chunk` / `prepare_enriched_from_parts` — do not change those modules).
+- `baseline`: `baseline_text` if provided else `mix`-style compress of `File/Symbol` + source (import `compress_chunk` / `prepare_enriched_from_parts`, do not change those modules).
 - `ast_tree`: compact indented dump of the span’s AST subtree (FunctionDef/ClassDef only; omit docstrings bodies longer than 1 line summary).
 - `rels`: Calls / Reads / Writes / Returns from AST; CalledBy from optional NetworkX/graphify graph if passed.
 - `semantic`: keyword heuristics for Purpose/Boundary; Inputs=args; Output=return name hints; Deps=imported/called top names.
@@ -98,10 +98,10 @@ def test_spans_from_fixture(tmp_path: Path):
 - Modify: none in production packages
 
 **Behavior:**
-1. Clear reliance on polluted `CTX_HOME` — use `out/seir_ab/home` as isolated store root via env for FAISS only.
+1. Clear reliance on polluted `CTX_HOME`, use `out/seir_ab/home` as isolated store root via env for FAISS only.
 2. Build spans from repo (optional `--limit-spans`).
 3. Load graph from `PipelineStore(repo).base/graph.json` if present, else `repo/graphify-out/graph.json` if present.
-4. For each arm: render → Embedder CodeRank → FaissCollection under `out/seir_ab/<arm>/` → eval HARD_V2 with dense-only top_k (no conductor stack required — pure dense A/B on representation quality).
+4. For each arm: render → Embedder CodeRank → FaissCollection under `out/seir_ab/<arm>/` → eval HARD_V2 with dense-only top_k (no conductor stack required, pure dense A/B on representation quality).
 5. Write `out/seir_ab_<ts>.json` with quality + density + timing.
 
 Dense-only eval is intentional: isolates representation effect from BM25/graph fusion.
@@ -125,4 +125,4 @@ Dense-only eval is intentional: isolates representation effect from BM25/graph f
 | frontend-mcp + HARD_V2 | 3 |
 | Metrics R@k MRR nDCG tokens size latency | 3 |
 | No production path changes | all |
-| Density cap 512 | 1–2 |
+| Density cap 512 | 1-2 |

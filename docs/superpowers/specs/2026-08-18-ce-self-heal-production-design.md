@@ -19,8 +19,8 @@ pip installs) stay explicit.
 | Gate | Result |
 |------|--------|
 | `python -m pipeline certify . --skip-daemon` | `ok: true`, `failed_required: 0` |
-| `python -m pipeline doctor .` | `ok: false` — daemon bound to main checkout, this worktree unbound |
-| Advertised repair | `ctx engine ensure <worktree>` — **doctor does not apply it** |
+| `python -m pipeline doctor .` | `ok: false`, daemon bound to main checkout, this worktree unbound |
+| Advertised repair | `ctx engine ensure <worktree>`, **doctor does not apply it** |
 | Dashboard Health | read-only dump of `doctor_report()` (accel only) |
 | `test core` | omits dashboard API/UI tests |
 
@@ -37,10 +37,10 @@ problem the product already knows how to fix via `ensure_daemon` → `open_repo`
 
 Safe:
 
-- `bind_daemon` — `ensure_daemon(repo)` so the running engine binds this path
-- `initialize_index` — `initialize_repo(root, index=True)` when the store is
+- `bind_daemon`: `ensure_daemon(repo)` so the running engine binds this path
+- `initialize_index`: `initialize_repo(root, index=True)` when the store is
   not usable and the publication manifest is not corrupt
-- `replay_dirty_journal` — restore journal then `sync_now_repo`
+- `replay_dirty_journal`: restore journal then `sync_now_repo`
 
 Manual (print, never auto-apply):
 

@@ -1,4 +1,4 @@
-# Session summary — Windows + Mac (through 20 Aug 2026)
+# Session summary: Windows + Mac (through 20 Aug 2026)
 
 Use this as memory if the chat is new. Detail of each bug: [issue-log.md](./issue-log.md). Product: [../engg/01-vision.md](../engg/01-vision.md).
 
@@ -13,7 +13,7 @@ Use this as memory if the chat is new. Detail of each bug: [issue-log.md](./issu
 **Branch:** `feat/production-certification`  
 **Windows Python:** Miniconda 3.13 (`C:\Users\usman\Miniconda3`)
 
-Mac agent pushed 0.2.11–0.2.13 to **hidden** first; Windows then fast-forwarded the feature branch and later pointed `main` at that tip.
+Mac agent pushed 0.2.11-0.2.13 to **hidden** first; Windows then fast-forwarded the feature branch and later pointed `main` at that tip.
 
 ## User machines
 
@@ -24,13 +24,13 @@ Mac agent pushed 0.2.11–0.2.13 to **hidden** first; Windows then fast-forwarde
 
 Runtime data always: `~/.context-engine/` (`accel.json`, projects, daemon). **Do not confuse with the venv path.**
 
-PyPI credentials live in parent repo `.env` (`pipy_username` / `pipy_password` — typo prefix). **Never commit `env`.**
+PyPI credentials live in parent repo `.env` (`pipy_username` / `pipy_password`, typo prefix). **Never commit `env`.**
 
 ## Version timeline (what shipped)
 
 | Ver | What |
 |-----|------|
-| **0.2.5–0.2.6** | Reliability: search path vs query, no mkdir from queries, MCP health-first, `ensure_daemon`, live reindex + FAISS ids after upsert, doctor OK when only daemon unbound, `init --fast/--roots`, Mac npm venv + git pip fallback. PyPI 0.2.6 live. npm **not** published. |
+| **0.2.5-0.2.6** | Reliability: search path vs query, no mkdir from queries, MCP health-first, `ensure_daemon`, live reindex + FAISS ids after upsert, doctor OK when only daemon unbound, `init --fast/--roots`, Mac npm venv + git pip fallback. PyPI 0.2.6 live. npm **not** published. |
 | **0.2.7** | CoreML static ONNX + fixed batch 20 + GPU-only EP. **Failed on real Mac:** invalid ORT options → silent CPU fallback. |
 | **0.2.8** | Strip `UseCPUAndGPU`/`CreateMLProgram`; define ONNX `shape=[batch,seq]`. Handoff doc + `~/scubiee` note. |
 | **0.2.11** (Mac) | **MLX** default on Apple Silicon; daemon **publish-after-sync**; MCP **venv interpreter** (no resolve); remove **hard tool caps**. |
@@ -72,19 +72,19 @@ Primary Mac write-up (kept): `docs/handoff-2026-08-19-mac-mcp-fixes.md`. Older C
 
 **Do not treat as done:**
 
-1. **npm `scubiee`** — never published (404). Needs `NPM_TOKEN`.
-2. **`status.sync_status` can show `needs_full`** after catchup chunked live reindex while locate still works — operator confusion.
-3. **Leftover `~/.context-engine/projects/`** from path-pollution era — one-time cleanup.
+1. **npm `scubiee`**: never published (404). Needs `NPM_TOKEN`.
+2. **`status.sync_status` can show `needs_full`** after catchup chunked live reindex while locate still works, operator confusion.
+3. **Leftover `~/.context-engine/projects/`** from path-pollution era, one-time cleanup.
 4. **Large dump / folder replace** still does not auto full-index (by design: ≥50% change → full, incremental cap, `CTX_ALLOW_BG_FULL` off). Need operator message + `ctx index --force`.
-5. **Foreign tree dump** at repo root (nested project source) can get embedded — allowlist / nested `.git` detector (`docs/reindexing/future-work.md`).
-6. **`pip uninstall` leaves daemon** on :8765 — stop engine in uninstall hook.
+5. **Foreign tree dump** at repo root (nested project source) can get embedded, allowlist / nested `.git` detector (`docs/reindexing/future-work.md`).
+6. **`pip uninstall` leaves daemon** on :8765, stop engine in uninstall hook.
 7. **`feat/live-reindexing`** not merged into this line unless someone does it separately.
-8. **GitHub `PYPI_API_TOKEN`** — CI publish optional; last uploads were manual twine from `.env`.
+8. **GitHub `PYPI_API_TOKEN`**: CI publish optional; last uploads were manual twine from `.env`.
 9. **CoreML path** still in tree; Mac default is MLX. Do not revive CoreML as default without a real-device pass that shows **no** CPU fallback in logs.
-10. README still mentions git install `@v0.2.6` in one fallback snippet — should say latest when docs are next touched.
-11. Bench junk: `docs/bench-*.err.log`, `:memory:.ses` — do not commit secrets or leftover logs.
+10. README still mentions git install `@v0.2.6` in one fallback snippet, should say latest when docs are next touched.
+11. Bench junk: `docs/bench-*.err.log`, `:memory:.ses`, do not commit secrets or leftover logs.
 12. **Publish 0.2.18** if users `pip install -U scubiee` should get grep/glob honesty + recommend instructions.
-13. `status.sync_status` can still say `syncing` while keeper `sync_status=ready` — operator confusion (same family as item 2).
+13. `status.sync_status` can still say `syncing` while keeper `sync_status=ready`, operator confusion (same family as item 2).
 
 ## New-session prompt (paste)
 

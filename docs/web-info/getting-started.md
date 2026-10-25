@@ -1,6 +1,6 @@
 # Getting started
 
-Scubiee is a **local** context engine for AI coding tools (Cursor, Claude Code, Kiro, Copilot, and more). It indexes your repository, embeds code with CodeRank (GPU when available), and exposes one MCP tool, `map`, with two modes — `find` and `focus` (plus `gate`/`status` for health).
+Scubiee is a **local** context engine for AI coding tools (Cursor, Claude Code, Kiro, Copilot, and more). It indexes your repository, embeds code with CodeRank (GPU when available), and exposes one MCP tool, `map`, with two modes, `find` and `focus` (plus `gate`/`status` for health).
 
 You need **Python 3.11+**. You do **not** need to clone the GitHub repo to use it.
 
@@ -33,10 +33,10 @@ Full install + debug playbook: **[Install & debug](./install-and-debug.md)**.
 
 ## 1. Install the CLI
 
-**Recommended — [uv](https://docs.astral.sh/uv/) tool install:**
+**Recommended ([uv](https://docs.astral.sh/uv/) tool install):**
 
 ```powershell
-# Windows — pin PyPI + version
+# Windows - pin PyPI + version
 uv tool install --force scubiee==0.3.146 --index-url https://pypi.org/simple --refresh
 ```
 
@@ -53,7 +53,7 @@ uv tool update-shell
 
 On Windows, shims usually live in `%USERPROFILE%\.local\bin`.
 
-**Alternative — pip:**
+**Alternative (pip):**
 
 ```bash
 pip install -U scubiee==0.3.146
@@ -98,7 +98,7 @@ scubiee diagnose --no-tests --desktop
 # → ~/Desktop/scubiee-diagnose.json
 ```
 
-**After a broken / forced reinstall:** always run `setup --repair` before `init`. Diagnose can still show an old `accel.json` throughput number while `fastembed` / `onnxruntime` are missing — repair fixes that.
+**After a broken / forced reinstall:** always run `setup --repair` before `init`. Diagnose can still show an old `accel.json` throughput number while `fastembed` / `onnxruntime` are missing, repair fixes that.
 
 Preflight:
 
@@ -117,7 +117,7 @@ scubiee preflight . --lexical-only
 ```bash
 cd /path/to/your/project
 scubiee init .
-# large monorepo — optional directory scope (still all languages):
+# large monorepo - optional directory scope (still all languages):
 # scubiee init . --roots packages,src
 ```
 
@@ -183,7 +183,7 @@ scubiee diagnose --no-tests --desktop
 scubiee dashboard --status
 ```
 
-In the agent: call Scubiee **`status()`** once. Expect `managed: true` after init+connect. If `warming: true`, the daemon is still starting — use tools; do not spam `status()`.
+In the agent: call Scubiee **`status()`** once. Expect `managed: true` after init+connect. If `warming: true`, the daemon is still starting; use tools and do not spam `status()`.
 
 ---
 
@@ -214,7 +214,7 @@ Note: prefer `--force` with an explicit version over bare `uv tool upgrade`.
 | Pause one repo’s indexing | `scubiee pause .` |
 | Resume one repo | `scubiee resume .` |
 
-There is **no** `scubiee wake` — if an old message said “wake”, run **`resume`**.
+There is **no** `scubiee wake`. If an old message said “wake”, run **`resume`**.
 
 ---
 

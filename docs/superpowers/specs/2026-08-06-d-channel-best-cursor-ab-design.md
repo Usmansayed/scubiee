@@ -9,7 +9,7 @@
 2. Agent traverse with **grep + graph** (dedicated easy `query_graph`) + small spans.
 3. Measure token efficiency / rubric on **Cursor Task agents**, not OpenCode.
 
-## Retrieval — `D_channel_best`
+## Retrieval: `D_channel_best`
 
 ```text
 query
@@ -35,7 +35,7 @@ Workflow hint: search → query_graph/grep → read_span. Prefer spans over full
 
 ## Cursor-only A/B
 
-Two Cursor Task agents, same mission (`testdata/frontend-mcp`, T1–T3 from opencode mission):
+Two Cursor Task agents, same mission (`testdata/frontend-mcp`, T1, T3 from opencode mission):
 
 | Arm | Tools |
 |-----|--------|

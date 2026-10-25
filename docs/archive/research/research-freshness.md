@@ -1,6 +1,6 @@
 # Research: how others keep code indexes fresh
 
-Sources reviewed (2024–2026): Cursor blog, Claude Context (zilliztech), Sourcegraph Cody/Zoekt,
+Sources reviewed (2024-2026): Cursor blog, Claude Context (zilliztech), Sourcegraph Cody/Zoekt,
 hybrid-code-rag-mcp, rag-code-mcp, pi-local-rag, code-indexer (Cursor-inspired).
 
 ## Common stack (almost everyone)
@@ -11,14 +11,14 @@ hybrid-code-rag-mcp, rag-code-mcp, pi-local-rag, code-indexer (Cursor-inspired).
 | Scope | Re-embed **only** added/modified files; delete vectors for removed paths |
 | Cache | Chunk-content hash → skip re-embed if chunk text unchanged |
 | Sync | Background (Cursor ~5m; Claude Context 5m + trigger file); optional on-save watcher |
-| Serve | **Vectors are pointers** — read live file bytes at query time (Cursor) |
+| Serve | **Vectors are pointers**, read live file bytes at query time (Cursor) |
 | Hybrid | Dense + BM25/ripgrep (RRF or blend) so lexical catches edits dense hasn't re-embedded |
 
 ## Product specifics
 
 ### Cursor
 - Merkle tree for cheap sync; re-embed only changed syntactic chunks.
-- Embeddings are async — search stays available against the prior index while copy/update runs.
+- Embeddings are async, search stays available against the prior index while copy/update runs.
 - Client reads **local disk** for matched ranges (not blob from vector DB).
 - Chunk embedding cache keyed by content hash.
 - File save + ~5 min background; Resync Index for structural churn.
@@ -32,7 +32,7 @@ hybrid-code-rag-mcp, rag-code-mcp, pi-local-rag, code-indexer (Cursor-inspired).
 
 ### Sourcegraph / Zoekt / Cody
 - Zoekt: full reindex is often fine; **delta** indexing exists (`-delta`, threshold ~150 then full).
-- Cody Enterprise **dropped embeddings** for native search — freshness + scale + no 3rd-party embed ops.
+- Cody Enterprise **dropped embeddings** for native search, freshness + scale + no 3rd-party embed ops.
 - Lesson: if dense lag hurts UX, lean harder on lexical/search until dense catches up.
 
 ### hybrid-code-rag-mcp
@@ -49,8 +49,8 @@ hybrid-code-rag-mcp, rag-code-mcp, pi-local-rag, code-indexer (Cursor-inspired).
 
 ## Friction model (what actually wastes agent time)
 
-1. **Blocking full re-embed on every search** — worst.
-2. **Serving stale dense as if fresh** — silent wrong answers (worse than latency).
+1. **Blocking full re-embed on every search**: worst.
+2. **Serving stale dense as if fresh**: silent wrong answers (worse than latency).
 3. **Best path:** cheap detect → small set sync-before-search → else search now with **fresh disk text + BM25 hot-patch + dirty boost**, dense refresh in background.
 
 ## What we implement

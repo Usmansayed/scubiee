@@ -45,7 +45,7 @@
 ### Task 4: Wire A/B + run
 
 **Files:**
-- Modify: `scripts/experiments/session_arch_ab.py` — arms SeedSpan, GraphHop, LspHop, Planner; ladder default.
+- Modify: `scripts/experiments/session_arch_ab.py`, arms SeedSpan, GraphHop, LspHop, Planner; ladder default.
 - Run: `--ladder` on frontend-mcp; write `session_arch_latest.json`.
 
 **Done when:** Report shows rubric separation and winner (or explicit lsp_unavailable).

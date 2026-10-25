@@ -1,6 +1,6 @@
 # Cross-Platform Runtime Compatibility Design
 
-**Status:** Approved in chat on 2026-08-17 (design sections 1–3)  
+**Status:** Approved in chat on 2026-08-17 (design sections 1-3)  
 **Branch / worktree:** `feat/production-certification`  
 **Related:** `questions-answered.md`, batch calibrator in `pipeline.accel`
 
@@ -22,7 +22,7 @@ Make Context Engine start and run safely on Windows, Linux, and Apple Silicon Ma
 
 This is the product shape:
 
-1. **All choosing happens once at installation** (`ctx setup` / `ctx init`) — and nowhere else in normal operation:
+1. **All choosing happens once at installation** (`ctx setup` / `ctx init`): and nowhere else in normal operation:
    - OS detection
    - hardware / GPU detection
    - which acceleration stack to install (CUDA / DirectML / verified-other / CPU)
@@ -33,7 +33,7 @@ This is the product shape:
    - Write `accel.json` + `hardware.json` as the machine’s permanent preferred setup
 2. **After install, CE does not re-choose** OS stacks, GPU backends, or batch winners on `serve`, MCP connect, doctor (read-only), or everyday indexing.
    - Runtime **loads** the saved profile and runs it.
-   - ResourceManager / FairEmbedScheduler / keeper / search are **portable** across Windows, Linux, and macOS — same code paths, same pressure policy. They consume the installed profile; they do not pick a new stack.
+   - ResourceManager / FairEmbedScheduler / keeper / search are **portable** across Windows, Linux, and macOS, same code paths, same pressure policy. They consume the installed profile; they do not pick a new stack.
 3. **OS- and hardware-specific work is install-only.**
    - Install-only examples: ORT wheel selection, DirectML vs CUDA package, provider device id, batch calibration, first model download.
    - Runtime-portable examples: dirty journal, RepoHub, fair embed queue, envelope demotion, publication manifest, search serving.
@@ -43,7 +43,7 @@ This is the product shape:
      - for this process/session only, use a **temporary CPU safety path** and/or demoted batch with an explicit status reason;
      - do **not** rewrite `accel.json` / reinstall stacks / re-calibrate batch for a transient fault;
      - next healthy start uses the **original installed preferred profile** again.
-   - Permanent re-choice requires explicit re-install / `ctx init` / repair — never an ambient background re-pick.
+   - Permanent re-choice requires explicit re-install / `ctx init` / repair, never an ambient background re-pick.
 
 ```text
 INSTALL (once, all selection)
@@ -91,8 +91,8 @@ Limits derive from **available memory**, not total RAM alone.
 
 | Tier | Trigger | Policy |
 |---|---|---|
-| Low | ≤8 GB total RAM **or** &lt;3 GB currently available | Batch ceiling 1–4 (or calibrated ≤8 if proven), one embed worker, one indexing repo at a time, aggressive model unload, bounded queues, search first |
-| Standard | ~12–24 GB RAM with healthy free memory | Measured batch up to **16**, one embed worker, limited extraction parallelism, unload after configurable idle |
+| Low | ≤8 GB total RAM **or** &lt;3 GB currently available | Batch ceiling 1-4 (or calibrated ≤8 if proven), one embed worker, one indexing repo at a time, aggressive model unload, bounded queues, search first |
+| Standard | ~12-24 GB RAM with healthy free memory | Measured batch up to **16**, one embed worker, limited extraction parallelism, unload after configurable idle |
 | High | ≥32 GB RAM with adequate free memory | Use benchmarked safe batch (usually 16, 20 only if calibration promoted it), more parsing workers, still one fair-scheduled accelerator owner |
 
 Continuous sampling: RAM, CPU load, swap pressure, and GPU memory where reliable. Hysteresis prevents oscillation.
@@ -114,7 +114,7 @@ Embed OOM: one smaller-batch retry, then quarantine that batch/profile step and 
 - Promote to **20** only if throughput gain is ≥10% **and** ≥+3 t/s vs 16.
 - Downgrade to **8** only if 16 fails or is ≥15% slower than 8.
 - Uses CE-like ~700-char chunks; model loaded once; target wall time well under 30s for the probe.
-- Evidence on the development DML laptop: 20 was only ~2–3% faster than 16 → winner **16**.
+- Evidence on the development DML laptop: 20 was only ~2-3% faster than 16 → winner **16**.
 
 ### Packaging, startup, certification (§3)
 

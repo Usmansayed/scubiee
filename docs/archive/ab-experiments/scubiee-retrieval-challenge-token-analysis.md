@@ -1,8 +1,8 @@
-# Scubiee retrieval challenge — where the tokens actually go
+# Scubiee retrieval challenge: where the tokens actually go
 
 A cheap, high-n benchmark that isolates *retrieval behavior* (find the right code)
 from *code-writing behavior*, plus an instrumented token breakdown that answers a
-specific question: **guided uses fewer greps but costs more tokens — where is the
+specific question: **guided uses fewer greps but costs more tokens, where is the
 waste?**
 
 Evidence grades used below: **[OBS]** observed directly in these traces ·
@@ -14,14 +14,14 @@ Evidence grades used below: **[OBS]** observed directly in these traces ·
 ## 1. Why a retrieval-only challenge
 
 Prior A/B work ran full coding tasks (locate → edit → build → oracle). Those cost
-~0.8–1.3M tokens per run, so we could only afford a handful, and the retrieval
+~0.8-1.3M tokens per run, so we could only afford a handful, and the retrieval
 signal was tangled up with code-writing skill and open-ended-task variance.
 
 The retrieval challenge strips it down to the one thing the policy is supposed to
 change:
 
 - The agent is given a **vague, de-keyworded description** of a behavior/area.
-- It must **locate** the relevant code and write `RETRIEVAL_ANSWER.md` — an ordered
+- It must **locate** the relevant code and write `RETRIEVAL_ANSWER.md`, an ordered
   list of the files it believes are relevant, best first, with the key symbol and a
   one-line reason. **It does not edit any code.**
 - Hard, low turn cap (14). No build, no test. Far cheaper per run, so we can run
@@ -31,7 +31,7 @@ change:
 
 Each query is a paraphrase of a **real commit**. The **gold file set** = the
 non-test `packages/**/*.py` files that commit changed (mechanical
-`upgrade_releases/v*.py` release shims excluded — they are not where a human would
+`upgrade_releases/v*.py` release shims excluded, they are not where a human would
 say the behavior "lives"). The agent never sees the gold set. The oracle:
 
 - parses the python paths the agent **named** in its answer (prefers markdown
@@ -52,9 +52,9 @@ for Scubiee arms), identical model (`claude-sonnet-5`). Every Scubiee arm ships 
 **bare** server instructions so the arm's own rule is the sole retrieval
 instruction (removes the stock pack-ladder confound). **[DES]**
 
-- **without** — control; no Scubiee, native tools only (Read/Grep/Glob/Bash).
-- **guided** — prior best-on-cost "when to use map" rule (no forced sequence).
-- **two_layer** — new research-informed artifact: RULES (112 tok anchor) +
+- **without**: control; no Scubiee, native tools only (Read/Grep/Glob/Bash).
+- **guided**: prior best-on-cost "when to use map" rule (no forced sequence).
+- **two_layer**: new research-informed artifact: RULES (112 tok anchor) +
   INSTRUCTIONS (510 tok manual): policy-over-procedure, decision boundaries by what
   you already know, one causal reason, anti-loop/adapt clause, MUST/prefer tiers,
   contrastive good/bad examples.
@@ -80,7 +80,7 @@ plumbing; writes one `cell_*.json` per run and an incremental `report.json`.
 
 ## 2. Runs executed so far
 
-Two small runs (smoke + instrumented), n=1 per cell — **directional only**, not
+Two small runs (smoke + instrumented), n=1 per cell, **directional only**, not
 conclusions. All cells: agent wrote the answer file, oracle parsed it, engine warm.
 
 ### Smoke run (6 cells: 3 arms × 2 queries × 1 rep)
@@ -94,7 +94,7 @@ conclusions. All cells: agent wrote the answer file, oracle parsed it, engine wa
 | guided | dirty_path (focus) | 350,751 | 13 | 2 | 2 | 1.0 | 0.50 | 1.0 |
 | two_layer | dirty_path (focus) | 441,359 | 13 | 2 | 3 | 1.0 | 1.00 | 1.0 |
 
-All arms reached recall 1.0 / MRR 1.0 on both queries — these two single-file golds
+All arms reached recall 1.0 / MRR 1.0 on both queries, these two single-file golds
 do not separate the arms on *accuracy*. They separate on **precision** (over-listing
 of spurious files) and **exploration cost**. **[OBS]**
 
@@ -102,7 +102,7 @@ of spurious files) and **exploration cost**. **[OBS]**
 
 This is the run used for the token breakdown in §3. Note the **variance**: the
 `without` arm that was 12 turns / 278k in the smoke run came back **20 turns /
-974k** here on the *same query* — a 156k swing from agent nondeterminism alone.
+974k** here on the *same query*, a 156k swing from agent nondeterminism alone.
 **[OBS]**
 
 | Arm | tokens | cache_read | output | turns | map | grep | read | prec |
@@ -117,13 +117,13 @@ This is the run used for the token breakdown in §3. Note the **variance**: the
 
 New instrumentation added to `run_arm` (in `harness_run.py`):
 
-- **`tool_results`** — the char size of every tool RESULT block, attributed to the
+- **`tool_results`**: the char size of every tool RESULT block, attributed to the
   tool that produced it (matched by `tool_use_id`). This is the context each tool
   injects.
-- **`turn_usage`** — the per-assistant-message usage snapshot, so we can watch
+- **`turn_usage`**: the per-assistant-message usage snapshot, so we can watch
   `cache_read` (the carried context) grow turn by turn.
 
-### 3.1 Tool-result payload — Scubiee is dramatically leaner, NOT the waste
+### 3.1 Tool-result payload: Scubiee is dramatically leaner, NOT the waste
 
 Total characters of tool-result content injected into the conversation:
 
@@ -133,25 +133,25 @@ Total characters of tool-result content injected into the conversation:
 | two_layer | 26,757 | map 5,269 · Read 16,235 · Grep 4,937 · Write 256 |
 | **without** | **139,039** | **Read 118,842** · Grep 19,943 · Write 254 |
 
-The `without` arm dumped **6× more content** into context — because with no map to
+The `without` arm dumped **6× more content** into context, because with no map to
 point it at line ranges, it **read two whole huge files**: one 37,561-char read and
 one 67,473-char read (visible in its call sequence). The `map` result itself is tiny
 (~5,200 chars for two maps) and it steers the agent to read *spans*, so both Scubiee
-arms' reads stay ~15–16k. **This is the real retrieval win, and it is genuine.**
+arms' reads stay ~15-16k. **This is the real retrieval win, and it is genuine.**
 **[OBS]**
 
 So the waste in guided/two_layer is **not** in tool results, and it is **not** in
-greps (greps return ~40–2,800 chars each — cheap), and it is **not** in output
-tokens (4.0–4.2k, near-identical). **[OBS]**
+greps (greps return ~40-2,800 chars each, cheap), and it is **not** in output
+tokens (4.0-4.2k, near-identical). **[OBS]**
 
 ### 3.2 The cost is `cache_read`, and `cache_read = per-turn context × turns`
 
-~92–93% of every arm's total tokens is `cache_read`. The mechanic:
+~92-93% of every arm's total tokens is `cache_read`. The mechanic:
 
 > Every turn, the model re-reads the **entire accumulated transcript** (system
 > prompt + the arm's rule text + all prior tool results). The SDK bills that as
 > `cache_read` on each turn. So **total tokens ≈ the sum of the context size across
-> all turns** — not the size of any single result.
+> all turns**, not the size of any single result.
 
 Per-turn `cache_read` growth (carried context at each billing step):
 
@@ -173,11 +173,11 @@ Both arms had near-identical tool counts (2 map, 4 grep, 4 read, 13 turns). The
 1. **Bigger reads.** two_layer's reads totaled 16,235 chars incl. one 6,263-char
    read; guided's largest was 4,704. Larger reads inflate context on **every
    subsequent turn**. **[OBS]**
-2. **More billing steps.** two_layer logged 22 usage snapshots vs guided's 20 — a
+2. **More billing steps.** two_layer logged 22 usage snapshots vs guided's 20, a
    couple of extra internal round-trips, each re-reading the full context. **[OBS]**
 3. **Instruction rent.** two_layer carries a 510-token INSTRUCTIONS block (plus the
    112-token RULES) in context on **every** turn. Small per turn, but multiplied by
-   ~22 turns it is a standing cost guided (shorter rule) does not pay. **[HYP]** —
+   ~22 turns it is a standing cost guided (shorter rule) does not pay. **[HYP]**
    plausible from the mechanic, not yet isolated.
 
 **Critical caveat:** at n=1 with observed turn-count swings of 12↔20 on the same
@@ -195,15 +195,15 @@ conclude two_layer is more expensive. **[WEAK]**
    never the whole file.* That is precisely what prevents the `without`-style 67k
    read that tripled context. Keep it as a hard rule. **[STR]**
 3. **Instruction text is paid every turn.** Because cost ≈ text × turns, the
-   510-token INSTRUCTIONS block is standing rent. Trimming it — or pushing detail
-   into examples the model consults once rather than prose it re-reads each turn —
+   510-token INSTRUCTIONS block is standing rent. Trimming it, or pushing detail
+   into examples the model consults once rather than prose it re-reads each turn
    is a real, testable cost lever. **[HYP]**
 4. **map's compression is the win to protect.** The map result is ~2.5k chars and it
    replaced ~105k chars of whole-file reading in the control. That compression, not
    the ranking, is where Scubiee pays for itself on discovery queries. **[OBS]**
 5. **Precision, not recall, is the near-term differentiator on easy queries.** All
    arms hit recall 1.0 here; the arms differ in how many spurious files they list
-   (without 0.20–0.25, guided 0.25–0.50, two_layer 0.33–1.00). The harder
+   (without 0.20-0.25, guided 0.25-0.50, two_layer 0.33-1.00). The harder
    multi-file cross_module and buried queries are where recall should finally
    split the arms. **[OBS]**
 
@@ -232,13 +232,13 @@ conclude two_layer is more expensive. **[WEAK]**
 2. **A/B a lean two_layer vs the full 510-token version** to isolate the
    instruction-rent hypothesis (§3.3.3) directly. **[DES]**
 3. **Run the harder queries** (`cold_start_status_warming` in the large
-   `mcp_locate.py`, and the two cross_module queries) — these are where recall,
+   `mcp_locate.py`, and the two cross_module queries), these are where recall,
    not just precision, should finally separate map-equipped arms from the control.
 4. Fold results into the final graded report.
 
 ---
 
-## Appendix — files
+## Appendix: files
 
 - Harness: `scripts/claude_sdk_harness/run_retrieval_bench.py`
 - Query bank: `scripts/claude_sdk_harness/retrieval_queries.py`

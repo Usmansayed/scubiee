@@ -5,7 +5,7 @@
 > **Concepts:** [How everything works](./how-everything-works.md) · **Paths:** [Data & files reference](./data-and-files-reference.md)  
 > **Quick tables:** [docs/web-info/commands-reference.md](../docs/web-info/commands-reference.md)
 
-This is the **exhaustive CLI guide** — not just flags, but **why each command exists**, what it changes on disk, how it interacts with the daemon and MCP, common mistakes, and how to recover when something goes wrong.
+This is the **exhaustive CLI guide**, not just flags, but **why each command exists**, what it changes on disk, how it interacts with the daemon and MCP, common mistakes, and how to recover when something goes wrong.
 
 Run `scubiee <subcommand> --help` on your installed version to confirm flags match your build.
 
@@ -14,7 +14,7 @@ Run `scubiee <subcommand> --help` on your installed version to confirm flags mat
 ## Table of contents
 
 ### Foundations
-1. [Mental model — three programs, four layers](#mental-model--three-programs-four-layers)
+1. [Mental model, three programs, four layers](#mental-model--three-programs-four-layers)
 2. [Recommended workflows](#recommended-workflows)
 3. [Invocation, output & guards](#invocation-output--guards)
 4. [Exit codes & JSON](#exit-codes--json)
@@ -46,7 +46,7 @@ Run `scubiee <subcommand> --help` on your installed version to confirm flags mat
 
 ---
 
-## Mental model — three programs, four layers
+## Mental model: three programs, four layers
 
 Scubiee is **local software**, not a cloud API and not an IDE extension. Three processes share one Python package:
 
@@ -76,7 +76,7 @@ Scubiee is **local software**, not a cloud API and not an IDE extension. Three p
 | **3. Repo enrollment** | Is *this folder* indexed? | `scubiee init .` | `<repo>/.scubiee/id.json` |
 | **4. IDE wiring** | Does the agent call MCP? | `scubiee connect --cursor` | `~/.cursor/mcp.json` + rules |
 
-**Critical:** `init` completes layer 3 only. Without `connect` (layer 4), agents show `managed: false` and fall back to native search — even if indexing succeeded.
+**Critical:** `init` completes layer 3 only. Without `connect` (layer 4), agents show `managed: false` and fall back to native search, even if indexing succeeded.
 
 **Critical:** `connect` completes layer 4 only. Without `setup` + `init`, MCP tools have nothing to search.
 
@@ -90,7 +90,7 @@ Scubiee is **local software**, not a cloud API and not an IDE extension. Three p
 # 1. Install package (pick one method)
 uv tool install scubiee --index-url https://pypi.org/simple
 
-# 2. Machine setup — GPU detect, model download, calibration (~5–15 min first run)
+# 2. Machine setup - GPU detect, model download, calibration (~5-15 min first run)
 scubiee setup
 
 # 3. Enroll your project
@@ -111,7 +111,7 @@ scubiee status .
 
 ### Daily development
 
-You usually **do nothing** after setup — the daemon and background sync keep indexes fresh. When needed:
+You usually **do nothing** after setup, the daemon and background sync keep indexes fresh. When needed:
 
 ```bash
 scubiee sync .              # After large git pull or branch switch
@@ -158,7 +158,7 @@ scubiee certify /repo --skip-daemon
 scubiee test quick /repo
 ```
 
-Use `--confirm` whenever indexing might hit the safety gate (>25k indexable files or home/drive roots). Pipe stdout — commands emit JSON when not a TTY.
+Use `--confirm` whenever indexing might hit the safety gate (>25k indexable files or home/drive roots). Pipe stdout, commands emit JSON when not a TTY.
 
 ### Support bundle (attach to bug reports)
 
@@ -182,9 +182,9 @@ Attach `Desktop/scubiee-diagnose.json` and tail of `~/.scubiee/engine.log`.
 scubiee <subcommand> [positional args...] [flags...]
 ```
 
-- **Subcommand required** — bare `scubiee` prints help, exits non-zero.
-- **Default path** — Most repo commands default `path` to `.` (cwd). Always `cd` to the repo or pass an absolute path when automating.
-- **Help** — `scubiee <subcommand> --help` is always allowed, even when globally stopped.
+- **Subcommand required**: bare `scubiee` prints help, exits non-zero.
+- **Default path**: Most repo commands default `path` to `.` (cwd). Always `cd` to the repo or pass an absolute path when automating.
+- **Help**: `scubiee <subcommand> --help` is always allowed, even when globally stopped.
 
 ### Version (no subcommand)
 
@@ -193,7 +193,7 @@ scubiee <subcommand> [positional args...] [flags...]
 | `scubiee --version` / `-V` / `version` | One line: `scubiee X.Y.Z` |
 | `scubiee --version --verbose` | Full **install identity**: which Python, uv tool path, duplicate installs on PATH |
 
-When Scubiee is not “ready” (globally stopped, engine down, etc.), version commands print a **lifecycle hint** on stderr — e.g. `Globally stopped — run scubiee resume`.
+When Scubiee is not “ready” (globally stopped, engine down, etc.), version commands print a **lifecycle hint** on stderr, e.g. `Globally stopped - run scubiee resume`.
 
 **When to use verbose:** Any “wrong version” or “command not found but something runs” report. Doctor also surfaces install identity.
 
@@ -247,7 +247,7 @@ If auto-resume fails, fix the reported error and run `scubiee resume` manually.
 
 | Code | Meaning | What to do |
 |------|---------|------------|
-| **0** | Success | — |
+| **0** | Success | - |
 | **1** | Hard failure | Read JSON `error` / stderr; run `doctor` |
 | **2** | **Confirm required** | Re-run with `--confirm` or answer TTY prompt |
 
@@ -258,9 +258,9 @@ Common JSON fields:
 | `"ok": false` | Operation failed |
 | `"error"` | Machine-readable reason |
 | `"hint"` | Human fix suggestion |
-| `"needs_confirm": true` | Safety gate — add `--confirm` |
+| `"needs_confirm": true` | Safety gate, add `--confirm` |
 | `"warning": "confirm_required"` | Same as confirm gate |
-| `"deferred": true` | Index deferred due to resource pressure — retry later |
+| `"deferred": true` | Index deferred due to resource pressure, retry later |
 
 Full catalog: [Error codes reference](./error-codes-reference.md).
 
@@ -268,7 +268,7 @@ Full catalog: [Error codes reference](./error-codes-reference.md).
 
 ## Safety gates (`--confirm`)
 
-Scubiee refuses to silently index enormous or dangerous paths. The gate counts **indexable files** (respecting skip rules — not raw `find | wc`).
+Scubiee refuses to silently index enormous or dangerous paths. The gate counts **indexable files** (respecting skip rules, not raw `find | wc`).
 
 ### When `--confirm` is required
 
@@ -314,7 +314,7 @@ scubiee init . --fast --roots packages,src,lib
 | `CTX_ALLOW_TEST_HOME` | Tests | Allow test CTX_HOME |
 | `GRAPHIFY_QUIET` / `CTX_QUIET` | init (internal) | Suppress parse logs during progress bar |
 
-Connect writes most MCP env vars into IDE config — you rarely set them manually.
+Connect writes most MCP env vars into IDE config, you rarely set them manually.
 
 ---
 
@@ -326,7 +326,7 @@ These commands configure **layer 2** (machine). They do not index your code.
 
 ### `scubiee setup`
 
-**Purpose:** One-time (or repair) machine configuration — hardware detection, ONNX Runtime / FastEmbed install, CodeRank model download, batch calibration, session supervisor registration.
+**Purpose:** One-time (or repair) machine configuration, hardware detection, ONNX Runtime / FastEmbed install, CodeRank model download, batch calibration, session supervisor registration.
 
 **When to run:**
 
@@ -347,9 +347,9 @@ These commands configure **layer 2** (machine). They do not index your code.
 | `--skip-install` | false | Skip pip package install inside configure |
 | `--skip-model` | false | Skip CodeRank model download |
 | `--skip-bench` | false | Skip batch-size calibration |
-| `--skip-accel` | false | Hardware snapshot only — no ORT/accel pip |
+| `--skip-accel` | false | Hardware snapshot only, no ORT/accel pip |
 | `--repair` | false | Force full reconfigure; **auto-resumes** if globally stopped |
-| `--index` | — | After setup, run `initialize_repo` on this path |
+| `--index` | - | After setup, run `initialize_repo` on this path |
 | `--repo` | `.` | Default repo for `CTX_REPO` / engine env |
 | `--register` | false | Register `--repo` after supervisor install |
 | `--host` | `127.0.0.1` | Engine bind host |
@@ -402,25 +402,25 @@ These commands configure **layer 2** (machine). They do not index your code.
 
 **Exit:** 0 success, 1 failure.
 
-#### Common questions — `setup`
+#### Common questions: `setup`
 
 **Q: Do I run setup for every repo?**  
 No. Once per **machine**. Repos use `init`.
 
 **Q: Setup finished but init says `machine_not_setup`.**  
-Check `scubiee setup --status` — if empty, re-run `setup --repair`. Ensure you're calling the same scubiee binary (`scubiee --version --verbose`).
+Check `scubiee setup --status`, if empty, re-run `setup --repair`. Ensure you're calling the same scubiee binary (`scubiee --version --verbose`).
 
 **Q: Can I run setup while globally stopped?**  
 Only `setup --repair` (auto-resumes). Plain `setup` is blocked until `resume`.
 
 **Q: How long does first setup take?**  
-~5–15 minutes depending on model download and GPU calibration. `--skip-model` is for advanced/testing only.
+~5-15 minutes depending on model download and GPU calibration. `--skip-model` is for advanced/testing only.
 
 ---
 
 ### `scubiee preflight [path]`
 
-**Purpose:** Fast dependency check before indexing or CI — faiss, rapidfuzz, semantic backend.
+**Purpose:** Fast dependency check before indexing or CI, faiss, rapidfuzz, semantic backend.
 
 | Arg/flag | Default | Description |
 |----------|---------|-------------|
@@ -443,7 +443,7 @@ Only `setup --repair` (auto-resumes). Plain `setup` is blocked until `resume`.
 | `--save` | Persist snapshot to `hardware.json` |
 | `--reset-rm` | Reset ResourceManager singleton (tests) |
 
-**Use when:** Daemon seems slow or indexing pauses — check if RAM pressure throttled embed.
+**Use when:** Daemon seems slow or indexing pauses, check if RAM pressure throttled embed.
 
 **Exit:** always 0.
 
@@ -451,7 +451,7 @@ Only `setup --repair` (auto-resumes). Plain `setup` is blocked until `resume`.
 
 ## Project lifecycle
 
-These commands manage **layer 3** — which repos are enrolled, paused, indexed, or removed.
+These commands manage **layer 3**, which repos are enrolled, paused, indexed, or removed.
 
 ---
 
@@ -469,17 +469,17 @@ These commands manage **layer 3** — which repos are enrolled, paused, indexed,
 | `--no-index` | false | Enroll in registry without indexing |
 | `--allow-once` | false | Don't persist always-allow consent |
 | `--fast` | false | Index `.py` under fast roots only |
-| `--roots` | — | Comma-separated roots (implies `--fast`) |
+| `--roots` | - | Comma-separated roots (implies `--fast`) |
 | `--confirm` | false | Bypass safety gate; skip interactive y/n |
 
 #### What happens (step-by-step)
 
-1. **Check machine setup** — fails if no `accel.json`.
-2. **Preflight scope** — count indexable files; prompt or require `--confirm` if risky.
-3. **Interactive confirm (TTY)** — shows file count + ETA; user confirms (unless `--confirm`).
-4. **`initialize_repo`** — assign/read `project_id`, update registry, run index pipeline.
-5. **Progress UI** — InitProgress bar; parse logs suppressed on TTY to avoid garbled output.
-6. **Repeat init** — if already enrolled, uses incremental sync instead of full re-index.
+1. **Check machine setup**: fails if no `accel.json`.
+2. **Preflight scope**: count indexable files; prompt or require `--confirm` if risky.
+3. **Interactive confirm (TTY)**: shows file count + ETA; user confirms (unless `--confirm`).
+4. **`initialize_repo`**: assign/read `project_id`, update registry, run index pipeline.
+5. **Progress UI**: InitProgress bar; parse logs suppressed on TTY to avoid garbled output.
+6. **Repeat init**: if already enrolled, uses incremental sync instead of full re-index.
 
 #### On disk after success
 
@@ -502,10 +502,10 @@ These commands manage **layer 3** — which repos are enrolled, paused, indexed,
 cd ~/projects/my-app
 scubiee init .
 
-# Monorepo — index packages/ only
+# Monorepo - index packages/ only
 scubiee init . --fast --roots packages,src
 
-# CI — non-interactive
+# CI - non-interactive
 scubiee init /repo --confirm --fast --roots packages
 
 # Register only (no embed)
@@ -522,25 +522,25 @@ scubiee init . --no-index
 
 **Exit:** 0 ok, 1 error, 2 safety pause, 0 if user cancels TTY prompt.
 
-#### Common questions — `init`
+#### Common questions: `init`
 
 **Q: Does init connect Cursor?**  
 No. Always run `scubiee connect --cursor` (or your tool) after init, then reload MCP.
 
-**Q: I ran init twice — will it re-index everything?**  
+**Q: I ran init twice, will it re-index everything?**  
 Second init on same enrolled repo uses **incremental sync**, not full rebuild (unless corruption/force paths).
 
 **Q: What's the difference between `--fast` and full index?**  
 `--fast` indexes only `.py` files under standard code roots (`packages`, `src`, …) or your `--roots`. Full index walks more file types with skip rules for `node_modules`, `.git`, etc.
 
 **Q: Why did init exit 2 in CI?**  
-Safety gate — pass `--confirm` or narrow scope with `--fast --roots`.
+Safety gate, pass `--confirm` or narrow scope with `--fast --roots`.
 
 ---
 
 ### `scubiee register [path]`
 
-**Purpose:** Lower-level registration — same consent pipeline as MCP `register_project`. Used when MCP or CLI registers without full `init` UX.
+**Purpose:** Lower-level registration, same consent pipeline as MCP `register_project`. Used when MCP or CLI registers without full `init` UX.
 
 | Flag | Description |
 |------|-------------|
@@ -561,7 +561,7 @@ Safety gate — pass `--confirm` or narrow scope with `--fast --roots`.
 
 Same flags as documented for init subset: `--no-index`, `--allow-once`, `--confirm`.
 
-**Difference from init:** No branded InitProgress UX, no repeat-init detection UX — thinner wrapper around `initialize_repo`.
+**Difference from init:** No branded InitProgress UX, no repeat-init detection UX, thinner wrapper around `initialize_repo`.
 
 ---
 
@@ -576,7 +576,7 @@ scubiee activate .
 scubiee sync-now .    # Now allowed again
 ```
 
-**Not for global stop** — use `scubiee resume`.
+**Not for global stop**: use `scubiee resume`.
 
 ---
 
@@ -593,7 +593,7 @@ scubiee sync-now .    # Now allowed again
 - Registry `state` → paused
 - `sync-now` **blocked** for this repo
 - Index data **kept** on disk
-- MCP still connected — agent may still query existing index
+- MCP still connected, agent may still query existing index
 
 **Use when:** Maintenance on one repo, reduce load, debugging index issues.
 
@@ -601,13 +601,13 @@ scubiee sync-now .    # Now allowed again
 
 ### `scubiee resume`
 
-**Purpose:** **Global only** — reverse `scubiee stop`. Re-enables MCP configs, restores GATE rules, reconciles enrolled repos, brings engine back.
+**Purpose:** **Global only**, reverse `scubiee stop`. Re-enables MCP configs, restores GATE rules, reconciles enrolled repos, brings engine back.
 
 **No `path` argument.**
 
 ```bash
 scubiee stop -y        # Global stop
-scubiee resume         # Restore — NOT scubiee engine start
+scubiee resume         # Restore - NOT scubiee engine start
 ```
 
 After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
@@ -616,29 +616,29 @@ After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
 
 ### `scubiee sync-now [path]`
 
-**Purpose:** Lifecycle **freshness reconciliation** — daemon-oriented sync path (not the same as incremental `sync` but related).
+**Purpose:** Lifecycle **freshness reconciliation**, daemon-oriented sync path (not the same as incremental `sync` but related).
 
 | Flag | Description |
 |------|-------------|
 | `--confirm` | Large-tree safety |
 
-**Blocked when repo is paused** — message tells you to `activate` first.
+**Blocked when repo is paused**: message tells you to `activate` first.
 
 ---
 
 ### `scubiee rebuild [path]`
 
-**Purpose:** Force **full** index rebuild — ignores incremental merkle diff, re-embeds everything.
+**Purpose:** Force **full** index rebuild, ignores incremental merkle diff, re-embeds everything.
 
 **When:** Corrupt index, model change, doctor recommends rebuild, after `--reindex` upgrade flag.
 
-**Cost:** Same time as initial index — can take minutes on large repos.
+**Cost:** Same time as initial index, can take minutes on large repos.
 
 ---
 
 ### `scubiee remove [path]`
 
-**Purpose:** Remove repo from lifecycle **registry** only — lightweight unmanage.
+**Purpose:** Remove repo from lifecycle **registry** only, lightweight unmanage.
 
 | Flag | Description |
 |------|-------------|
@@ -652,7 +652,7 @@ After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
 
 ### `scubiee never-index [path]`
 
-**Purpose:** Permanent block — Scubiee will refuse to index this path until block cleared.
+**Purpose:** Permanent block, Scubiee will refuse to index this path until block cleared.
 
 | Flag | Description |
 |------|-------------|
@@ -664,7 +664,7 @@ After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
 
 ### `scubiee list`
 
-**Purpose:** JSON list of all managed repos — paths, ids, states, pause reasons.
+**Purpose:** JSON list of all managed repos, paths, ids, states, pause reasons.
 
 **Use when:** Multi-repo machine, verifying wipe removed enrollment, support tickets.
 
@@ -678,7 +678,7 @@ After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
 
 ### `scubiee index [path]`
 
-**Purpose:** Run full index pipeline; **always registers** project (even if you only wanted re-index — consider `rebuild` for enrolled repos).
+**Purpose:** Run full index pipeline; **always registers** project (even if you only wanted re-index, consider `rebuild` for enrolled repos).
 
 #### Parameters
 
@@ -688,7 +688,7 @@ After resume, if MCP still broken: `scubiee connect --cursor` and reload IDE.
 | `--bits` | `8` | TurboQuant bits (8 recommended; 4 hurts quality) |
 | `--model` | `nomic-ai/CodeRankEmbed` | Embedding model |
 | `--fast` | false | `.py` under fast roots only |
-| `--roots` | — | Comma-separated (implies `--fast`) |
+| `--roots` | - | Comma-separated (implies `--fast`) |
 | `--confirm` | false | Safety gate |
 
 **Note:** `--roots` without `--fast` auto-enables fast mode.
@@ -707,7 +707,7 @@ Stored under `~/.scubiee/projects/<project_id>/`.
 
 ### `scubiee sync [path]`
 
-**Purpose:** **Incremental** update — only changed files since last merkle snapshot.
+**Purpose:** **Incremental** update, only changed files since last merkle snapshot.
 
 **Daemon preference:** If engine healthy, sync goes through HTTP so search generation updates atomically. Falls back to local sync + publish notify.
 
@@ -782,7 +782,7 @@ Example JSON hit:
 
 ### `scubiee gate [path]`
 
-**Purpose:** Tiny managed check (~5 tokens) — same logic MCP `gate()` uses locally.
+**Purpose:** Tiny managed check (~5 tokens), same logic MCP `gate()` uses locally.
 
 Prints one line to stdout, e.g. managed/ready state. **No daemon required.**
 
@@ -796,7 +796,7 @@ Prints one line to stdout, e.g. managed/ready state. **No daemon required.**
 
 ### `scubiee doctor [path]`
 
-**Purpose:** Comprehensive readiness report — install identity, daemon, index, MCP, duplicate PATH installs, safe fixes.
+**Purpose:** Comprehensive readiness report, install identity, daemon, index, MCP, duplicate PATH installs, safe fixes.
 
 | Flag | Description |
 |------|-------------|
@@ -826,7 +826,7 @@ Prints one line to stdout, e.g. managed/ready state. **No daemon required.**
 
 ### `scubiee certify [path]`
 
-**Purpose:** Release certification gate — pytest-style checks for shipping quality.
+**Purpose:** Release certification gate, pytest-style checks for shipping quality.
 
 | Flag | Description |
 |------|-------------|
@@ -854,7 +854,7 @@ Prints one line to stdout, e.g. managed/ready state. **No daemon required.**
 |------|-------------|
 | `--clients` | Allow client suites if client installed |
 
-**Note:** Requires pytest in same Python env — mainly for git checkouts / dev machines.
+**Note:** Requires pytest in same Python env, mainly for git checkouts / dev machines.
 
 ---
 
@@ -902,8 +902,8 @@ The engine holds per-repo runtimes, serves search/grep to MCP, and runs backgrou
 | `path` | `.` | start, run, status, ensure |
 | `--host` | `127.0.0.1` | start, run |
 | `--port` | `8765` | start, run |
-| `--wait` | `90.0` | start — seconds to wait for /health |
-| `--no-open` | false | run — skip browser open |
+| `--wait` | `90.0` | start, seconds to wait for /health |
+| `--no-open` | false | run, skip browser open |
 | `--logon` | false | supervisor |
 | `--off` | false | autostart unregister |
 
@@ -919,7 +919,7 @@ The engine holds per-repo runtimes, serves search/grep to MCP, and runs backgrou
 
 #### Globally stopped behavior
 
-- `engine start` / `ensure` / `run` → **blocked** — use `scubiee resume`
+- `engine start` / `ensure` / `run` → **blocked**, use `scubiee resume`
 - `engine stop` → OK with hint (already stopped)
 - `engine status` → allowed; shows `globally_paused`
 
@@ -927,7 +927,7 @@ The engine holds per-repo runtimes, serves search/grep to MCP, and runs backgrou
 
 ### `scubiee serve [path]`
 
-**Purpose:** Alias for **foreground** daemon — same as `engine run`. Blocks until killed.
+**Purpose:** Alias for **foreground** daemon, same as `engine run`. Blocks until killed.
 
 | Flag | Default |
 |------|---------|
@@ -938,7 +938,7 @@ The engine holds per-repo runtimes, serves search/grep to MCP, and runs backgrou
 
 ### `scubiee dashboard [action]`
 
-**Purpose:** Localhost operator UI — repo list, health, Forget button, settings.
+**Purpose:** Localhost operator UI, repo list, health, Forget button, settings.
 
 | Invocation | Behavior |
 |------------|----------|
@@ -953,7 +953,7 @@ The engine holds per-repo runtimes, serves search/grep to MCP, and runs backgrou
 
 ## Global stop, halt & unlock
 
-Three different ways to “stop” things — **do not confuse them**.
+Three different ways to “stop” things, **do not confuse them**.
 
 ```text
 scubiee engine stop     → daemon only, MCP stays
@@ -966,7 +966,7 @@ scubiee halt            → kill processes + MCP stub (pre-wipe/upgrade)
 
 ### `scubiee stop`
 
-**Purpose:** **Global stop** — user intentionally disables Scubiee machine-wide.
+**Purpose:** **Global stop**, user intentionally disables Scubiee machine-wide.
 
 **What it does:**
 
@@ -983,7 +983,7 @@ scubiee halt            → kill processes + MCP stub (pre-wipe/upgrade)
 |------|-------------|
 | `-y`, `--yes` | Skip confirmation |
 
-**Resume:** `scubiee resume` — then `connect` if MCP not restored.
+**Resume:** `scubiee resume`, then `connect` if MCP not restored.
 
 ---
 
@@ -1007,7 +1007,7 @@ scubiee halt            → kill processes + MCP stub (pre-wipe/upgrade)
 
 ### `scubiee unlock-tool`
 
-**Purpose:** **Windows** — free `%APPDATA%\uv\tools\scubiee` when `uv tool install` fails with Access denied.
+**Purpose:** **Windows**, free `%APPDATA%\uv\tools\scubiee` when `uv tool install` fails with Access denied.
 
 **Flow:** disable MCP → stop processes → force-remove / rename tool dir.
 
@@ -1022,13 +1022,13 @@ scubiee setup --repair
 scubiee connect --cursor
 ```
 
-Admin privileges **do not** fix this — it's file locks from running Python, not ACLs.
+Admin privileges **do not** fix this, it's file locks from running Python, not ACLs.
 
 ---
 
 ## Connect & disconnect
 
-**Layer 4** — tells IDEs how to spawn MCP and teaches agents to use Scubiee tools.
+**Layer 4**: tells IDEs how to spawn MCP and teaches agents to use Scubiee tools.
 
 ---
 
@@ -1039,7 +1039,7 @@ Admin privileges **do not** fix this — it's file locks from running Python, no
 | Cursor, Claude Code, Codex, Continue, Zed, OpenCode, Amp, Pi | Yes (user config) | Cursor also gets **project** `.cursor/mcp.json` |
 | Kiro, Copilot, Cline, Roo Code (“Special-4”) | User config yes | **Must** run connect **inside each repo** for workspace MCP |
 
-**Why project MCP exists:** Cursor global MCP cannot reliably expand `${workspaceFolder}` — project pin sets absolute `CTX_REPO`.
+**Why project MCP exists:** Cursor global MCP cannot reliably expand `${workspaceFolder}`, project pin sets absolute `CTX_REPO`.
 
 ---
 
@@ -1076,7 +1076,7 @@ Full path table: [Data & files reference](./data-and-files-reference.md).
 |------|-------------|
 | `--<slug>` | Per-tool connect |
 | `--all` | All tools in registry |
-| `--dry-run` | Print paths that would change — no writes |
+| `--dry-run` | Print paths that would change, no writes |
 | `--repo PATH` | Project folder for workspace-local MCP (default: cwd) |
 
 **Requires:** At least one of `--all` or a tool flag.
@@ -1093,18 +1093,18 @@ cd ~/projects/foo && scubiee connect --copilot --repo .
 
 **Exit:** 0 if all selected tools ok, 1 if any failed or none selected.
 
-#### Common questions — `connect`
+#### Common questions: `connect`
 
-**Q: I ran connect once globally — why doesn't Kiro/Copilot work in my repo?**  
+**Q: I ran connect once globally, why doesn't Kiro/Copilot work in my repo?**  
 Special-4 tools need **workspace-local** MCP. `cd` into the repo and run connect again (or use `--repo /path`).
 
 **Q: Does connect start the engine?**  
-Not directly — but MCP spawn or `resume` may start it. Verify with `scubiee engine status`.
+Not directly, but MCP spawn or `resume` may start it. Verify with `scubiee engine status`.
 
 **Q: What does `--dry-run` show?**  
-Exact file paths that would be written — use before first connect on a shared machine.
+Exact file paths that would be written, use before first connect on a shared machine.
 
-**Q: Connect after `scubiee stop` — do I still need resume?**  
+**Q: Connect after `scubiee stop`, do I still need resume?**  
 Connect **auto-resumes** when globally stopped. If restore fails, run `resume` explicitly.
 
 ---
@@ -1130,14 +1130,14 @@ Connect **auto-resumes** when globally stopped. If restore fails, run `resume` e
 
 ### `scubiee upgrade`
 
-**Purpose:** One-command upgrade supervisor — PyPI swap, quiesce processes, migrations, MCP/rules rebind, daemon restart, health check.
+**Purpose:** One-command upgrade supervisor, PyPI swap, quiesce processes, migrations, MCP/rules rebind, daemon restart, health check.
 
 #### Parameters
 
 | Flag | Description |
 |------|-------------|
 | `--pre` | Allow pre-release versions from PyPI |
-| `--check` | **Plan only** (DiffPlan JSON) — no swap, no migrations |
+| `--check` | **Plan only** (DiffPlan JSON), no swap, no migrations |
 | `--no-connect` | Skip MCP/GATE rewrite on enrolled repos |
 | `--repair` | Also refresh accel/setup packages post-upgrade |
 | `--reindex` | Force full embed rebuild even if ABI unchanged |
@@ -1145,11 +1145,11 @@ Connect **auto-resumes** when globally stopped. If restore fails, run `resume` e
 #### Step-by-step (normal upgrade)
 
 1. Check PyPI for newer version
-2. **Quiesce** — halt/stop processes, unlock Windows file locks if needed
-3. **Package swap** — `uv tool install` / pip equivalent (skipped if already latest unless post-steps requested)
-4. **Migrate** — schema/data migrations per managed project
-5. **Rebind** — rewrite MCP + rules on enrolled repos (unless `--no-connect`)
-6. **Daemon restart** — start engine + health probe with retries
+2. **Quiesce**: halt/stop processes, unlock Windows file locks if needed
+3. **Package swap**: `uv tool install` / pip equivalent (skipped if already latest unless post-steps requested)
+4. **Migrate**: schema/data migrations per managed project
+5. **Rebind**: rewrite MCP + rules on enrolled repos (unless `--no-connect`)
+6. **Daemon restart**: start engine + health probe with retries
 7. Print plan actions + next steps
 
 #### When already on latest PyPI
@@ -1167,18 +1167,18 @@ scubiee upgrade
 
 **Exit:** 0 if `result.ok`, else 1.
 
-#### Common questions — `upgrade`
+#### Common questions: `upgrade`
 
 **Q: Should I use `uv tool install --force` or `scubiee upgrade`?**  
-Prefer **`scubiee upgrade`** — it quiesces processes, migrates data, rebinds MCP, and health-checks. Manual uv install alone skips migrations/rebind.
+Prefer **`scubiee upgrade`**, it quiesces processes, migrates data, rebinds MCP, and health-checks. Manual uv install alone skips migrations/rebind.
 
-**Q: Upgrade says already latest — anything to do?**  
+**Q: Upgrade says already latest, anything to do?**  
 Post-steps still refresh daemon/MCP unless `--check`. Run `connect` + reload IDE if MCP acts stale.
 
 **Q: When do I need `--reindex`?**  
-When search quality breaks after embed model/ABI change, or support asks for full rebuild. Destructive — re-embeds all repos.
+When search quality breaks after embed model/ABI change, or support asks for full rebuild. Destructive, re-embeds all repos.
 
-**Q: Upgrade failed with quiesce — Cursor is open.**  
+**Q: Upgrade failed with quiesce, Cursor is open.**  
 Run `scubiee halt`, then `unlock-tool` on Windows, then retry upgrade.
 
 ---
@@ -1205,7 +1205,7 @@ Run `scubiee halt`, then `unlock-tool` on Windows, then retry upgrade.
 
 ### `scubiee settings`
 
-**Purpose:** Read/write `~/.scubiee/prefs.json` — registration mode and indexing behavior.
+**Purpose:** Read/write `~/.scubiee/prefs.json`, registration mode and indexing behavior.
 
 | Flag | Description |
 |------|-------------|
@@ -1224,7 +1224,7 @@ scubiee settings --mode mcp_cli
 
 ### `scubiee wipe [path]`
 
-**Purpose:** Destructive cleanup — single repo or entire machine.
+**Purpose:** Destructive cleanup, single repo or entire machine.
 
 #### Single-repo wipe (`scubiee wipe . --confirm`)
 
@@ -1244,7 +1244,7 @@ scubiee settings --mode mcp_cli
 
 #### Full machine wipe (`scubiee wipe --all --confirm`)
 
-Deletes essentially all Scubiee state — daemon, `~/.scubiee`, all tool MCP/rules, models (unless `--keep-models`), package (unless `--keep-package`).
+Deletes essentially all Scubiee state, daemon, `~/.scubiee`, all tool MCP/rules, models (unless `--keep-models`), package (unless `--keep-package`).
 
 | Flag | Description |
 |------|-------------|
@@ -1272,10 +1272,10 @@ Deletes essentially all Scubiee state — daemon, `~/.scubiee`, all tool MCP/rul
 | Repo MCP/rules | No | Yes |
 | Confirmation | No | Yes |
 
-#### Common questions — `wipe`
+#### Common questions: `wipe`
 
 **Q: Will wipe delete my source code?**  
-**Never.** Wipe removes Scubiee metadata, indexes, and tool configs — not your project files.
+**Never.** Wipe removes Scubiee metadata, indexes, and tool configs, not your project files.
 
 **Q: Single-repo wipe vs `--all`?**  
 `wipe . --confirm` = one repo. `wipe --all --confirm` = entire machine (all repos, models, MCP, optional package uninstall).
@@ -1284,7 +1284,7 @@ Deletes essentially all Scubiee state — daemon, `~/.scubiee`, all tool MCP/rul
 Missing `--confirm`. Wipe requires explicit confirmation in non-interactive mode by design.
 
 **Q: Wipe left `audit.remaining` paths on Windows.**  
-File locks — quit IDE, `scubiee halt`, re-run wipe. See [JSON glossary — wipe](#scubiee-wipe--field-glossary).
+File locks, quit IDE, `scubiee halt`, re-run wipe. See [JSON glossary, wipe](#scubiee-wipe--field-glossary).
 
 ---
 
@@ -1292,7 +1292,7 @@ File locks — quit IDE, `scubiee halt`, re-run wipe. See [JSON glossary — wip
 
 ### `scubiee mcp [path]`
 
-**Purpose:** Stdio MCP server process — **IDE launches this**, not you.
+**Purpose:** Stdio MCP server process, **IDE launches this**, not you.
 
 Sets `CTX_REPO` if path provided; forwards JSON-RPC to engine via `pipeline.mcp_locate`.
 
@@ -1304,7 +1304,7 @@ Full parameter docs: [MCP tools reference](../docs/web-info/mcp-tools-reference.
 
 1. Call `gate()` or `status()` once
 2. If `managed: true` and `ok: true` → use Scubiee for discovery
-3. If `warming: true` → retry **locate tool** once after few seconds — don't poll status every turn
+3. If `warming: true` → retry **locate tool** once after few seconds, don't poll status every turn
 
 ---
 
@@ -1431,7 +1431,7 @@ Tip: force JSON on TTY for some commands: `scubiee status . --json`.
 
 ---
 
-### `scubiee doctor .` — field glossary
+### `scubiee doctor .`: field glossary
 
 Doctor is the **single best JSON blob** for support. Top-level `"ok": true` means: capabilities OK, index usable, manifest valid, no blocking repair items.
 
@@ -1505,11 +1505,11 @@ Doctor is the **single best JSON blob** for support. Top-level `"ok": true` mean
 
 **`doctor --all`:** wraps per-repo reports in `"repositories": [...]` plus merged `"repair_plan"`.
 
-**`doctor . --fix`:** returns `"applied"`, `"manual"`, `"before"`, `"after"` — only **safe** repairs run automatically.
+**`doctor . --fix`:** returns `"applied"`, `"manual"`, `"before"`, `"after"`, only **safe** repairs run automatically.
 
 ---
 
-### `scubiee status .` — field glossary
+### `scubiee status .`: field glossary
 
 Status answers: *Is this folder enrolled? Is the index warm? Is the daemon up? Is the tree stale?*
 
@@ -1545,13 +1545,13 @@ Status answers: *Is this folder enrolled? Is the index warm? Is the daemon up? I
 | `server.ok` / `server.warm` | Daemon health from `/health` |
 | `vectordb.collections` | All collections on machine |
 
-**When `freshness.clean` is false:** Run `scubiee sync .` — index is behind git/disk.
+**When `freshness.clean` is false:** Run `scubiee sync .`, index is behind git/disk.
 
 **When `server.ok` is false but enrolled:** Run `scubiee engine ensure .` or open IDE (MCP may start daemon).
 
 ---
 
-### `scubiee upgrade` — field glossary
+### `scubiee upgrade`: field glossary
 
 Upgrade JSON is the **audit trail** for version jumps. Use `scubiee upgrade --check` to preview without applying.
 
@@ -1594,7 +1594,7 @@ Upgrade JSON is the **audit trail** for version jumps. Use `scubiee upgrade --ch
 | `package` | `swap` | PyPI / uv tool install new version |
 | `daemon` | `restart` | Engine restart after swap |
 | `index_schema` | `migrate` | On-disk index schema migration |
-| `embeddings` | `rebuild` | **Destructive** — full re-embed (use `--reindex` to force) |
+| `embeddings` | `rebuild` | **Destructive**, full re-embed (use `--reindex` to force) |
 | `mcp_pins` | `rewrite` | Refresh MCP env in IDE configs |
 | `gate_rules` | `rewrite` | Refresh agent rule files |
 | `accel` | `repair` | Re-run setup packages |
@@ -1610,7 +1610,7 @@ Upgrade JSON is the **audit trail** for version jumps. Use `scubiee upgrade --ch
 | `embeddings.destructive` | Full rebuild ran | Verify search; may take time |
 | `daemon.action` | `started`, `already_running`, etc. | `engine start` |
 | `rebind.ok` | MCP/rules rewritten on enrolled repos | `connect --cursor` manually |
-| `rebind.repos` | List of repos refreshed | — |
+| `rebind.repos` | List of repos refreshed | - |
 | `health.ok` | Post-upgrade health probe | `doctor .`, reload MCP |
 | `error` | `quiesce_failed`, `rebind_failed`, etc. | Read `hint` |
 | `next_steps` | Human checklist | Follow in order |
@@ -1619,7 +1619,7 @@ Upgrade JSON is the **audit trail** for version jumps. Use `scubiee upgrade --ch
 
 ---
 
-### `scubiee list` — field glossary
+### `scubiee list`: field glossary
 
 Each array element describes one managed repo:
 
@@ -1640,7 +1640,7 @@ Each array element describes one managed repo:
 
 ---
 
-### `scubiee wipe` — field glossary
+### `scubiee wipe`: field glossary
 
 #### Confirm required (exit 2)
 
@@ -1656,7 +1656,7 @@ Each array element describes one managed repo:
 }
 ```
 
-**Explanation:** Intentional safety — wipe never runs silently in scripts without `--confirm`.
+**Explanation:** Intentional safety, wipe never runs silently in scripts without `--confirm`.
 
 #### Successful repo wipe
 
@@ -1676,7 +1676,7 @@ Look for `"ok": true`, `"scope": "repo"`, and action summaries (registry removed
 
 ---
 
-### `scubiee diagnose` — field glossary
+### `scubiee diagnose`: field glossary
 
 | Section | Contents |
 |---------|----------|
@@ -1692,13 +1692,13 @@ Look for `"ok": true`, `"scope": "repo"`, and action summaries (registry removed
 | `verdict.ok` | Overall pass |
 | `verdict.capabilities` | `pass` / `FAIL` |
 | `verdict.daemon` | `running` / `not running` |
-| `log_file` | Path to saved JSON — **attach this to support** |
+| `log_file` | Path to saved JSON, **attach this to support** |
 
-**Note:** Daemon not running does not always fail verdict — capabilities matter most for install issues.
+**Note:** Daemon not running does not always fail verdict, capabilities matter most for install issues.
 
 ---
 
-### `scubiee stop` / `scubiee resume` — field glossary
+### `scubiee stop` / `scubiee resume`: field glossary
 
 #### `stop` success
 
@@ -1707,7 +1707,7 @@ Look for `"ok": true`, `"scope": "repo"`, and action summaries (registry removed
 | `paused_at` | Unix timestamp |
 | `connected_tools` | Slugs remembered for resume |
 | `teardown` | Per-tool MCP/rule removal results |
-| `mcp_skip_warning` | Some MCP files had invalid JSON — manual fix |
+| `mcp_skip_warning` | Some MCP files had invalid JSON, manual fix |
 | `hidden_scubiee_dirs` | Repo `.scubiee` folders hidden/removed |
 | `process_warning` | Some processes may still run |
 
@@ -1721,11 +1721,11 @@ Look for `"ok": true`, `"scope": "repo"`, and action summaries (registry removed
 | `reconciled` | Background sync reconciliation |
 | `connect_hint` | Shown if no tools were connected before stop |
 
-**If `resume.ok` is false:** Scubiee stays stopped until MCP restore succeeds — fix errors, run `resume` again (do not use `engine start` alone).
+**If `resume.ok` is false:** Scubiee stays stopped until MCP restore succeeds, fix errors, run `resume` again (do not use `engine start` alone).
 
 ---
 
-### `scubiee connect` — result shape
+### `scubiee connect`: result shape
 
 Array of per-tool results (or object keyed by slug in some versions):
 
@@ -1740,7 +1740,7 @@ Use `--dry-run` to preview `paths_written` without changes.
 
 ---
 
-### `scubiee search` — result shape
+### `scubiee search`: result shape
 
 | Field | Meaning |
 |-------|---------|
@@ -1751,20 +1751,20 @@ Use `--dry-run` to preview `paths_written` without changes.
 | `hits[].preview` | Text snippet |
 | `hits[].source` | `semantic`, `lexical`, etc. |
 
-Empty hits with `ok` — query may not match indexed scope (fast mode, wrong repo, stale index).
+Empty hits with `ok`, query may not match indexed scope (fast mode, wrong repo, stale index).
 
 ---
 
 ## Symptom → command FAQ
 
-Organized by what you **see** or **hear** — each entry explains **why** it happens and **exactly** which command fixes it.
+Organized by what you **see** or **hear**, each entry explains **why** it happens and **exactly** which command fixes it.
 
 ### Install & setup
 
 | Symptom | Why | Fix |
 |---------|-----|-----|
-| `scubiee: command not found` | Layer 1 missing — package not installed | `uv tool install scubiee` |
-| `machine_not_setup` on init | Layer 2 missing — no accel profile | `scubiee setup` |
+| `scubiee: command not found` | Layer 1 missing, package not installed | `uv tool install scubiee` |
+| `machine_not_setup` on init | Layer 2 missing, no accel profile | `scubiee setup` |
 | `[scubiee] Try: scubiee setup --repair` (faiss) | Vector lib missing in uv env | `scubiee setup --repair` |
 | Doctor shows `multiple_installs: true` | conda + uv both on PATH | Remove duplicate; keep uv tool only |
 | Doctor `binaries_match: false` | Wrong scubiee.exe invoked | Call `expected_binary` from doctor JSON |
@@ -1792,7 +1792,7 @@ Organized by what you **see** or **hear** — each entry explains **why** it hap
 | Kiro/Copilot/Cline/Roo broken | Special-4 needs per-repo connect | Connect **inside each project** |
 | After upgrade MCP stale | Pin format / env vars old | `scubiee upgrade` then `connect --cursor` |
 | Agent told to run `resume` but only one repo paused | Confused global vs per-repo | **`activate .`** for pause; **`resume`** for global stop |
-| `warming: true` in MCP status | Cold runtime | Retry locate tool once — don’t poll status every turn |
+| `warming: true` in MCP status | Cold runtime | Retry locate tool once, don’t poll status every turn |
 
 ### Index & search
 
@@ -1810,7 +1810,7 @@ Organized by what you **see** or **hear** — each entry explains **why** it hap
 | Symptom | Why | Fix |
 |---------|-----|-----|
 | `engine status` → not running | Daemon stopped or never started | `scubiee engine start` or `ensure .` |
-| Globally stopped + `engine start` blocked | MCP torn down — need global resume | `scubiee resume` |
+| Globally stopped + `engine start` blocked | MCP torn down, need global resume | `scubiee resume` |
 | Engine stops randomly | Watchdog restart or RAM pressure | Check `~/.scubiee/watchdog.log`, `resources` |
 | Port 8765 in use | Another process bound port | Change `--port` or kill conflicting process |
 
@@ -1821,7 +1821,7 @@ Organized by what you **see** or **hear** — each entry explains **why** it hap
 | “Run scubiee resume” on every command | Global stop active | `scubiee resume` |
 | One repo slow, others fine | Per-repo pause | `scubiee activate .` |
 | Want to uninstall one project completely | Need wipe not remove | `scubiee wipe . --confirm` |
-| `remove` left index on disk | By design — registry only | `wipe . --confirm` or `remove --delete-store` |
+| `remove` left index on disk | By design, registry only | `wipe . --confirm` or `remove --delete-store` |
 | Wipe exit 2 | No `--confirm` in script | Add `--confirm` or use TTY prompt |
 | Wipe `--all` leaves files | Windows file locks | `halt`, quit IDE, `unlock-tool`, wipe again |
 
@@ -1867,17 +1867,17 @@ Data:     %USERPROFILE%\.scubiee\
 
 | Command | When |
 |---------|------|
-| `scubiee unlock-tool` | **Access denied** on uv install/upgrade — Cursor locks tool dir |
+| `scubiee unlock-tool` | **Access denied** on uv install/upgrade, Cursor locks tool dir |
 | `scubiee halt` | Before wipe/upgrade while Cursor stays open |
 | `scubiee setup --profile dml` | AMD/NVIDIA discrete GPU (DirectML) |
 | `scubiee setup --profile cpu` | Intel iGPU-only laptops (DML hangs) |
 
 #### Windows-specific quirks
 
-- **File locks:** Cursor/Claude spawn `python.exe` from uv tools dir — blocks package swap. Admin **does not** help; use `unlock-tool` or quit IDE.
+- **File locks:** Cursor/Claude spawn `python.exe` from uv tools dir, blocks package swap. Admin **does not** help; use `unlock-tool` or quit IDE.
 - **Terminal UX (0.3.13+):** colorama + UTF-8 for progress bars in cmd/PowerShell.
-- **Symlinks:** HF model cache may warn about symlinks — setup sets `HF_HUB_DISABLE_SYMLINKS_WARNING`.
-- **Wipe audit:** `wipe --all` JSON `audit.remaining` often lists MCP paths still locked — re-run after `halt` + quit Cursor.
+- **Symlinks:** HF model cache may warn about symlinks, setup sets `HF_HUB_DISABLE_SYMLINKS_WARNING`.
+- **Wipe audit:** `wipe --all` JSON `audit.remaining` often lists MCP paths still locked, re-run after `halt` + quit Cursor.
 - **Path separators:** CLI accepts both `\` and `/` in paths; JSON may escape backslashes.
 
 #### Typical Windows recovery sequence
@@ -1913,10 +1913,10 @@ Data:     ~/.scubiee/
 
 #### macOS-specific notes
 
-- **Zed MCP:** `~/.config/zed/settings.json` (or `~/Library/Application Support/Zed` on some layouts) — connect writes `context_servers`.
+- **Zed MCP:** `~/.config/zed/settings.json` (or `~/Library/Application Support/Zed` on some layouts), connect writes `context_servers`.
 - **VS Code paths:** `~/Library/Application Support/Code/User/` for Copilot/Cline/Roo globalStorage.
 - **File locks:** Less aggressive than Windows; upgrade rarely needs `unlock-tool` (command is Windows-focused but harmless if invoked).
-- **Gatekeeper:** First MCP spawn may prompt for Python — allow uv tool Python.
+- **Gatekeeper:** First MCP spawn may prompt for Python, allow uv tool Python.
 
 ---
 
@@ -1938,10 +1938,10 @@ Data:     ~/.scubiee/
 
 #### Linux-specific notes
 
-- **CUDA:** Requires NVIDIA driver + compatible ORT CUDA wheel — `doctor` / `preflight` surface missing CUDA.
+- **CUDA:** Requires NVIDIA driver + compatible ORT CUDA wheel, `doctor` / `preflight` surface missing CUDA.
 - **systemd:** Logon supervisor behavior differs; `engine autostart` registers user-level task where supported.
 - **Permissions:** Ensure `~/.scubiee` writable; root-owned home breaks init.
-- **Headless servers:** No IDE — use CLI `search`, `status`; skip `connect` unless batch-editing MCP for remote dev containers.
+- **Headless servers:** No IDE, use CLI `search`, `status`; skip `connect` unless batch-editing MCP for remote dev containers.
 
 ---
 
@@ -1961,7 +1961,7 @@ Data:     ~/.scubiee/
 
 ## Related documentation
 
-- [How everything works](./how-everything-works.md) — concepts & architecture
+- [How everything works](./how-everything-works.md): concepts & architecture
 - [Commands reference (quick tables)](../docs/web-info/commands-reference.md)
 - [Repository lifecycle](../docs/web-info/repo-lifecycle.md)
 - [Error codes & exit codes](./error-codes-reference.md)

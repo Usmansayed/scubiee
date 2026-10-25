@@ -6,7 +6,7 @@ action it drives.
 
 ---
 
-## P1. The cost signal is calls, not result size — and it is the whole game
+## P1. The cost signal is calls, not result size: and it is the whole game
 
 Across the dev-task arms, mean tokens track the number of model calls almost perfectly:
 
@@ -24,9 +24,9 @@ signal in the whole dataset.
 **Action (already in place, keep):** rules lead with "#1 GOAL: reach the edit in the FEWEST tool
 calls … cost ≈ context × calls." Confirmed correct by the data. Do not weaken it.
 
-**Action (tool):** keep `grep=0` for newmap as a health check — the moment a newmap cell shows
+**Action (tool):** keep `grep=0` for newmap as a health check, the moment a newmap cell shows
 grep > 0, a config failed to answer and the agent fell back. (newmap grep mean is 0; mini_v3 still
-greps 2x on average — see P4.)
+greps 2x on average, see P4.)
 
 ---
 
@@ -45,12 +45,12 @@ Matched mini_v3-vs-newmap pairs, in run order:
 | **192151** | dirty_files | 147k | **122k** | **Y** |
 | **200122** | dirty_files | 147k | **129k** | **Y** |
 
-newmap is cheaper in **3/8 overall — but in the 3 most recent runs it wins both tasks.** The flip
+newmap is cheaper in **3/8 overall, but in the 3 most recent runs it wins both tasks.** The flip
 lines up exactly with the `find` change from "top symbol body only" to "all clustered symbol bodies
 in one call." Before that change newmap lost every pair; after it, newmap wins.
 
 **Evidence strength: directional, not settled.** All wins are n=1 and recent; mini_v3 is a
-high-variance arm (318k–462k on the same task). The win is real and mechanistic but needs n≥3 to
+high-variance arm (318k, 462k on the same task). The win is real and mechanistic but needs n≥3 to
 call a margin.
 
 **Action (tool, done):** `cfg_find` returns every clustered relevant body in one call. Keep.
@@ -73,9 +73,9 @@ The miner counts locate calls between the first `find` and the first edit:
 | 192151 | dirty_files | 0 | **Y** |
 | 200122 | dirty_files | 0 | **Y** |
 
-`find` alone sufficed (0 follow-ups) in only **2/8** cells historically — both recent wins. Every
+`find` alone sufficed (0 follow-ups) in only **2/8** cells historically, both recent wins. Every
 cell with ≥2 follow-up locate calls lost. **Follow-up count is the lever.** The multi-body change
-drives it toward 0–1, which is why the recent cells win.
+drives it toward 0-1, which is why the recent cells win.
 
 **Action (instruction, sharpen):** the instructions already say "do NOT call refs/view to look
 around." The data says the biggest leak is specifically **refs-after-find** (see P4). Add a single
@@ -83,7 +83,7 @@ contrastive line naming it, since generic "don't look around" did not stop it in
 
 ---
 
-## P4. `refs` is the most-abused config — it's where the extra calls hide
+## P4. `refs` is the most-abused config: it's where the extra calls hide
 
 newmap config usage across all cells:
 
@@ -101,16 +101,16 @@ the bodies and connections.** `find` now ships the top symbol's connections inli
 call for wiring is usually redundant.
 
 **Action (instruction):** tighten the `refs` "how to act" to state when refs is NOT needed:
-"`find` already returns the top symbol's callers/callees — only call `refs` for a rename/
+"`find` already returns the top symbol's callers/callees, only call `refs` for a rename/
 signature change that needs EVERY use site, or for a name `find` did not surface."
 
-**Action (tool, consider):** have `find` note, when it emits connections, that the agent has them —
+**Action (tool, consider):** have `find` note, when it emits connections, that the agent has them
 e.g. the connections header already reads "callers:/calls:"; add "(no refs needed for wiring)". Low
 risk, nudges away from the reflex refs call.
 
 ---
 
-## P5. mini (v2 rules) is strictly dominated — retire it as a baseline
+## P5. mini (v2 rules) is strictly dominated: retire it as a baseline
 
 mini (two_layer_v2, old map): 496k mean / 13 calls / greps 4x. mini_v3 (v3 strict rules, same
 old map): 367k / 10 calls / greps 2x. Same bridge, only the rules differ, and v3 cuts ~130k and
@@ -136,7 +136,7 @@ rule variants name only the correct files; `without` and the loose `guided` rule
 precise answers, and v2 does it ~20k cheaper than v1.
 
 **Action:** keep the two-layer structure (anchor RULES + detailed INSTRUCTIONS) for the configs
-rules too — it is already the shape of RULES_CONFIGS / INSTRUCTIONS_CONFIGS. Don't collapse them.
+rules too, it is already the shape of RULES_CONFIGS / INSTRUCTIONS_CONFIGS. Don't collapse them.
 
 ---
 
@@ -166,11 +166,11 @@ Two confirmed blockers from the traces:
 - **Structural refs fix:** instruction text wasn't enough. Make `find` label its callers block as
   authoritative/complete (e.g. "callers (complete list): …") so the agent trusts it instead of
   re-running refs; consider a one-line "refs would return the same callers shown above."
-- **n≥3** before any cost claim — the map arm's correctness is stable (100%), but cost swings on
+- **n≥3** before any cost claim, the map arm's correctness is stable (100%), but cost swings on
   the two factors above.
 
 **Evidence strength:** this is the most informative run yet because gates were all green, so the
-loss is NOT tool breakage — it isolates the two real levers (task confound + refs reflex).
+loss is NOT tool breakage, it isolates the two real levers (task confound + refs reflex).
 
 ## P8. Two real issues behind the mixed arm result: a bridge BUG and a design over-reach
 
@@ -185,7 +185,7 @@ passed to `_resolve_file`, which looked for a *file* called `git_dirty_files` an
 exactly why the dirty_files arm cell showed `find → refs(callers) → refs(callers, scoped retry) →
 refs(uses)`: the first bare-name call errored, so the agent retried with a scoped name. **The bug
 caused an extra call and inflated tokens.**
-Fix: added `_resolve_symbol_name` — when `_resolve_file` fails on a path-less identifier, resolve
+Fix: added `_resolve_symbol_name`, when `_resolve_file` fails on a path-less identifier, resolve
 it to its definition via a def-regex grep (prefer packages/ code), fallback to semantic search's
 enclosing symbol. Regression test added to the battery (now 25/25): "refs: kind=callers with BARE
 name resolves".
@@ -193,8 +193,8 @@ name resolves".
 ### Design over-reach: map was framed as a REPLACEMENT, not a partner
 Old RULES_CONFIGS opened "map is your PRIMARY find/read tool" and the hard-rule list was dominated
 by "do NOT grep / do NOT read." That pushed the agent to route even known-string lookups through
-map. In the losing hard-task run the agent still grepped (for the pricing literal) — fighting the
-rule — which wasted calls. **Forcing full replacement of native tools wastes tokens.**
+map. In the losing hard-task run the agent still grepped (for the pricing literal), fighting the
+rule, which wasted calls. **Forcing full replacement of native tools wastes tokens.**
 Fix: reframed rules + instructions so map is the SEMANTIC DISCOVERY tool that works ALONGSIDE
 native Grep/Read/git. Explicit lane: "know the string → native Grep/Read first (one grep beats one
 map); location unknown or want semantics → map." Added a hard rule: "MUST NOT force a known-string
@@ -202,7 +202,7 @@ lookup through map." Budgets kept (RULES 288, INSTRUCTIONS 1910).
 
 **Lesson for the tool's north star:** the win condition is NOT "map handles everything." It is
 "the agent reaches the edit in the fewest calls," which means map for discovery + native tools for
-known strings — each where it's cheapest. The replace-everything framing was itself a cost bug.
+known strings, each where it's cheapest. The replace-everything framing was itself a cost bug.
 
 ## P9. Adding include_bodies + names to OLD map: bodies help, a passive `names` input doesn't
 
@@ -216,19 +216,19 @@ Built `mini_plus` = old single-tool map + `include_bodies` (inline bodies, multi
 
 Findings:
 - **include_bodies is the valuable addition.** On the clean easy task mini_plus beat plain old map
-  (mini_v3) 271k vs 401k with 8 vs 12 calls — the inline body removed the `map->Read` round-trip.
+  (mini_v3) 271k vs 401k with 8 vs 12 calls, the inline body removed the `map->Read` round-trip.
   Keep it; it's the high-ROI one, as the §6 report predicted.
 - **A passive `names` input does NOT get used.** In BOTH mini_plus traces the agent called
   `map(query, include_bodies=true)` with NO `names`, even when it knew the symbol. An input the
   model won't volunteer can't help. Lesson: to capture the lexical-anchor value, either make the
   instruction force known names, or have the bridge AUTO-EXTRACT candidate identifiers from the
   query so the anchor happens without the agent.
-- **Bodies kill the Read, not the call-site greps.** mini_plus still grepped 3x on the easy task —
+- **Bodies kill the Read, not the call-site greps.** mini_plus still grepped 3x on the easy task
   for the CALL SITES where behaviour changes, which the single returned body didn't contain. This
   is exactly the wiring info newmap's `refs`/connections supply, and why newmap (which never
   grepped) beat both old-map arms. The mini_plus-vs-newmap gap IS the call-site info.
 - **Hard task still confounded** by the pricing Skill chain (mini_plus failed on pricing math, not
-  locate) — M4 still blocks a clean hard-task read.
+  locate), M4 still blocks a clean hard-task read.
 
 **Actions:** keep include_bodies on old map; redesign `names` as either forced-by-instruction or
 bridge-auto-extracted (passive optional input proven ineffective); the call-site gap argues for a
@@ -236,7 +236,7 @@ minimal wiring return even on the simple map (a cheap "callers:" line), not just
 
 ## P10. map_v3 (new 4-config) vs mini_v3 (old) retrieval challenge: cheaper + full recall, wider net
 
-Built map_v3 (graph/find/focus/related — see VERSIONS.md) from the P8/TOOL_DESIGN_STUDY findings
+Built map_v3 (graph/find/focus/related, see VERSIONS.md) from the P8/TOOL_DESIGN_STUDY findings
 (fold wiring into the body call; add a cheap abstract graph for orientation). Verified both bridges
 healthy: manual MCP-stdio (all configs OK) + a live Claude probe (ok:true, all 4 configs invoked, 0
 trace errors). Then a retrieval challenge (3 queries x 2 arms x 1 rep, all recall 1.0 / MRR 1.0):
@@ -247,7 +247,7 @@ trace errors). Then a retrieval challenge (3 queries x 2 arms x 1 rep, all recal
 | map_v3 (new) | **176k** | **5.7** | **0.33** | 0.56 |
 
 Findings:
-- **map_v3 retrieves what it needs in fewer calls/tokens with almost no follow-up Reads** — its
+- **map_v3 retrieves what it needs in fewer calls/tokens with almost no follow-up Reads**: its
   configs return code inline, so the find->read round-trip is gone. Goal (fewest calls) met.
 - **Trade: precision.** `graph`/`related` surface correct NEIGHBOR files not in the strict git-gold
   set, so map_v3 casts a wider net (0.56 vs 0.83). Fine for locate-and-edit (full recall, you still
@@ -256,7 +256,7 @@ Findings:
   requirement.
 
 **Action/standing:** map_v3 is the cheaper-with-full-recall option; mini_v3 stays the precise/tight
-baseline. Still n=1 per query on 3 queries + no map_v3 dev-task cells yet — directional, not settled.
+baseline. Still n=1 per query on 3 queries + no map_v3 dev-task cells yet, directional, not settled.
 Next if desired: widen to the full 8 retrieval queries and add map_v3 dev-task cells.
 
 ## P11. map_v3 cell-by-cell: the remaining waste is `focus` being one-symbol-at-a-time
@@ -647,59 +647,59 @@ n=2 directional. Next (separate): the with/without-Scubiee round.
 | B1 | Fix bare-name relation bug (`refs kind=callers names=["x"]`) | `_locate_target` + `_resolve_symbol_name` | done + regression test | P8 |
 | D1 | Reframe map as PARTNER to native tools, not replacement | RULES_CONFIGS + INSTRUCTIONS_CONFIGS | done | P8 |
 
-Items 4–5, T2–T3, R2, I2 applied this cycle. T3 proved insufficient alone (P7). M4 + S1 are the
-next cycle, then re-run at n≥3 (items 6–7).
+Items 4-5, T2, T3, R2, I2 applied this cycle. T3 proved insufficient alone (P7). M4 + S1 are the
+next cycle, then re-run at n≥3 (items 6-7).
 
 
 ---
 
-# Hard cross-module suite — map_v3 agent-behavior study (4 tasks, 8 map_v3 cells)
+# Hard cross-module suite: map_v3 agent-behavior study (4 tasks, 8 map_v3 cells)
 
 Mined from the recorded tool trajectories of the 8 map_v3 cells across the 4 hard tasks
 (unify_cpu_thread_budget, unify_token_estimate, surface_changed_count_timing,
-distinct_huge_change_strategy). These are observed moves, not design intent — several
+distinct_huge_change_strategy). These are observed moves, not design intent, several
 are shortcomings/improvisations worth acting on.
 
-## P-H1. map_v3 is CONSISTENT on cost — tight 320k–600k band on 7/8 cells, never spiralled
+## P-H1. map_v3 is CONSISTENT on cost: tight 320k, 600k band on 7/8 cells, never spiralled
 
-Every map_v3 cell stayed in 322k–598k tokens with 9–16 turns and 1–5 map calls. Compare
+Every map_v3 cell stayed in 322k, 598k tokens with 9-16 turns and 1-5 map calls. Compare
 mini_v3 (up to 2.76M, 50 turns) and native (up to 3.73M, 54 calls) on the SAME tasks.
-The richer `focus`/`find` payload keeps native Read/Grep low (2–4 reads vs 11–26) and the
+The richer `focus`/`find` payload keeps native Read/Grep low (2-4 reads vs 11-26) and the
 agent converges fast. This is the core win and it is stable.
 
 **Action (keep):** the one-call-returns-the-whole-region design (`find` clustered bodies,
 `focus` bodies+wiring) is what prevents the grep-spiral. Do not regress it to location-only.
 
-## P-H2. SHORTCOMING — map_v3 ignored a weak `find` result and spiralled into the WRONG subsystem
+## P-H2. SHORTCOMING: map_v3 ignored a weak `find` result and spiralled into the WRONG subsystem
 
 unify_token_estimate r1 (the one map_v3 FAIL, 561k, strict=False): the opening
-`map find "estimate token count … chars per token helper"` returned only **1746c** — far
+`map find "estimate token count … chars per token helper"` returned only **1746c**, far
 below the 7000c a confident hit returns on the other tasks. Instead of re-querying or
 treating low payload as low confidence, the agent chased unrelated `seir` / `hybrid_cbm`
 imports via Grep/Glob/Bash and edited the wrong files. The weak map payload WAS the signal;
 it was ignored.
 
-**Action (rule):** add an explicit low-confidence handling line — "if `find` returns a thin
+**Action (rule):** add an explicit low-confidence handling line, "if `find` returns a thin
 payload / low-confidence cluster, RE-QUERY with different vocabulary or widen before you
 start grepping unrelated modules; a thin `find` is a miss, not a map." **Action (tool):**
 consider having `find` emit an explicit `confidence: low` marker when the top cluster score
 is weak, so the agent has a hard signal rather than inferring from byte count.
 
-## P-H3. SHORTCOMING — `focus` called with a GUESSED, wrong symbol name
+## P-H3. SHORTCOMING: `focus` called with a GUESSED, wrong symbol name
 
 surface_changed_count_timing r2: agent called `map config=focus names=['RuntimeManager.search']`
-— there is no `RuntimeManager.search`; the real target is `WarmSearchEngine.search` (which it
+- there is no `RuntimeManager.search`; the real target is `WarmSearchEngine.search` (which it
 used correctly in r1). `focus` returned a generic 1188c (same byte count as the r1 correct
 call, so the agent couldn't tell it missed) and the agent recovered via Read+Grep. Hitting
 `focus` with a hallucinated class name wastes a call and, worse, returns a plausible-looking
 payload.
 
 **Action (tool):** when `focus` cannot resolve the requested symbol, it should say so loudly
-(e.g. "focus: 'RuntimeManager.search' not found — did you mean WarmSearchEngine.search?")
+(e.g. "focus: 'RuntimeManager.search' not found, did you mean WarmSearchEngine.search?")
 rather than returning a generic neighborhood that reads like success. (The map_v3 bridge
 already has a "could not resolve … (did you mean)" path for `find`; ensure `focus` does too.)
 
-## P-H4. SHORTCOMING — re-grepping ground that `focus` already packed (violates the stated rule)
+## P-H4. SHORTCOMING: re-grepping ground that `focus` already packed (violates the stated rule)
 
 distinct_huge_change_strategy r2: sequence was `map focus names=[derive_sync_status,
 SYNC_STATUSES]` -> then `Grep SYNC_STATUSES` -> `Grep SYNC_STATUSES` again (45c, 107c). The
@@ -708,17 +708,17 @@ symbol `focus` had just returned. Low cost here (it still won) but it is the exa
 the rules forbid, so the rule is not fully obeyed under pressure.
 
 **Action (rule):** keep the "no re-grep of packed ground" line but make it more concrete:
-name the behavior ("after `focus`/`find` returns a symbol's body, do NOT grep that symbol —
+name the behavior ("after `focus`/`find` returns a symbol's body, do NOT grep that symbol
 edit from the packed body"). Consider a post-hoc harness lint that flags grep-of-packed-symbol
 to quantify how often it happens.
 
-## P-H5. IMPROVISATION — the CHEAPEST successful map_v3 cell skipped `map` entirely
+## P-H5. IMPROVISATION: the CHEAPEST successful map_v3 cell skipped `map` entirely
 
-unify_token_estimate r2 (map_v3, 380k, strict=True — the cheapest token_estimate success of
+unify_token_estimate r2 (map_v3, 380k, strict=True, the cheapest token_estimate success of
 ALL arms) opened with native `Grep "char.*token|…|/ 4|//4"` and never called `map`. Faced with
 a concept that has a concrete literal (`estimate_tokens`, `//4`), the agent correctly judged
 grep was the right tool and ignored the available map surface. This is the U prompt's own
-"needles -> Grep" rule working — but note it means map_v3's win is partly "the agent knows when
+"needles -> Grep" rule working, but note it means map_v3's win is partly "the agent knows when
 NOT to use map," not "map is always used." Healthy, but it means some map_v3 wins are really
 native-grep wins with the prompt steering tool choice.
 
@@ -726,7 +726,7 @@ native-grep wins with the prompt steering tool choice.
 map from cells that chose grep. For the suite: map was used on 7/8 cells; the 1 grep-only cell
 was the cheapest. Keep the "pick the cheaper tool" freedom; do not force map on literal targets.
 
-## P-H6. HARNESS-INTEGRITY — "no Bash" leaked: Bash/Agent/ScheduleWakeup ran despite not being allow-listed
+## P-H6. HARNESS-INTEGRITY: "no Bash" leaked: Bash/Agent/ScheduleWakeup ran despite not being allow-listed
 
 native_tools was ["Read","Grep","Glob","Edit","Write","TodoWrite"] (no Bash), and SHARED_SYSTEM
 says do not run commands. Yet traces show `Bash` (token_estimate r1 map_v3, and multiple native
@@ -748,14 +748,14 @@ body+wiring. `related`/`graph` were NEVER used in the whole suite. So the real w
 these tasks.
 
 **Action (prompt/tool):** consider whether `related`/`graph` justify their share of the ~1442-tok
-instruction budget if agents never pick them on real dev tasks — either make their trigger
+instruction budget if agents never pick them on real dev tasks, either make their trigger
 conditions crisper in the prompt or shrink their documentation to reclaim prompt budget. Measure
 on a graph-shaped task before cutting.
 
 
 ---
 
-# Light fixes applied (post-study) — P-H2 / P-H3 / P-H4
+# Light fixes applied (post-study): P-H2 / P-H3 / P-H4
 
 Kept intentionally small; map_v3 performance is already strong, so no logic/ranking
 changes, only additive signals + one sharpened prompt line.
@@ -776,7 +776,7 @@ changes, only additive signals + one sharpened prompt line.
   artifact 1485). The existing "¬ grep_same / focus.result ⇒ ¬grep them" prohibitions
   (P-H4) were already present and were left as-is.
 
-- **P-H6 (harness fairness) — FIXED + live-proven.** Root cause: under
+- **P-H6 (harness fairness), FIXED + live-proven.** Root cause: under
   `permission_mode="acceptEdits"` the SDK's `allowed_tools` is only advisory, so leaky
   built-ins (Bash/Task/Agent/ScheduleWakeup/…) could still run. Fix: added
   `disallowed_tools` (a HARD deny the SDK honors even under acceptEdits) in
@@ -784,7 +784,7 @@ changes, only additive signals + one sharpened prompt line.
   put in native_tools (so a future test can still opt into Bash). Verified: offline the
   option builds and the deny-list is correct (Bash/Agent/ScheduleWakeup denied,
   Read/Edit kept); LIVE a one-shot probe that explicitly tempted the agent with
-  `echo DONE >> notes.txt` used Edit instead — bash_calls=0, task_agent_calls=0,
+  `echo DONE >> notes.txt` used Edit instead, bash_calls=0, task_agent_calls=0,
   PASS=true. The "locate+edit only" guarantee is now actually enforced for every arm.
 
 Verification after fixes: `_budget_map_v3.py` all within budget (U instr 1154);

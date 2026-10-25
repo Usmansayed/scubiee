@@ -7,7 +7,7 @@
 
 ### `pack_context(query, seed…, k, hot_threshold, budget_chars)`
 One call returns:
-- `heatmap`: slim cards (rank, score, heat, loc, symbol, why) — noise-filtered
+- `heatmap`: slim cards (rank, score, heat, loc, symbol, why), noise-filtered
 - `pack`: bodies for hot nodes under `budget_chars` (auto collect)
 - `cold`: loc-only alts not packed
 - `stats`: calls=1, chars, n_hot, n_packed
@@ -27,10 +27,10 @@ Cases: auth fixture seed; connect `cmd_connect` seed.
 Metrics: tool_calls, response_chars, packed_must_hit (auth gold path), useful_card_frac.
 
 ## Files
-- `packages/pipeline/context_trace.py` — `run_pack_context`, noise filter, slim cards
-- `packages/pipeline/mcp_locate.py` — register tool + instructions
-- `packages/pipeline/mcp_permissions.py` — allowlist `pack_context`
-- `packages/pipeline/rules_installer.py` — prefer pack for full-context
+- `packages/pipeline/context_trace.py`: `run_pack_context`, noise filter, slim cards
+- `packages/pipeline/mcp_locate.py`: register tool + instructions
+- `packages/pipeline/mcp_permissions.py`: allowlist `pack_context`
+- `packages/pipeline/rules_installer.py`: prefer pack for full-context
 - `packages/trace_lab/pack_bakeoff.py` + CLI
 - `docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md`
 - `docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md`

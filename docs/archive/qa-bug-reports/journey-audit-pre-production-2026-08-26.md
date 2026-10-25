@@ -25,14 +25,14 @@ scubiee diagnose --no-tests --desktop
 4. When it finishes, look on your Desktop for a file named:
    scubiee-diagnose.json
 
-5. Send me that file (WhatsApp / email / Discord — whatever).
+5. Send me that file (WhatsApp / email / Discord - whatever).
 ```
 
 Notes:
-- The `file:///` link diagnose prints is **local only** — not a shareable web URL.
+- The `file:///` link diagnose prints is **local only**, not a shareable web URL.
 - Writing to Desktop makes the file easy to find and attach.
 - For the CPU-only laptop check: in the JSON, `acceleration.profile` should be `"cpu"` (not `"dml"`).
-- After a broken / forced reinstall, always re-run `scubiee setup --repair` before `init` — Windows CPU extras (`fastembed` / `onnxruntime`) are not in the base wheel.
+- After a broken / forced reinstall, always re-run `scubiee setup --repair` before `init`, Windows CPU extras (`fastembed` / `onnxruntime`) are not in the base wheel.
 
 Canonical machine sequence afterward (once diagnose looks good):
 
@@ -44,23 +44,23 @@ scubiee connect --cursor          # or --kiro / --copilot / --cline / --roo-code
 # Special-4 (Kiro, Copilot, Cline, Roo): run connect *inside each project*
 ```
 
-### Live result — friend laptop (UMAIR, 2026-08-26)
+### Live result: friend laptop (UMAIR, 2026-08-26)
 
 | Check | Result |
 |--------|--------|
 | Machine | Windows 11, Intel **i5-1235U** (iGPU-only), ~16 GB RAM |
 | Scubiee | **0.2.82** (after Access-denied reinstall recovery) |
-| Profile | **`cpu`** — not DML |
+| Profile | **`cpu`**, not DML |
 | Reason | *No discrete AMD/NVIDIA GPU… Intel iGPU / APU graphics ignored for DirectML* |
 | First setup | Succeeded (~**2.6 t/s**, batch 16) |
 | Diagnose after reinstall | `acceleration.profile: cpu`, but `libraries.fastembed` / `onnxruntime: null` |
-| Daemon / managed | Expected empty — never ran `init` |
+| Daemon / managed | Expected empty, never ran `init` |
 
 **Issues hit during the journey (product gaps):**
 1. `$env:USERPROFILE` in `--output` failed when pasted into CMD → fixed in **0.2.82** (`--desktop` + env expansion).
 2. `uv tool install --force` **Access denied** on `...\uv\tools\scubiee\Scripts` while `ContextEngineSupervisor` held files → half-broken install (`No module named 'pipeline'`).
 3. Recovery needed: kill supervisor / reboot, remove uv tool dir, reinstall **0.2.82**.
-4. Post-reinstall diagnose-only left **stale `accel.json`** (2.6 t/s) while packages were missing — `init` would fail until `setup --repair`.
+4. Post-reinstall diagnose-only left **stale `accel.json`** (2.6 t/s) while packages were missing, `init` would fail until `setup --repair`.
 
 **Not exercised on friend machine:** `init`, `connect`, agent MCP use.
 
@@ -68,7 +68,7 @@ scubiee connect --cursor          # or --kiro / --copilot / --cline / --roo-code
 
 ## GPU / CPU / Mac detection (already shipped)
 
-Shipped through **0.2.75–0.2.82**:
+Shipped through **0.2.75-0.2.82**:
 - Windows DirectML only for discrete AMD/NVIDIA (not Intel UHD / AMD APU “Radeon Graphics”)
 - Probe + calibrate timeouts; CPU fallback; light CPU calibrate (batch 16)
 - Apple Silicon never demoted to CPU-only (MLX)
@@ -83,7 +83,7 @@ Escape hatch if a rare discrete AMD chip is missed: `scubiee setup --profile dml
 
 ## Six end-to-end journeys (backtracked against code)
 
-### Journey 1 — Fresh laptop (happy path)
+### Journey 1: Fresh laptop (happy path)
 
 1. Install uv → `uv tool install scubiee==0.2.82`
 2. `scubiee setup --repair` → GPU/CPU profile, model, `accel.json`
@@ -91,14 +91,14 @@ Escape hatch if a rare discrete AMD chip is missed: `scubiee setup --profile dml
 4. `scubiee connect --cursor` (or `--kiro` **inside** that repo for Kiro)
 5. Agent calls `status()` → `managed: true` → map/grep work
 
-**Verified:** Correct by design. Friend laptop completed steps 1–2 (CPU path). Steps 3–5 not run on friend machine.  
+**Verified:** Correct by design. Friend laptop completed steps 1-2 (CPU path). Steps 3-5 not run on friend machine.  
 **Important:** `init` does **not** write MCP/rules; `connect` does. Setup alone does not make a repo managed.
 
 Key code: `cmd_setup` / `cmd_init` / `cmd_connect` in `packages/pipeline/__main__.py`.
 
 ---
 
-### Journey 2 — Open IDE and use agent immediately (daemon cold / down)
+### Journey 2: Open IDE and use agent immediately (daemon cold / down)
 
 1. Repo already managed; laptop wake
 2. Agent `status()` before daemon is healthy
@@ -107,37 +107,37 @@ Key code: `cmd_setup` / `cmd_init` / `cmd_connect` in `packages/pipeline/__main_
 **What happens today:**
 - `status()`: `managed: true`, **`warming: true`** when daemon down → **`ok: false`** (fixed; was `ok = healthy OR managed`)
 - Tools: JSON `ok: false`, `status: "warming"`, hint to retry after ready
-- Cursor rule: wait 5s, retry once on tool warming — **not** poll `status()` in a loop
+- Cursor rule: wait 5s, retry once on tool warming, **not** poll `status()` in a loop
 
-**Risk (mitigated):** Agents that only check `ok` without the `warming` branch fall back to native tools until daemon is up — acceptable vs false-ready.
+**Risk (mitigated):** Agents that only check `ok` without the `warming` branch fall back to native tools until daemon is up, acceptable vs false-ready.
 
 Key code: `status_impl` / `_backend_error` in `packages/pipeline/mcp_locate.py`; `ensure_daemon` in `packages/pipeline/daemon.py`.
 
 ---
 
-### Journey 3 — Mid-session `init` (was unmanaged, then user inits)
+### Journey 3: Mid-session `init` (was unmanaged, then user inits)
 
 1. Agent first `status()` → `managed: false` → uses native tools
 2. User runs `scubiee init .`
 3. Agent should re-check
 
 **What happens today (templates in repo, post-fix):**
-- **Cursor** (`context-agent.mdc`): event-driven retry — **good**
-- **Kiro / Cline / append hosts** (`context-engine.md`): same event-driven retry — **aligned**
+- **Cursor** (`context-agent.mdc`): event-driven retry, **good**
+- **Kiro / Cline / append hosts** (`context-engine.md`): same event-driven retry, **aligned**
 - Explicit anti-poll: “Do not call it every turn” / “never in a loop”
 - **Deploy note:** already-connected machines keep old “ignore forever” text until `scubiee connect` again
 
-**Was production issue:** rule template split-brain — **fixed in templates**.
+**Was production issue:** rule template split-brain, **fixed in templates**.
 
 ---
 
-### Journey 4 — Daemon crash / hung process
+### Journey 4: Daemon crash / hung process
 
 1. Engine dies or lock file stuck
 2. Agent calls a tool
 
 **What happens today:**
-- Tool path: `ensure_daemon(..., force_if_hung=True)` → can restart (~up to ~2 min) — may look like a hang
+- Tool path: `ensure_daemon(..., force_if_hung=True)` → can restart (~up to ~2 min), may look like a hang
 - `status()`: **does not** force-restart hung daemon (by design)
 - Recovery CLI: `scubiee engine ensure .`
 
@@ -145,7 +145,7 @@ Key code: `status_impl` / `_backend_error` in `packages/pipeline/mcp_locate.py`;
 
 ---
 
-### Journey 5 — Multi-project / wrong workspace (Kiro / Copilot / Cline / Roo)
+### Journey 5: Multi-project / wrong workspace (Kiro / Copilot / Cline / Roo)
 
 1. User connects from home → global MCP only
 2. Opens Project B; agent asks about Project B
@@ -164,7 +164,7 @@ Key code: `status_impl` / `_backend_error` in `packages/pipeline/mcp_locate.py`;
 
 ---
 
-### Journey 6 — Pause / stop / resume / wipe
+### Journey 6: Pause / stop / resume / wipe
 
 1. `scubiee stop` → MCP disabled, rules hidden, daemon killed
 2. Agent session continues
@@ -172,14 +172,14 @@ Key code: `status_impl` / `_backend_error` in `packages/pipeline/mcp_locate.py`;
 
 **What happens today:**
 - `status()` when paused: hint says **`scubiee resume`** (fixed; was wrongly `wake`)
-- `should_retry_status: false` while paused — agents must not poll; wait for user to resume
+- `should_retry_status: false` while paused, agents must not poll; wait for user to resume
 - Other MCP tools are **not** fully short-circuited on pause (only status is) → messy errors
 - `scubiee wipe .` cleans repo; machine accel stays
 - `scubiee wipe --all --confirm` is nuclear (home + models)
 
 ---
 
-### Journey 7 — Windows upgrade while supervisor holds files (new, from friend)
+### Journey 7: Windows upgrade while supervisor holds files (new, from friend)
 
 1. User has working install + setup
 2. `uv tool install --force scubiee==…` (or `scubiee upgrade`) while `ContextEngineSupervisor` / engine holds `Scripts\`
@@ -266,7 +266,7 @@ scubiee setup --repair
 | **P1** ~~done~~ | Windows upgrade blocked when supervisor holds uv tool files | `scubiee upgrade` now calls `stop_all_context_engine_processes` before package upgrade |
 | **P2** ~~done~~ | `upgrade` doesn’t refresh MCP/rules | Loud `next_steps` to re-run `connect` (full auto-refresh still optional) |
 | **P2** | Docs still mention old init→MCP behavior in places | Confuses install sequence |
-| **P2** ~~done~~ | `warming` means “managed + unhealthy”, not “index still loading” | Naming confusion vs `warm_state` — left as-is (docs note) |
+| **P2** ~~done~~ | `warming` means “managed + unhealthy”, not “index still loading” | Naming confusion vs `warm_state`, left as-is (docs note) |
 | **P2** ~~done~~ | Diagnose can show stale `accel.json` calibrate while packages missing after reinstall | Diagnose flags `stale_accel` + fails verdict when packages missing |
 | **P2** | Windows path casefold in tests vs registry (`C:\` vs `c:\`) | Tests updated to use `_norm_path` (2026-08-26) |
 | **P3** | Hung daemon + tool path can block ~2 minutes | Looks like agent freeze |

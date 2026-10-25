@@ -1,7 +1,7 @@
-# Scubiee web-info — detailed documentation hub
+# Scubiee web-info: detailed documentation hub
 
 > **Version:** [0.3.15](https://pypi.org/project/scubiee/0.3.15/)  
-> **Purpose:** In-depth documentation with **explanations** — so operators, support, and website writers understand *why* things work and *how* to fix them.  
+> **Purpose:** In-depth documentation with **explanations**, so operators, support, and website writers understand *why* things work and *how* to fix them.  
 > **End-user quick guides:** [`../docs/web-info/`](../docs/web-info/README.md) (shorter, task-focused)
 
 Use this folder when you need **detail**, not just commands.
@@ -18,7 +18,7 @@ Use this folder when you need **detail**, not just commands.
 | **Know what every file/path means** | **[Data & files reference](./data-and-files-reference.md)** |
 | **Write website / marketing copy** | [Product guide for website](./product-guide-for-website.md) |
 | **Short marketing snippets** | [Website content](./website-content.md) |
-| **Every CLI command & flag (exhaustive + context)** | **[Complete CLI reference](./complete-cli-reference.md)** — workflows, mental model, troubleshooting, disk effects |
+| **Every CLI command & flag (exhaustive + context)** | **[Complete CLI reference](./complete-cli-reference.md)**, workflows, mental model, troubleshooting, disk effects |
 | **Command tables (short)** | [Commands and setup](./commands-and-setup.md) |
 | **Engineering architecture** | [Context engine internals](./context-engine-internals.md) |
 
@@ -26,7 +26,7 @@ Use this folder when you need **detail**, not just commands.
 
 ## docs/web-info cross-links (operator docs)
 
-These live in `docs/web-info/` — shorter paths for day-to-day use. They link back here for depth.
+These live in `docs/web-info/`, shorter paths for day-to-day use. They link back here for depth.
 
 | Topic | Operator doc | Detailed depth |
 |-------|--------------|----------------|
@@ -60,10 +60,10 @@ web-info/
 
 ## First-time learning path
 
-1. **[How everything works](./how-everything-works.md)** — setup, init, connect, daemon, index, MCP (30 min read)
-2. **[Data & files reference](./data-and-files-reference.md)** — where things live on disk
-3. **[Complete fix guide](./complete-fix-guide.md)** — bookmark for when something breaks
-4. **[Error codes reference](./error-codes-reference.md)** — when JSON shows an `error` field
+1. **[How everything works](./how-everything-works.md)**: setup, init, connect, daemon, index, MCP (30 min read)
+2. **[Data & files reference](./data-and-files-reference.md)**: where things live on disk
+3. **[Complete fix guide](./complete-fix-guide.md)**: bookmark for when something breaks
+4. **[Error codes reference](./error-codes-reference.md)**: when JSON shows an `error` field
 
 ---
 

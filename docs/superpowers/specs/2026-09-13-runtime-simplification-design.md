@@ -14,11 +14,11 @@ Reliability failures are mostly **trigger fan-out**, not missing features:
 
 ## Design principles
 
-1. **One owner** for “is the runtime ready?” — `RuntimeController`
+1. **One owner** for “is the runtime ready?”, `RuntimeController`
 2. **Two knobs only** for agents: attach warm on/off; disconnect debounce seconds
 3. **Libraries for glue**, not for product logic: `httpx` (timeouts/pool) + `tenacity` (transient retries with jitter + budget)
-4. **Sync first** — keep `EngineClient` sync (MCP tools are sync). Do not async-rewrite MCP in this pass.
-5. **Delete before add** — every new helper must retire ≥1 old path
+4. **Sync first**: keep `EngineClient` sync (MCP tools are sync). Do not async-rewrite MCP in this pass.
+5. **Delete before add**: every new helper must retire ≥1 old path
 
 ## Target architecture
 
@@ -61,8 +61,8 @@ mcp_locate ← RuntimeController.ensure(SERVE) before map/pack
 ### Library usage
 
 - **httpx.Client**: connection reuse, split connect/read timeouts, replace `urllib` in `EngineClient`
-- **tenacity**: retry only `ConnectError` / `TimeoutException` / 502–504 on GET/health/prewarm-status; never retry non-idempotent POSTs blindly; cap total retry budget to remaining warm deadline
-- **Supervisor**: not an external daemon framework — one `RuntimeController` + existing watchdog as **only** process babysitter (no second home-grown sweeper inventing start policy)
+- **tenacity**: retry only `ConnectError` / `TimeoutException` / 502-504 on GET/health/prewarm-status; never retry non-idempotent POSTs blindly; cap total retry budget to remaining warm deadline
+- **Supervisor**: not an external daemon framework, one `RuntimeController` + existing watchdog as **only** process babysitter (no second home-grown sweeper inventing start policy)
 
 ## Delete / merge list
 

@@ -1,4 +1,4 @@
-# Realistic MCP host-sim battery (Windows) — 0.3.93
+# Realistic MCP host-sim battery (Windows): 0.3.93
 
 **Date:** 2026-09-16  
 **Harness:** live `uv tool` scubiee + Lane A / warm_contract / ship_check  

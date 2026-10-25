@@ -1,4 +1,4 @@
-# Trial log extract — ce_search vs ce_nav (20260810T214438Z)
+# Trial log extract: ce_search vs ce_nav (20260810T214438Z)
 
 Raw counts mined from `*-arm.json` / conversation blobs for the search-vs-read decision.
 

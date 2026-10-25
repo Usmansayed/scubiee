@@ -3,7 +3,7 @@
 ## TL;DR
 
 ```powershell
-# One-time install — the --overrides flag keeps GPU acceleration from breaking.
+# One-time install - the --overrides flag keeps GPU acceleration from breaking.
 uv tool install --overrides packaging/uv-overrides-win-dml.txt scubiee
 scubiee setup
 scubiee init .
@@ -16,13 +16,13 @@ keeps it automatically. You only pass `--overrides` on the first install.
 
 `fastembed` (Scubiee's embedding backend) declares an **unbounded** dependency on
 the generic `onnxruntime` package. On Windows, Scubiee wants
-`onnxruntime-directml` instead — it provides the same `onnxruntime` **import
+`onnxruntime-directml` instead, it provides the same `onnxruntime` **import
 package** plus the `DmlExecutionProvider` that runs embeddings on the GPU.
 
 The two wheels install into the **same `onnxruntime/` folder** and overwrite each
-other's native DLLs (pip/uv don't flag this — the package *names* differ, so
+other's native DLLs (pip/uv don't flag this, the package *names* differ, so
 `pip check` passes). When the generic wheel's DLLs win, `DmlExecutionProvider`
-silently disappears and embedding falls back to CPU — much slower, with no error.
+silently disappears and embedding falls back to CPU, much slower, with no error.
 This is the same class of clash as `opencv-python` vs `opencv-contrib-python`
 (see astral-sh/uv#9073).
 
@@ -47,7 +47,7 @@ scubiee setup --repair
 ```
 
 `setup --repair` reconciles the ORT wheels (uninstall-all → reinstall
-`onnxruntime-directml`) with no engine running — the safe way to fix it. To
+`onnxruntime-directml`) with no engine running, the safe way to fix it. To
 prevent it recurring, reinstall once with the override:
 
 ```powershell

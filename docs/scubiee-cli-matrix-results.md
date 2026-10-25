@@ -1,8 +1,8 @@
 # Scubiee CLI Command-Matrix Audit
 
 _Run on Windows (DirectML) against installed scubiee 0.3.150. Goal: exercise
-every subcommand, flag combination, and error state — plus a live `upgrade` and
-clean setup — looking for tracebacks, wrong exit codes, leaked internal errors,
+every subcommand, flag combination, and error state, plus a live `upgrade` and
+clean setup, looking for tracebacks, wrong exit codes, leaked internal errors,
 and hangs. This complements `scubiee-cli-ux-findings.md` (the four UX issues
 fixed in 0.3.150); this doc is the exhaustive pass that followed those fixes._
 
@@ -10,7 +10,7 @@ fixed in 0.3.150); this doc is the exhaustive pass that followed those fixes._
 
 ~55 command forms exercised across six groups. **Zero tracebacks and zero hangs
 observed.** All error states returned clean exit codes (1 or 2) with
-human-readable messages — no raw Python stack traces. One real bug was found and
+human-readable messages, no raw Python stack traces. One real bug was found and
 root-caused: `scubiee upgrade` reported failure on every Windows upgrade.
 
 | Group | Forms tested | Tracebacks | Hangs | Bad exit codes | Verdict |
@@ -36,7 +36,7 @@ root-caused: `scubiee upgrade` reported failure on every Windows upgrade.
 - `--windsurf` resolving to "Devin Desktop" is **intentional**
   (`tool_registry.py` `SLUG_ALIASES = {"windsurf": "devin-desktop"}`).
 - `unlock-tool` renames the uv tool dir aside, leaving scubiee temporarily
-  uninstalled — **documented behavior**, reinstall afterward. Not a bug.
+  uninstalled, **documented behavior**, reinstall afterward. Not a bug.
 
 ## Finding: `scubiee upgrade` reports failure on every Windows upgrade
 
@@ -57,7 +57,7 @@ unlock-tool`". But the package had actually upgraded:
 `swap_package` in `packages/pipeline/upgrade_supervisor.py` judged success
 solely by the installer **exit code**. The running `scubiee.exe` holds a lock on
 its own entrypoint shim, so uv swaps the package cleanly but fails the final
-step — copying the new launcher over the locked one:
+step, copying the new launcher over the locked one:
 
 ```
 error: Failed to install entrypoint
@@ -66,7 +66,7 @@ error: Failed to install entrypoint
 ```
 
 That is a cosmetic rebind failure (the shim re-points on next launch), not a
-package-upgrade failure — but the exit-code-only check turned it into a hard
+package-upgrade failure, but the exit-code-only check turned it into a hard
 failure, and `do_upgrade` surfaced it as `package_upgrade_failed`.
 
 ### Fix

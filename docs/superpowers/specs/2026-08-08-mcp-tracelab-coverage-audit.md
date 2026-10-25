@@ -1,4 +1,4 @@
-# MCP vs TraceLab sessions — coverage & mcp-builder audit
+# MCP vs TraceLab sessions: coverage & mcp-builder audit
 
 **Date:** 2026-08-08  
 **Server:** `context_engine_mcp` (`pipeline.mcp_locate`)  
@@ -6,7 +6,7 @@
 
 ## Does it solve all session issues?
 
-**No — not “all,” but it covers the main retrieval-append failure modes that drive ~50%.**
+**No, not “all,” but it covers the main retrieval-append failure modes that drive ~50%.**
 
 | TraceLab issue | Covered? | How |
 |---|---|---|
@@ -29,7 +29,7 @@
 | Practice | Status |
 |---|---|
 | Clear server name `context_engine_mcp` | Done |
-| Workflow tools (not raw API dump) | Done — intentional for locate UX |
+| Workflow tools (not raw API dump) | Done, intentional for locate UX |
 | Flat tool args (`map(query=…)`) | Done |
 | Pydantic validation | Done |
 | Tool annotations (readOnly/destructive/…) | Done |
@@ -38,7 +38,7 @@
 | json \| markdown response_format | Done |
 | Pagination on recall | Done (limit/offset/has_more) |
 | Savings defaults (0 = auto) | **Fixed** (was overriding with rich budgets) |
-| Status playbooks for WF1–WF6 | Done |
+| Status playbooks for WF1, WF6 | Done |
 | Eval suite (10 QA pairs) | TODO (Phase 4 of mcp-builder) |
 
 ## Agent contract (required for 50%)

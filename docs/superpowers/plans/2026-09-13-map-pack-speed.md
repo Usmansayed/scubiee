@@ -18,7 +18,7 @@
 - Latency targets (warm, post Phase B/C):
   - `map` p95 steady **&lt; 250ms**; first-after-warm **&lt; 1.5s**
   - lean 1-seed pack p95 **&lt; 5s**
-  - lean 3-seed pack p95 **&lt; 8s** (from ~15–20s)
+  - lean 3-seed pack p95 **&lt; 8s** (from ~15-20s)
 - Surface `timing` + updated `sla` on pack/map_context responses.
 
 ## File map
@@ -46,8 +46,8 @@
 
 **Files:** `packages/trace_lab/multi_seed.py`, tests
 
-- [x] `seed_covered_by_heatmap(hm, seed_id, min_score=...)` — True if seed node (or same-file hot density) already in island.
-- [x] `light_seed_heatmap(seed_id, graph, *, max_hops=2)` — hop-decay scores for wiring neighbors (reuse `_WIRE` / BFS).
+- [x] `seed_covered_by_heatmap(hm, seed_id, min_score=...)`, True if seed node (or same-file hot density) already in island.
+- [x] `light_seed_heatmap(seed_id, graph, *, max_hops=2)`, hop-decay scores for wiring neighbors (reuse `_WIRE` / BFS).
 - [x] Unit tests: covered seed → True; light heatmap includes seed + neighbor.
 
 ### Task 3: Adaptive multi-seed in `run_map_context`
@@ -69,19 +69,19 @@
 - [x] Log verification row in `scubiee-reliability-issues.md` R7.
 - [x] Bump package note when ready to ship.
 
-### Task 5: Phase C (follow-up — after B green) → superseded by ten-second warm plan
+### Task 5: Phase C (follow-up: after B green) → superseded by ten-second warm plan
 
 See `docs/superpowers/plans/2026-09-13-ten-second-warm-ms-steady.md` (0.3.79).
 
 - [x] Dummy DML encode on engine ready / MCP attach (attach warm pipeline).
 - [x] Optional proximity query→map cache (`map_result_cache`).
-- [ ] First-map p95 gate script — `scripts/warm_contract_acceptance.py`
+- [ ] First-map p95 gate script, `scripts/warm_contract_acceptance.py`
 
 ### Task 6: Quality verification
 
 - [x] `pytest tests/test_multi_seed_v1.py tests/test_reliability_master_plan.py -q`
 - [ ] Existing composite / multi-seed bakeoff scripts (if fixtures present)
-- [ ] Manual: same 3-seed pack query as reliability session — expect &lt; 8s warm with `adaptive_skips` ≥ 0
+- [ ] Manual: same 3-seed pack query as reliability session, expect &lt; 8s warm with `adaptive_skips` ≥ 0
 
 ---
 

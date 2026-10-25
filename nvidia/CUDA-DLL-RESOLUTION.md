@@ -1,4 +1,4 @@
-# CUDA DLL Resolution — RTX 4060 Laptop (August 2026)
+# CUDA DLL Resolution: RTX 4060 Laptop (August 2026)
 
 ## The Problem
 
@@ -16,7 +16,7 @@ Failed to create CUDAExecutionProvider. Require cuDNN 9.* and CUDA 13.*
 
 1. **`pip install onnxruntime-gpu`** resolves to v1.29.0 (latest)
 2. **ORT 1.29.0 requires CUDA 13 + cuDNN 9** (`cublasLt64_13.dll`)
-3. **nvidia-smi reports "CUDA Version: 13.0"** — but this is the *driver capability*, not
+3. **nvidia-smi reports "CUDA Version: 13.0"**: but this is the *driver capability*, not
    an installed toolkit. The driver can run CUDA 13 code, but the cuBLAS/cuDNN runtime DLLs
    aren't installed.
 4. **The system has CUDA Toolkit 12.3** installed at `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.3\`
@@ -68,20 +68,20 @@ if nvidia_pkg_dir.is_dir():
 ## Result
 
 Before fix: 2.6 t/s (CPU fallback)
-After fix: **146 t/s** (RTX 4060 GPU) — 56x speedup
+After fix: **146 t/s** (RTX 4060 GPU), 56x speedup
 
 ## Why This Happens on Fresh Installs
 
 The default `pip install onnxruntime-gpu` pulls the latest (1.29.0) which needs CUDA 13
 cuBLAS. NVIDIA's driver reports CUDA 13.0 compatibility but that only means the GPU *can*
-run CUDA 13 code — it doesn't mean the cuBLAS/cuDNN libraries are installed.
+run CUDA 13 code, it doesn't mean the cuBLAS/cuDNN libraries are installed.
 
 Most Windows machines with NVIDIA GPUs have:
 - A recent driver (which reports CUDA 13.0 capability)
 - Either no CUDA toolkit, or an older one (12.x)
 - No cuDNN installed at all
 
-The nvidia pip packages solve this portably — they bundle the exact DLLs needed.
+The nvidia pip packages solve this portably, they bundle the exact DLLs needed.
 
 ## Timeline of Debugging Session
 
@@ -94,7 +94,7 @@ The nvidia pip packages solve this portably — they bundle the exact DLLs neede
 | 5 | `pip install nvidia-cudnn-cu12 nvidia-cublas-cu12` | DLLs installed but not on PATH |
 | 6 | Manually add nvidia DLL paths to PATH | **CUDA works! 153 t/s** |
 | 7 | Code fix in `_ensure_cuda_dll_paths()` | Auto-discovers DLLs, no manual PATH needed |
-| 8 | Test without PATH hack | **146 t/s — fully automatic** |
+| 8 | Test without PATH hack | **146 t/s, fully automatic** |
 
 ## Machines This Affects
 
@@ -104,7 +104,7 @@ Any Windows machine with:
 - No cuDNN manually installed
 - Fresh pip install of onnxruntime-gpu
 
-This is **the majority of NVIDIA Windows laptops** — gamers, developers, students.
+This is **the majority of NVIDIA Windows laptops**, gamers, developers, students.
 The fix makes scubiee work on all of them without any manual CUDA setup.
 
 ## Installer Requirements for Universal Compatibility

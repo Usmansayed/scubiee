@@ -2,7 +2,7 @@
 
 > **Historical build log.** This records the Map **v2** harness prototype (five configs
 > `find`/`refs`/`open`/`around`/`outline` in `scripts/claude_sdk_harness/map_v2_bridge.py`).
-> It evolved into the shipped **Map V3** product surface — four configs
+> It evolved into the shipped **Map V3** product surface, four configs
 > `find`/`focus`/`related`/`graph` (+ `gate`/`status`) served by `pipeline.map_v3_server`
 > through the `scubiee-mcp-bridge`. For the current surface see the header note in
 > `docs/scubiee-map-configs.md`. Kept as a dated record of how the bridge was built and
@@ -95,7 +95,7 @@ How each version was measured:
 v2 used **43% fewer calls and 61% fewer characters**, and met the same 7 needs.
 
 The call count is the number that matters most, because each extra call re-reads
-the whole transcript (~35–40k tokens in our runs). v2's larger per-call responses
+the whole transcript (~35-40k tokens in our runs). v2's larger per-call responses
 (it returns code inline on find, several targets on open) are the deliberate
 trade: spend a few thousand characters to remove a round-trip. See
 `docs/scubiee-map-configs.md` section 2.7.
@@ -107,7 +107,7 @@ trade: spend a few thousand characters to remove a round-trip. See
 - **N2:** `find` now returns the top body on **medium** confidence, so what used to
   be find → open is one call.
 - **N3 and N5:** relation questions. The old map can't answer them, so the agent
-  greps the whole repo: 15–17k characters, including docs and our own scripts.
+  greps the whole repo: 15-17k characters, including docs and our own scripts.
 
 **Where there's no gain:**
 - **N4:** `open` saves a call but returns about the same amount of code (whole
@@ -124,9 +124,9 @@ trade: spend a few thousand characters to remove a round-trip. See
 
   | Config | Time per call |
   |---|---|
-  | `open`, `outline` | 1–12 ms |
-  | `find` | 0.3–3.4 s (engine search, plus a repo grep when keywords are given) |
-  | `refs`, `around` | 2.1–2.8 s (the bridge scans all text files in the repo) |
+  | `open`, `outline` | 1-12 ms |
+  | `find` | 0.3-3.4 s (engine search, plus a repo grep when keywords are given) |
+  | `refs`, `around` | 2.1-2.8 s (the bridge scans all text files in the repo) |
 
   For `refs` and `around`, a symbol index would bring that well under a second.
 - **Outlines are Python-only for now**, from Python's AST. Other languages fall back to the engine's outline route, which is also Python-only. So in non-Python files, `open`, `around` and `outline` fall back to line windows instead of symbols.

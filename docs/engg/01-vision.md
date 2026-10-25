@@ -16,7 +16,7 @@ Agents must **not** treat the IDE’s native Grep/Glob/semantic search as the di
 
 | Pillar | How we implement it | Success look |
 |--------|---------------------|--------------|
-| **Locate, don’t dump** | Phase MCP: `map` (skinny cards) → `focus` (outline/span/neighbors) → edit. `grep`/`glob` only for a **known** literal/filename. | Agent cites 1–3 files, edits, does not open 40 files |
+| **Locate, don’t dump** | Phase MCP: `map` (skinny cards) → `focus` (outline/span/neighbors) → edit. `grep`/`glob` only for a **known** literal/filename. | Agent cites 1-3 files, edits, does not open 40 files |
 | **Better than grep for meaning** | Conductor `D_channel_best`: BM25 + dense CodeRank + graph affinity, fused by min-rank + agreement | Natural-language “where does session die” hits the recovery handler |
 | **Cheap tokens** | Mix compress (512-char cap) before embed; MCP returns pointers + budgeted spans; session store dedupes already-shown bodies | Same span not re-sent as a full dump |
 | **Always local** | No cloud embed required. Model + index on disk under `~/.context-engine/` | Works offline after first model download |
@@ -38,12 +38,12 @@ Default after setup: `CTX_MCP_SURFACE=phase`.
 
 | Tool | Job |
 |------|-----|
-| `map` | Cold / meaning locate — cards, no bodies |
+| `map` | Cold / meaning locate, cards, no bodies |
 | `focus` | Deepen one target: outline, span, neighbors |
 | `grep` | Known exact string only |
 | `glob` | Known filename/path only |
 | `workspace` | Pins / heatmap / already focused |
-| `status` | Health only — never locate |
+| `status` | Health only, never locate |
 
 Other surfaces (`read`, `nav`, `search`, …) still exist for experiments; **phase is the product**.
 

@@ -9,7 +9,7 @@ Verified token counts (tiktoken `cl100k_base`):
 
 | Artifact | tokens | limit | status |
 |---|---:|---|---|
-| GUIDED (single block) | ~250 | — | (no split; for reference) |
+| GUIDED (single block) | ~250 | - | (no split; for reference) |
 | **POLICY · RULES** | **112** | <200 | OK |
 | **POLICY · INSTRUCTIONS** | **510** | <1000 | OK |
 
@@ -17,10 +17,10 @@ Source of truth: `scripts/claude_sdk_harness/policies.py` (GUIDED) and `two_laye
 
 ---
 
-## GUIDED (current — single block)
+## GUIDED (current: single block)
 
 ```
-## Scubiee map — when to use it (map is the only Scubiee locate tool here)
+## Scubiee map - when to use it (map is the only Scubiee locate tool here)
 A managed Scubiee context system is available, but the ONLY Scubiee locate tool exposed is `map`
 (plus `gate`/`status`). Use your native tools (Read/Grep/Glob/Edit/Write/Bash) freely otherwise.
 `map` is a semantic code locator: a short code-vocabulary query returns ranked cards with `file`,
@@ -39,7 +39,7 @@ literal `"cache miss"` → grep; map returns `x.py:120-176` → read that span.
 
 ---
 
-## POLICY — LAYER A: RULES  (persistent anchor · 112 tokens · <200 ✓)
+## POLICY: LAYER A: RULES  (persistent anchor · 112 tokens · <200 ✓)
 
 > Short, non-negotiable behavioral contract. No examples, no rationale, no decision trees.
 
@@ -47,17 +47,17 @@ literal `"cache miss"` → grep; map returns `x.py:120-176` → read that span.
 Scubiee is your semantic code retrieval layer. When you need to find code whose location
 or name you do not already know, use Scubiee `map` for that discovery rather than blind
 grep/glob sweeps. When you already know the exact file, symbol, path, or literal, go straight
-to native tools. After map returns locations, read those spans directly — do not re-search
+to native tools. After map returns locations, read those spans directly - do not re-search
 what map already found, and never repeat a search that already failed. Follow the Scubiee
 instructions for how to choose.
 ```
 
-## POLICY — LAYER B: INSTRUCTIONS  (operating manual · 510 tokens · <1000 ✓)
+## POLICY: LAYER B: INSTRUCTIONS  (operating manual · 510 tokens · <1000 ✓)
 
 > The detailed decision boundaries, rationale, examples, and recovery guidance.
 
 ```
-## Scubiee retrieval — operating manual
+## Scubiee retrieval - operating manual
 
 Objective: reach the next correct action with the least unnecessary exploration. Retrieve the
 smallest context that removes your current uncertainty, not the most context. Extra retrieved
@@ -74,18 +74,18 @@ Choose retrieval by what you already know (strong preferences, not a fixed order
 - Exact literal / import / identifier you already know → grep.
 
 After `map` returns relevant locations: read those `loc` spans directly. Do not re-search the same
-concept to confirm it — map already located it, so another search spends a turn without adding new
+concept to confirm it - map already located it, so another search spends a turn without adding new
 evidence. Prefer the returned line range over reading the whole file.
 
 Retrieval is adaptive, not a ritual:
 - If an attempt does not reduce uncertainty, CHANGE strategy (refine the query, switch tool, or read
-  a neighbor). Do NOT repeat a search that already failed — repeating identical input yields
+  a neighbor). Do NOT repeat a search that already failed - repeating identical input yields
   identical output.
 - Do not remap an area you already understand; map again only when the task moves into genuinely
   new semantic territory.
 - Stop retrieving once you know enough to make the next edit; then edit.
 
-Strength: MUST — never repeat an identical failed search; never read a whole large file when a line
+Strength: MUST - never repeat an identical failed search; never read a whole large file when a line
 range was given. Everything else is a strong default you may override when the situation clearly
 warrants it.
 
@@ -124,7 +124,7 @@ to measure this; results are pending the run.
 
 **Important confound note:** in this benchmark all Scubiee arms ship *bare* server instructions
 (`CTX_MCP_BARE_INSTRUCTIONS=1`) so the stock Scubiee ladder text ("MUST map→pack_context;
-map-only = FAIL") — which references tools we don't expose — no longer contradicts the arm's rule.
+map-only = FAIL"), which references tools we don't expose, no longer contradicts the arm's rule.
 Earlier map-only runs did **not** have this fix, so their agents saw conflicting instructions; keep
 that in mind when comparing to older numbers.
 ```

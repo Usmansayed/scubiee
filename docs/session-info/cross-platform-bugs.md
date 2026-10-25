@@ -1,4 +1,4 @@
-# Cross-Platform Bug Analysis — scubiee 0.2.20
+# Cross-Platform Bug Analysis: scubiee 0.2.20
 
 **Date:** 2026-08-20  
 **Scope:** Code review of all OS/hardware-conditional paths  
@@ -8,7 +8,7 @@
 
 ## Confirmed Bugs (from code review)
 
-### Bug 17 — MEDIUM: `os.killpg()` on Windows would crash
+### Bug 17: MEDIUM: `os.killpg()` on Windows would crash
 
 **File:** `packages/pipeline/daemon.py` line 357
 
@@ -23,7 +23,7 @@ os.killpg(pid, signal.SIGKILL)
 
 ---
 
-### Bug 18 — MEDIUM: `mlx_mac.py` imports `resource` unconditionally
+### Bug 18: MEDIUM: `mlx_mac.py` imports `resource` unconditionally
 
 **File:** `packages/pipeline/mlx_mac.py` line 147
 
@@ -41,7 +41,7 @@ def _rss_bytes() -> dict[str, int]:
 
 ---
 
-### Bug 19 — HIGH: CUDA profile on Linux without CUDA toolkit → silent CPU embedding
+### Bug 19: HIGH: CUDA profile on Linux without CUDA toolkit → silent CPU embedding
 
 **Scenario:** Linux user has NVIDIA GPU (nvidia-smi works), installs scubiee, runs `ctx setup`. Profile is set to `cuda`. `onnxruntime-gpu` is installed. But CUDA toolkit libs aren't in LD_LIBRARY_PATH.
 
@@ -59,7 +59,7 @@ def _rss_bytes() -> dict[str, int]:
 
 ---
 
-### Bug 20 — MEDIUM: Windows file locking with `msvcrt.locking` uses 1-byte lock
+### Bug 20: MEDIUM: Windows file locking with `msvcrt.locking` uses 1-byte lock
 
 **File:** `packages/pipeline/project_id.py` lines 52, 67
 
@@ -76,7 +76,7 @@ msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)  # locks 1 byte
 
 ---
 
-### Bug 21 — MEDIUM: Dashboard port lock uses same 1-byte pattern
+### Bug 21: MEDIUM: Dashboard port lock uses same 1-byte pattern
 
 **File:** `packages/pipeline/dashboard_port.py` lines 102, 115
 
@@ -84,7 +84,7 @@ Same issue as Bug 20 but for the dashboard port allocation lock.
 
 ---
 
-### Bug 22 — LOW: `_is_too_broad()` uses hardcoded Unix paths on Windows
+### Bug 22: LOW: `_is_too_broad()` uses hardcoded Unix paths on Windows
 
 **File:** `packages/pipeline/repo_lifecycle.py`
 
@@ -98,13 +98,13 @@ _BROAD = {
 }
 ```
 
-**Problem:** On Windows, paths like `/tmp` don't exist. The check works (these paths won't match Windows paths), but it's incomplete — doesn't block `C:\Users`, `C:\Windows`, `C:\Program Files`.
+**Problem:** On Windows, paths like `/tmp` don't exist. The check works (these paths won't match Windows paths), but it's incomplete, doesn't block `C:\Users`, `C:\Windows`, `C:\Program Files`.
 
 **Fix:** Add Windows broad paths: `C:\Users\{user}`, `C:\`, `C:\Windows`, `C:\Program Files`.
 
 ---
 
-### Bug 23 — MEDIUM: Daemon spawn on Linux doesn't daemonize properly
+### Bug 23: MEDIUM: Daemon spawn on Linux doesn't daemonize properly
 
 **File:** `packages/pipeline/daemon.py` line ~274
 
@@ -112,13 +112,13 @@ On macOS/Linux, the daemon is spawned with `subprocess.Popen(..., stdin=DEVNULL)
 - If the parent terminal closes, the daemon may receive SIGHUP
 - The daemon's process group is tied to the spawning shell
 
-On macOS this is mitigated by the LaunchAgent supervisor. On Linux there's no equivalent — the daemon could die when the user closes their terminal.
+On macOS this is mitigated by the LaunchAgent supervisor. On Linux there's no equivalent, the daemon could die when the user closes their terminal.
 
 **Fix:** Add `start_new_session=True` to the Popen call on Linux, or use `os.setsid` in `preexec_fn`.
 
 ---
 
-### Bug 24 — HIGH: No Linux systemd/service integration
+### Bug 24: HIGH: No Linux systemd/service integration
 
 **Problem:** On macOS, `ctx setup` registers a LaunchAgent for auto-start. On Windows, it registers a logon supervisor task. On Linux: **nothing**. The daemon doesn't auto-start after reboot, and there's no watchdog equivalent.
 
@@ -128,7 +128,7 @@ On macOS this is mitigated by the LaunchAgent supervisor. On Linux there's no eq
 
 ---
 
-### Bug 25 — MEDIUM: Windows path normalization inconsistency
+### Bug 25: MEDIUM: Windows path normalization inconsistency
 
 Multiple places compare paths using string comparison after `resolve()`. On Windows, paths can be `C:\Users\...` or `c:\users\...` (case-insensitive filesystem). `Path.resolve()` normalizes case on Windows, but `str(path)` comparisons elsewhere may not.
 
@@ -138,7 +138,7 @@ Multiple places compare paths using string comparison after `resolve()`. On Wind
 
 ---
 
-### Bug 26 — LOW: MCP Python interpreter path on Windows with spaces
+### Bug 26: LOW: MCP Python interpreter path on Windows with spaces
 
 **File:** `packages/pipeline/mcp_install.py`
 
@@ -148,7 +148,7 @@ The MCP json uses the Python interpreter path as the `command`. On Windows, path
 
 ---
 
-## Platform Matrix — What's Tested vs What's Not
+## Platform Matrix: What's Tested vs What's Not
 
 | Feature | macOS ARM64 | Win AMD/DML | Win NVIDIA/CUDA | Linux CUDA |
 |---------|:-----------:|:-----------:|:---------------:|:----------:|
@@ -167,11 +167,11 @@ The MCP json uses the Python interpreter path as the `command`. On Windows, path
 
 ## Priority Fixes for CUDA Production
 
-1. **Check CUDAExecutionProvider at daemon warm-up** (not just setup) — prevents silent CPU
-2. **Linux systemd service generation** in `ctx setup` — auto-start + watchdog
-3. **Linux daemon: `start_new_session=True`** — survives terminal close
-4. **Windows broad-path guard** — refuse `C:\Users`, `C:\`
-5. **Provider verification in FastEmbed model load** — loud failure vs silent CPU
+1. **Check CUDAExecutionProvider at daemon warm-up** (not just setup): prevents silent CPU
+2. **Linux systemd service generation** in `ctx setup`, auto-start + watchdog
+3. **Linux daemon: `start_new_session=True`**: survives terminal close
+4. **Windows broad-path guard**: refuse `C:\Users`, `C:\`
+5. **Provider verification in FastEmbed model load**: loud failure vs silent CPU
 
 ---
 

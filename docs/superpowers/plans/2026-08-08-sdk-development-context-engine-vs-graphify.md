@@ -436,7 +436,7 @@ Expected: PASS.
 - Generated: `out/experiments/sdk_mcp_dev_trial/<timestamp>/*-tests.log`
 
 **Interfaces:**
-- Consumes: completed Tasks 1–3 and `CURSOR_API_KEY`/`cursor_api_key`.
+- Consumes: completed Tasks 1-3 and `CURSOR_API_KEY`/`cursor_api_key`.
 - Produces: the final correctness and token comparison.
 
 - [ ] **Step 1: Run the real two-arm trial and wait for completion**

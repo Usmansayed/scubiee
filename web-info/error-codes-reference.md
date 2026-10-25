@@ -1,6 +1,6 @@
 # Error codes & messages reference
 
-JSON `error` fields, CLI exit codes, and MCP status fields — what they mean and what to do.
+JSON `error` fields, CLI exit codes, and MCP status fields, what they mean and what to do.
 
 **Version:** 0.3.14 · **Fix steps:** [complete-fix-guide.md](./complete-fix-guide.md)
 
@@ -10,9 +10,9 @@ JSON `error` fields, CLI exit codes, and MCP status fields — what they mean an
 
 | Code | Meaning | Typical cause |
 |------|---------|---------------|
-| `0` | Success | — |
+| `0` | Success | - |
 | `1` | Error | Check JSON `error` / stderr |
-| `2` | Safety pause | Confirm required — not a crash |
+| `2` | Safety pause | Confirm required, not a crash |
 
 **Exit 2 examples:**
 
@@ -111,12 +111,12 @@ Agent-facing **not managed** text:
 
 ## Doctor / install identity fields (0.3.13+)
 
-Not errors — interpret in `scubiee doctor .`:
+Not errors, interpret in `scubiee doctor .`:
 
 | Field | Good | Problem |
 |-------|------|---------|
 | `binaries_match` | `true` | Wrong scubiee binary invoked |
-| `multiple_installs` | `false` | Extra scubiee on PATH — pick one install |
+| `multiple_installs` | `false` | Extra scubiee on PATH, pick one install |
 | `expected_binary` | Matches uv Scripts path | Double `Scripts\Scripts` was bug in 0.3.13; fixed 0.3.14 |
 
 ---
@@ -129,7 +129,7 @@ Not errors — interpret in `scubiee doctor .`:
 | `state` | `active`, `paused`, `unmanaged`, … | Lifecycle |
 | `managed` | bool | MCP: safe to use Scubiee tools |
 | `ok` | bool | Daemon healthy |
-| `warming` | bool | Starting — retry tool, don't poll status |
+| `warming` | bool | Starting, retry tool, don't poll status |
 | `should_use_mcp` | bool | Agent guidance |
 | `next_action` | string | CLI command user should run |
 | `lifecycle_state` | string | From lifecycle guidance engine |

@@ -1,4 +1,4 @@
-# Map+heatmap MCP collect — seed-pick
+# Map+heatmap MCP collect: seed-pick
 
 **Agent:** [Map+heatmap](77b947a9-d901-4dbf-a8ba-dc4a85504028)  
 **Mode:** gate → map → pack_context → expand + Reads/Grep  

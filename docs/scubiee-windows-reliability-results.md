@@ -6,7 +6,7 @@ concurrent init), this run stress-tests the **same failure classes on Windows**
 to confirm the engine does not drop or crash here.
 
 **Platform:** Windows (win32), DirectML. **Version:** scubiee 0.3.143.
-**Verdict:** **RELIABLE — the engine never crashes and never drops.** Windows was
+**Verdict:** **RELIABLE, the engine never crashes and never drops.** Windows was
 not affected by the macOS SIGSEGV class.
 
 ---
@@ -26,7 +26,7 @@ concurrent initialization without the wild-pointer crash MLX exhibited.
 
 ## 2. Cold-restart reliability (mirror of the macOS SIGSEGV hunt)
 
-Harness: `scripts/perf/_win_restart_reliability.py` — loop `engine stop` →
+Harness: `scripts/perf/_win_restart_reliability.py`, loop `engine stop` →
 `engine start` → poll `/health` until `soft_search_ready`, per iteration detect
 crash (health never returns), never-warmed, and **new fatal lines** in
 `~/.scubiee/engine.log` (`Fatal Python error`, `Segmentation`, `0xC0000005`,
@@ -66,11 +66,11 @@ Harness: `scripts/perf/_win_midsession_stress.py`.
 | engine_alive_after | **true** |
 
 **No crashes, no dropped connections, no 5xx.** The 16 timeouts all occur in the
-**DirectML/ORT embedder prewarm window** (~first 5-15s) — the known GIL-contention
+**DirectML/ORT embedder prewarm window** (~first 5-15s): the known GIL-contention
 behavior already documented in `docs/archive/qa-bug-reports/scubiee-production-readiness-report.md`
 (the native ORT session build holds the GIL; concurrent `/v1/*` calls stall until
 it finishes, then recover). This is a *transient warm-window latency* condition,
-recoverable with client retry — **not** an engine drop or crash. The engine was
+recoverable with client retry, **not** an engine drop or crash. The engine was
 alive and `index_usable` after the burst.
 
 ### B. `index --force` x2 while polling `/health` every 0.5s
@@ -83,7 +83,7 @@ alive and `index_usable` after the burst.
 
 **2309 consecutive successful health checks, zero DOWN**, across two full forced
 reindexes. The blue/green staged promote keeps the engine serving throughout the
-rebuild on Windows — identical to the macOS result. This is the strongest
+rebuild on Windows, identical to the macOS result. This is the strongest
 reliability signal: the engine never drops even during a destructive full reindex.
 
 Post-stress engine health: `warm=true, index_usable=true, dense_ready=true,
@@ -103,8 +103,8 @@ chunks=8453`. `~/.scubiee/engine.log` has **no** `Fatal` / `Segmentation` /
 | Concurrent-during-warm | timeouts (transient) | timeouts (transient, 0 crashes) |
 
 **Windows is reliable: the engine does not crash and does not drop.** The one
-non-ideal behavior — some concurrent requests timing out during the first ~5-15s
-of embedder prewarm — is a transient latency condition (recoverable with retry),
+non-ideal behavior, some concurrent requests timing out during the first ~5-15s
+of embedder prewarm, is a transient latency condition (recoverable with retry),
 the same documented GIL characteristic, not an instability. No Windows-side fix is
 needed; the macOS serial-warm change correctly left the Windows parallel path
 untouched.
@@ -113,4 +113,4 @@ untouched.
 - Concurrent calls during the cold-start embedder-prewarm window can time out
   until the native ORT session finishes building. A client that retries (or waits
   for `dense_ready`) is unaffected. A full fix would move the embedder to a
-  subprocess (large change, deferred) — tracked in the production-readiness report.
+  subprocess (large change, deferred), tracked in the production-readiness report.

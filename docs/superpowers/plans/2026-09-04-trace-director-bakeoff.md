@@ -4,7 +4,7 @@
 
 **Goal:** BM25 + Graphify(+AST) propose numbered island → one warm `qwen3.5-0.8b-q4` call → TRACE PLAN → heatmap. Compare arms A/B/C for best hard-correct and &lt;5s/case.
 
-## Results (10 hard cases, warm GPU) — 2026-09-04
+## Results (10 hard cases, warm GPU): 2026-09-04
 
 | arm | hard | rec | prec | f1 | wall_s | &lt;5s |
 |-----|------|-----|------|-----|--------|------|
@@ -15,7 +15,7 @@
 
 **Verdict**
 - **Fastest LLM arm:** A (~5s). Body packs (B/C) blow the 5s budget via prompt eval.
-- **Best accuracy overall:** still **polytrace** — 0.8B one-shot KEEP/DROP does not beat structure yet.
+- **Best accuracy overall:** still **polytrace**, 0.8B one-shot KEEP/DROP does not beat structure yet.
 - 0.8B often keeps too many / wrong set; clipping helps precision but kills must-recall.
 - Next levers: use LLM only to **DROP hubs** on top of polytrace (not replace it); or train a tiny listwise head; or smaller packs (≤16 nodes) + forced short KEEP.
 

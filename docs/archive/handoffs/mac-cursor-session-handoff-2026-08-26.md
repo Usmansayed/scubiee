@@ -1,4 +1,4 @@
-# Mac Cursor handoff — Scubiee pre-production (2026-08-26)
+# Mac Cursor handoff: Scubiee pre-production (2026-08-26)
 
 **Audience:** Cursor agent (or human) continuing work **on macOS / Apple Silicon**.  
 **Repo:** `context-engine` (Scubiee).  
@@ -23,7 +23,7 @@ Pre-production focus (this week):
 - Defer **Mac / MLX** live verification to a Mac Cursor session (this doc)
 
 Published PyPI at last friend install: **0.2.82**.  
-Fixes below are **in the working tree** and intended for the next bump (**0.2.83**) — confirm version before Mac install.
+Fixes below are **in the working tree** and intended for the next bump (**0.2.83**), confirm version before Mac install.
 
 Related docs:
 
@@ -32,14 +32,14 @@ Related docs:
 
 ---
 
-## 2. Context — what already happened (Windows)
+## 2. Context: what already happened (Windows)
 
-### Friend laptop (UMAIR) — CPU-only Windows
+### Friend laptop (UMAIR): CPU-only Windows
 
 | Check | Result |
 |--------|--------|
 | Hardware | Windows 11, Intel i5-1235U (iGPU only) |
-| Profile | **`cpu`** (not DML) — correct |
+| Profile | **`cpu`** (not DML), correct |
 | Setup | Finished ~2.6 t/s, batch 16 |
 | Pain | `uv tool install --force` Access denied while supervisor held files; post-reinstall diagnose showed stale `accel.json` while `fastembed`/`onnxruntime` missing |
 
@@ -66,7 +66,7 @@ scubiee connect --cursor
 | P1 | Windows upgrade file locks | `do_upgrade` calls `stop_all_context_engine_processes` first |
 | P2 | Diagnose false confidence | Flags `stale_accel` when packages missing |
 
-**Do not break:** token safety — never poll `status()` every turn or while paused/warming.
+**Do not break:** token safety, never poll `status()` every turn or while paused/warming.
 
 ### Windows test suite
 
@@ -82,7 +82,7 @@ Notable env gotcha: corrupted `numpy-*.dist-info` (no `METADATA`) breaks `fastem
 ### Still open (not Mac-blocking)
 
 - Bump / publish **0.2.83** when Mac smoke is acceptable
-- Align older getting-started docs (init ≠ MCP) — P2
+- Align older getting-started docs (init ≠ MCP), P2
 - Auto-rewrite MCP on upgrade (currently loud “run connect again”)
 
 ---
@@ -114,11 +114,11 @@ Record: machine model, chip (M1/M2/…), scubiee version, setup profile.
 | 5 | In Cursor agent: Scubiee `status()` | `managed: true`; when healthy, `ok: true` |
 | 6 | `map` / `search` / `focus` once | Real results (not perpetual warming) |
 | 7 | `scubiee stop` then `scubiee resume` | Resume works; hint must **not** say `wake` |
-| 8 | Force wrong path: `scubiee setup --profile cpu` then `scubiee setup --repair` | Returns to **`mlx`** — Apple Silicon must not stay CPU-only |
+| 8 | Force wrong path: `scubiee setup --profile cpu` then `scubiee setup --repair` | Returns to **`mlx`**, Apple Silicon must not stay CPU-only |
 
 Special-4 (if you use Kiro / Copilot / Cline / Roo): run `scubiee connect --<tool>` **inside that project** (workspace-local MCP).
 
-### C. Pytest on Mac host — **use existing files; do not rewrite**
+### C. Pytest on Mac host: **use existing files; do not rewrite**
 
 These suites already exist in the repo. **Run them as-is.** Do **not** invent a new Mac test harness, duplicate cases, or rewrite `mac_production_test.py` / CoreML / MLX modules unless a real bug fix requires a small targeted edit.
 
@@ -169,9 +169,9 @@ Fill this table (also mirrored in `docs/macos-deferred-verification.md`):
 
 | Date | Machine | Chip | scubiee version | Setup profile | Init/connect | Pytest summary | Notes / failures |
 |------|---------|------|-----------------|---------------|--------------|----------------|------------------|
-| 2026-08-26 | Mac17,3 (macOS 26.5.2) | Apple M5 | **0.2.82** (`uv tool install --force --from .`) | **`mlx`** (batch 48, ~29 t/s); diagnose `acceleration.profile=mlx` | PASS: tiny repo `/tmp/scubiee-mac-smoke-*` init (1 chunk, MLX embed); `connect --cursor` wrote global MCP+rules; `status` via MCP API `managed=true ok=true`; map/focus/search hit `app.py`; stop then resume (no `scubiee wake`); after stop, `engine start` needed once (`resume` left `globally_paused` until start); `--profile cpu` did **not** stick (stayed mlx) then `--repair` mlx | **38 passed, 4 failed** | Failures (existing tests, not rewritten): `test_patched_coderank_graph_has_no_empty_rotary_remainders` (ONNX topological sort / Range cast); `test_resolve_runtime_mlx_overlay_does_not_rewrite_accel` (accel rewritten cpu→mlx); `test_simulated_platform_profile…[Linux-…-cpu]` and `…[Linux-AMD Radeon 7900]` assert cpu but got mlx on this host. Init logged TurboQuant matmul RuntimeWarnings on 1-chunk index. Stale Homebrew daemon (0.2.59) briefly held :8765 until cleaned; health then reported **0.2.82**. Cursor live MCP discovery was briefly broken after `stop` disabled mcp.json — fixed by `connect --cursor`. |
+| 2026-08-26 | Mac17,3 (macOS 26.5.2) | Apple M5 | **0.2.82** (`uv tool install --force --from .`) | **`mlx`** (batch 48, ~29 t/s); diagnose `acceleration.profile=mlx` | PASS: tiny repo `/tmp/scubiee-mac-smoke-*` init (1 chunk, MLX embed); `connect --cursor` wrote global MCP+rules; `status` via MCP API `managed=true ok=true`; map/focus/search hit `app.py`; stop then resume (no `scubiee wake`); after stop, `engine start` needed once (`resume` left `globally_paused` until start); `--profile cpu` did **not** stick (stayed mlx) then `--repair` mlx | **38 passed, 4 failed** | Failures (existing tests, not rewritten): `test_patched_coderank_graph_has_no_empty_rotary_remainders` (ONNX topological sort / Range cast); `test_resolve_runtime_mlx_overlay_does_not_rewrite_accel` (accel rewritten cpu→mlx); `test_simulated_platform_profile…[Linux-…-cpu]` and `…[Linux-AMD Radeon 7900]` assert cpu but got mlx on this host. Init logged TurboQuant matmul RuntimeWarnings on 1-chunk index. Stale Homebrew daemon (0.2.59) briefly held :8765 until cleaned; health then reported **0.2.82**. Cursor live MCP discovery was briefly broken after `stop` disabled mcp.json, fixed by `connect --cursor`. |
 
-Paste any failing pytest names + first assertion line. If setup picks `cpu` on Apple Silicon, that is a **P0** for Mac — capture `accel.json` + diagnose JSON.
+Paste any failing pytest names + first assertion line. If setup picks `cpu` on Apple Silicon, that is a **P0** for Mac, capture `accel.json` + diagnose JSON.
 
 ---
 
@@ -195,7 +195,7 @@ Paste any failing pytest names + first assertion line. If setup picks `cpu` on A
 Read docs/mac-cursor-session-handoff-2026-08-26.md and execute section 3
 (Mac product smokes + pytest). Run the EXISTING test files listed there
 (mac_production_test, test_coreml_mac, test_mlx_backend,
-test_cross_platform_profiles) — do NOT rewrite or replace them.
+test_cross_platform_profiles) - do NOT rewrite or replace them.
 Record results in the table in section 4.
 Do not bump/publish version unless I ask. Prefer Apple Silicon MLX path;
 fail loudly if setup stays on cpu.

@@ -1,7 +1,7 @@
-# Semantic Program Tracer — System Design
+# Semantic Program Tracer: System Design
 
 **Date:** 2026-09-05  
-**Status:** approved — implementing  
+**Status:** approved, implementing  
 **Sources:** `SCUBIEE_SEMANTIC_TRACER_RESEARCH.md`, plan `semantic_tracer_system_design`
 
 ## 1. Diagnosis

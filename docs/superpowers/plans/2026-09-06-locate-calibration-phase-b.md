@@ -1,4 +1,4 @@
-# Locate calibration — Phase B (post seed-symbol fix)
+# Locate calibration: Phase B (post seed-symbol fix)
 
 **Status:** draft v3 · **not a ship decision**  
 **Tax:** 2500/round · **Map source:** cli_map=26 lexical_fallback=2  
@@ -30,10 +30,10 @@ Taxonomy spot-check: `docs/superpowers/plans/2026-09-07-locate-taxonomy-spotchec
 
 ## Draft findings (P1 unlocked)
 
-1. **Seed fix works** — `seed_ok` 10/12; map symbols no longer empty by default.
-2. **P1 conditional pack (seed_ok alone)** — on seed_ok cases, pack was cheaper only **1/10**; mean Δtotal ≈ **+5744**. File recall tied (`pack_better_file=0`, `pack_worse_file=0`). Pack still lifts `must_sym` (0.45 vs 0.28). **Do not Prefer-always-pack on seed_ok from cost alone** — pack earns symbol density, not cheaper proxy.
-3. **Needles** — Grep still wins; over-use 75%.
-4. **Index fragility** — force `scubiee index --force` failed (DML capability gate); sync-now required explicit full index (>10k chunk delta). Calibration still usable via cli_map once publication recovers.
+1. **Seed fix works**: `seed_ok` 10/12; map symbols no longer empty by default.
+2. **P1 conditional pack (seed_ok alone)**: on seed_ok cases, pack was cheaper only **1/10**; mean Δtotal ≈ **+5744**. File recall tied (`pack_better_file=0`, `pack_worse_file=0`). Pack still lifts `must_sym` (0.45 vs 0.28). **Do not Prefer-always-pack on seed_ok from cost alone**, pack earns symbol density, not cheaper proxy.
+3. **Needles**: Grep still wins; over-use 75%.
+4. **Index fragility**: force `scubiee index --force` failed (DML capability gate); sync-now required explicit full index (>10k chunk delta). Calibration still usable via cli_map once publication recovers.
 
 ## Next
 

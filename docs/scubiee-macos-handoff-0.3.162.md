@@ -1,4 +1,4 @@
-# Scubiee macOS Handoff — v0.3.162 (what was tested and fixed, 0.3.155 → 0.3.162)
+# Scubiee macOS Handoff: v0.3.162 (what was tested and fixed, 0.3.155 → 0.3.162)
 
 **Machine:** macOS 26.5.2 (25F84), Apple M5, MLX (Metal) backend, Python 3.11.16,
 uv 0.12.5, installed with `uv tool install scubiee` (tool venv under
@@ -8,9 +8,9 @@ uv 0.12.5, installed with `uv tool install scubiee` (tool venv under
 enrolled, engine running on `127.0.0.1:8765`, Cursor attached through
 `scubiee-mcp-bridge`.
 
-**Earlier detail:** bugs M1–M23 (root causes, commits, live evidence) and the
+**Earlier detail:** bugs M1, M23 (root causes, commits, live evidence) and the
 0.3.159 battery are in `docs/scubiee-macos-findings-0.3.155.md`. This handoff
-summarizes them and adds M24–M27.
+summarizes them and adds M24, M27.
 
 ---
 
@@ -23,7 +23,7 @@ reinstalled from PyPI and smoke-tested.
 |---|---|---|
 | 0.3.157 | 76a7d07, 17f9d3a | `doctor` no longer fails on finished (published) journal entries |
 | 0.3.158 | e919f90, 88f73fd | `setup` model download bar no longer sits at 0% under hf_xet (M14) |
-| 0.3.159 | 646c513 | Watchdog single instance, `remove`, `doctor`, CLI messages, download bar at 100% (M15–M23) |
+| 0.3.159 | 646c513 | Watchdog single instance, `remove`, `doctor`, CLI messages, download bar at 100% (M15, M23) |
 | 0.3.160 | df68210 | `wipe`/`disconnect` remove legacy `context-engine` entries from every tool's MCP config (M24) |
 | 0.3.161 | 9023c43 | `wipe` cleans stale Scubiee entries under both `mcpServers` and `servers` keys (M25) |
 | 0.3.162 | 7f59507 | A crashed or stopped engine is restarted by the next `map find` call (M27) |
@@ -78,8 +78,8 @@ no errors, 247.6 s total.
 | Measurement | Time |
 |---|---|
 | Engine warm on Cursor connect (MLX ready) | 4.1 s |
-| Engine `/v1/search` direct | 65–107 ms |
-| `scubiee map --config find` CLI (includes Python start-up) | 250–650 ms; 340–380 ms on 0.3.162; first run after reinstall 2.95 s (bytecode compile) |
+| Engine `/v1/search` direct | 65-107 ms |
+| `scubiee map --config find` CLI (includes Python start-up) | 250-650 ms; 340-380 ms on 0.3.162; first run after reinstall 2.95 s (bytecode compile) |
 | MCP `map` in Cursor | correct, high confidence; about 3 s in the agent UI, mostly host tool-call overhead |
 
 ### Engine-down recovery, live in Cursor
@@ -92,7 +92,7 @@ no errors, 247.6 s total.
 ### Also exercised
 
 - Fresh-machine sweep on 0.3.158: wipe, install, setup, init, every CLI command.
-  This found M15–M21.
+  This found M15, M21.
 - `wipe --all` from a dirty machine for M24/M25: exit 0, audit clean.
 - Reinstall from PyPI after each release, then `--version` and `map`.
 - Unit tests: `tests/test_engine_down_recovery.py` (4) and
@@ -108,7 +108,7 @@ no errors, 247.6 s total.
   IDE windows sharing one engine; two `find` calls hitting a dead engine at the
   same moment (guarded by `_RECOVER_LOCK`).
 - **Not covered:** large repos, low memory, first-time `setup` without network.
-  Windows and Linux were not re-validated for 0.3.156–0.3.162. The M27 changes
+  Windows and Linux were not re-validated for 0.3.156-0.3.162. The M27 changes
   touch shared code (`map_v3_helpers`, `lifecycle_runtime`, `watchdog`,
   `daemon`); `pid_is_zombie` is a no-op on Windows.
 - **Environment-dependent test failures:** `test_mcp_restore` and

@@ -1,4 +1,4 @@
-# Locate calibration — Phase E (Prefer/Forbid GATE + MCP ship)
+# Locate calibration: Phase E (Prefer/Forbid GATE + MCP ship)
 
 **Date:** 2026-09-07  
 **Status:** **shipped + live-verified** (GATE rewrite + MCP reload; C09 needle over_use 0)
@@ -19,7 +19,7 @@
 - Soft/structural → **Prefer** map→pack (lean)→expand if thin  
 - Literals / names / known paths → **Prefer** host Grep/Glob/Read (**Forbid-first** map/pack)  
 - Forbid empty/`_`/test seeds  
-- Native OK if Scubiee down — **no deadlock** / no BAN-native-forever  
+- Native OK if Scubiee down, **no deadlock** / no BAN-native-forever  
 
 ## Live C09 re-check (post-rewrite + MCP reload)
 

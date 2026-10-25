@@ -1,20 +1,20 @@
-# Kiro auto — real development A/B (with vs without Scubiee)
+# Kiro auto: real development A/B (with vs without Scubiee)
 
 **Date:** 2026-09-10T04:15:17.641504+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
-**Task:** `complex_retrieval_permissions` — complex MCP permissions/allowlist multi-hop retrieval → single reasoning context file
+**Task:** `complex_retrieval_permissions`, complex MCP permissions/allowlist multi-hop retrieval → single reasoning context file
 
 ## Task (outcome-focused; no path spoilers)
 
 ```
-# Retrieval challenge — assemble a reasoning context pack (NO code changes)
+# Retrieval challenge - assemble a reasoning context pack (NO code changes)
 
 ## Mission
-You must retrieve enough multi-hop codebase context to answer a hard product question later —
+You must retrieve enough multi-hop codebase context to answer a hard product question later -
 but you will NOT implement anything. Your ONLY deliverable is one markdown file that stores
 all context needed for reasoning.
 
-## Hard question (do not answer in chat — put evidence in the file)
+## Hard question (do not answer in chat - put evidence in the file)
 Trace how Scubiee **grants host MCP tool permissions / allowlists** end-to-end:
 1. Where the locate tool name list for a host profile is defined (what tools get auto-approved).
 2. How an mcpServers.scubiee entry is enriched with autoApprove / alwaysAllow (or equivalent).
@@ -43,7 +43,7 @@ That file MUST contain:
 - Do NOT invent paths/symbols you did not find.
 - Do NOT read or copy from any sibling A/B workspace (no `../with`, `../without`, other
   `.ab_workspaces/**` trees, or another arm's `out/ab_retrieval_context.md`).
-- Do NOT copy another arm's artifact — retrieve independently in THIS workspace only.
+- Do NOT copy another arm's artifact - retrieve independently in THIS workspace only.
 - Work ONLY inside THIS workspace root.
 
 ## Success
@@ -63,7 +63,7 @@ That file MUST contain:
 - Preflight: ask Kiro to prove MCP tools + GATE rules + permissions; `--require-mcp-startup`; abort A/B on failure
 - Rules probe: ask Kiro to quote GATE from resources into `out/ab_rules_seen.md`
 - Readiness: second ask right before with-arm job (call `gate`); abort if MCP not callable
-- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}` — peeking the sibling arm is a FAIL
+- Arms are isolated snapshots under `.ab_workspaces/.../{with,without}`, peeking the sibling arm is a FAIL
 
 ## Results
 

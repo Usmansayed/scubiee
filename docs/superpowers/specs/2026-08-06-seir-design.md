@@ -1,4 +1,4 @@
-# SEIR — Embedding-Oriented Intermediate Representation (design)
+# SEIR: Embedding-Oriented Intermediate Representation (design)
 
 **Status:** approved design; awaiting implementation plan  
 **Date:** 2026-08-06  
@@ -7,7 +7,7 @@
 
 ## Goal
 
-Discover whether a deterministic post-AST text representation embeds better for code retrieval than the text Context Engine already embeds today — under a hard density constraint (fewer tokens preferred when quality holds).
+Discover whether a deterministic post-AST text representation embeds better for code retrieval than the text Context Engine already embeds today, under a hard density constraint (fewer tokens preferred when quality holds).
 
 Tree-sitter / Graphify still produce the AST. SEIR starts **after** the AST exists. We do not invent a new parser.
 
@@ -16,7 +16,7 @@ Tree-sitter / Graphify still produce the AST. SEIR starts **after** the AST exis
 - Use the **whole CE project setup** (parse helpers, CodeRank / accel embedder, FAISS, existing gold).
 - Do **not** change production defaults, MCP, daemon, or shipping `CTX_COMPRESS` behavior.
 - Plug-in style **B**: thin bench script + small transform module; may *import* pipeline code; must not replace the production path.
-- No LLMs / summarization models — rule-based extraction only.
+- No LLMs / summarization models, rule-based extraction only.
 - Every extra token must earn its place (max semantic density, not max information).
 
 ## Non-goals (v1)
@@ -37,11 +37,11 @@ frontend-mcp sources
         ▼
  shared function / class spans (same for every arm)
         │
-        ├─► baseline     — CE embed text today (enriched / current compress path as used for index)
-        ├─► ast_tree     — compact AST serialization
-        ├─► rels         — relationship card (calls, called-by, reads, writes, returns)
-        ├─► semantic     — rule labels (purpose, IO, boundary, deps)
-        └─► importance   — high-score symbols/calls only
+        ├─► baseline     - CE embed text today (enriched / current compress path as used for index)
+        ├─► ast_tree     - compact AST serialization
+        ├─► rels         - relationship card (calls, called-by, reads, writes, returns)
+        ├─► semantic     - rule labels (purpose, IO, boundary, deps)
+        └─► importance   - high-score symbols/calls only
         │
         ▼
  CodeRank embed (accel) → temp FAISS collection per arm
@@ -98,9 +98,9 @@ If graph edges are missing, `rels` degrades to AST-local calls/reads/writes only
 
 All arms truncated to `max_chars` with deterministic truncation (prefer keeping head identity lines).
 
-**baseline** — whatever CE embeds for that span today (enriched + current default compress if that is how the corpus was indexed; document exact recipe in the JSON report `config` block).
+**baseline**: whatever CE embeds for that span today (enriched + current default compress if that is how the corpus was indexed; document exact recipe in the JSON report `config` block).
 
-**ast_tree** — readable tree, no full token dump:
+**ast_tree**: readable tree, no full token dump:
 
 ```
 FunctionDeclaration login
@@ -130,7 +130,7 @@ Boundary: Authentication
 Deps: bcrypt SessionStore
 ```
 
-**importance** — ranked lines only, e.g. `bcrypt.compare` / JWT helpers kept; `logger.*` / metrics dropped.
+**importance**: ranked lines only, e.g. `bcrypt.compare` / JWT helpers kept; `logger.*` / metrics dropped.
 
 ## Metrics
 
@@ -157,7 +157,7 @@ Success (experiment): any SEIR arm beats `baseline` on a quality metric **or** m
 
 ## Paper / idea notes (for later arms)
 
-- CoCoAST: hierarchical AST split — denser than flat trees  
+- CoCoAST: hierarchical AST split, denser than flat trees  
 - Code vs Serialized AST: raw AST often ≠ win for sequence models → density + semantics matter  
 - FAIR / MIREncoder: flow / call graphs as second modality → motivates `rels`  
 - Possible v2 arms (out of scope now): SBT/NIT serialization, DFG-lite lines, path-context bags (code2vec-style) with strict caps  

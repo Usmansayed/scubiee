@@ -1,7 +1,7 @@
 # Research problem: Vector DB does not add product value to pack/locate
 
 **Date:** 2026-09-06  
-**Status:** open — research brief (not a ship decision)  
+**Status:** open, research brief (not a ship decision)  
 **Owner context:** Scubiee / context-engine locate ladder (`map` → `pack` → `expand`)  
 **Production pack default today:** `composite_v1` (structural graph tracer)
 
@@ -9,7 +9,7 @@
 
 ## 1. One-sentence problem
 
-**We already pay for a production CodeRank + FAISS vector index (thousands of chunks, MCP map/search), but our pack/trace path cannot use that vector space to recover missing must-symbols or beat a pure structural tracer on recall — embeds mostly demote noise inside an island the graph already proposed.**
+**We already pay for a production CodeRank + FAISS vector index (thousands of chunks, MCP map/search), but our pack/trace path cannot use that vector space to recover missing must-symbols or beat a pure structural tracer on recall, embeds mostly demote noise inside an island the graph already proposed.**
 
 If structure misses a hop, semantics usually miss it too. If structure already sits on the right file, semantics cannot show recall wins. So “composite + semantic” looks equal to “composite alone” on the metrics that matter for shipping.
 
@@ -43,7 +43,7 @@ We effectively have **two embedding worlds**:
 ### B. Trace-lab `EmbedField` (research pack arms)
 
 - Store: repo `.embed_cache/coderank.jsonl`  
-- Unit: **symbol-level AST nodes** — doc ≈ `file\nsymbol\nbody[:1200]`  
+- Unit: **symbol-level AST nodes**, doc ≈ `file\nsymbol\nbody[:1200]`  
 - Built by `compile_bundle(..., with_embed_power=True)` → `EmbedField` → affinities for fuse/hybrid/poly_embed  
 - **Not** wired to product FAISS collections  
 
@@ -53,7 +53,7 @@ So even when research arms use “real CodeRank,” they are **not** “query th
 
 - Venv had CPU `onnxruntime` shadowing `onnxruntime-directml` → DML planned, CPU executed, ~1 chunk/s  
 - `EmbedField` hardcoded `batch_size=8` (now uses accel default)  
-- A blind multipack was wrongly scored on **hash** embeds after aborting a slow run — that result is **invalid** for semantic claims  
+- A blind multipack was wrongly scored on **hash** embeds after aborting a slow run, that result is **invalid** for semantic claims  
 
 After fix: DML batch=16, ~12+ chunk/s, full symbol field ~5 min (3770 new + 1280 cached). Product index was already fine.
 
@@ -89,15 +89,15 @@ Artifacts live under `docs/superpowers/plans/` unless noted. Scripts under `scri
 | Semantic tracer fuse hard/prod | `2026-09-06-semantic-tracer-fuse-*.md` | Fuse recipe + teleport ablation | Fuse competitive; **teleport off** for default |
 | Semantic OOD v2 | `2026-09-06-semantic-ood-v2-*.md` | OOD boards | `poly_embed` sometimes strong; not universal |
 | Hybrid combo cross-board | `2026-09-06-hybrid-combo-crossboard.md` | `hyb_fuse_demote_noise_plus` etc. | Noise demote helps precision on some boards |
-| Pre-switch consistency v5–v7 | `2026-09-06-pre-switch-consistency-v5-v7.md` | Don’t flip MCP until consistent | Composite remains production |
+| Pre-switch consistency v5, v7 | `2026-09-06-pre-switch-consistency-v5-v7.md` | Don’t flip MCP until consistent | Composite remains production |
 | Rich context v8 | `2026-09-06-rich-context-v8.md` | Richer queries | Mixed |
 | Distributed v9 | `2026-09-06-distributed-v9.md` | Distributed cases | Mixed |
 | Realistic agent input v10 | `2026-09-06-realistic-v10.md` | Paragraph + pasted seed chunks + multi-seed merge | `poly_embed` best **acc** on that board; fuse **tied** composite on must for several failures; embeds help when island incomplete **only if** filter path still keeps musts |
-| R&D synthesis Cycles 1–3 | `2026-09-06-semantic-tracer-rnd-synthesis.md` | Mechanism keep/drop table | **Pure vector_only = Acc 0 on hard**; loose hybrid_teleport must↑ / prec collapse; strict teleport not default |
+| R&D synthesis Cycles 1-3 | `2026-09-06-semantic-tracer-rnd-synthesis.md` | Mechanism keep/drop table | **Pure vector_only = Acc 0 on hard**; loose hybrid_teleport must↑ / prec collapse; strict teleport not default |
 
 **Synthesis takeaway (already written):** graph membership is required; pure vector retrieval is not a pack replacement; teleport is dangerous; fuse is “structure + soft semantic tint,” not “FAISS pack.”
 
-### 5.2 Blind protocol — composite-only pack (t01–t20)
+### 5.2 Blind protocol: composite-only pack (t01, t20)
 
 | Item | Path |
 |------|------|
@@ -120,17 +120,17 @@ Artifacts live under `docs/superpowers/plans/` unless noted. Scripts under `scri
 
 **Product signal:** even without comparing arms, **pack under-delivers symbols** relative to map. Vectors are not fixing that in production pack today.
 
-### 5.3 Blind multipack — 4 arms, NEW queries (u01–u20)
+### 5.3 Blind multipack: 4 arms, NEW queries (u01, u20)
 
 | Item | Path |
 |------|------|
-| Queries (different from t01–t20) | `2026-09-06-blind-multipack-20-queries.json` |
+| Queries (different from t01, t20) | `2026-09-06-blind-multipack-20-queries.json` |
 | Maps | `2026-09-06-blind-multipack-20-maps.json` |
 | Pack runner | `scripts/blind_multipack_pack_only.py` |
 | GT + phase 2 | `2026-09-06-blind-multipack-20-ground-truth.json`, `…-phase2.md` |
 | Arms | `composite_v1`, `semantic_tracer_fuse`, `hyb_fuse_demote_noise_plus`, `poly_embed` |
 
-**Invalid run:** hash-embed multipack (aborted CodeRank) — do not cite for semantic value.
+**Invalid run:** hash-embed multipack (aborted CodeRank), do not cite for semantic value.
 
 **Valid run:** real CodeRank DML, `require_real_embeds=True`, ~5050 nodes, embed ~5.2 min.
 
@@ -159,18 +159,18 @@ Shared map: must-file **0.95**, seed in must-files **1.00**.
 | `scripts/semantic_stack_smoke.py` | SMOKE PASS (real DML) |
 | Focused pytest (embed/semantic/locate/lean) | 87 passed after lean `expand` text fix |
 
-**Side bug found:** lean MCP treated session/nav `expand` (handle → body) like locate `expand_context` and stripped `text` — fixed in `mcp_response_lean.py`. Orthogonal to vector-value problem but shows pack/nav response shaping can hide bodies.
+**Side bug found:** lean MCP treated session/nav `expand` (handle → body) like locate `expand_context` and stripped `text`, fixed in `mcp_response_lean.py`. Orthogonal to vector-value problem but shows pack/nav response shaping can hide bodies.
 
 ---
 
 ## 6. Concrete failure modes (vector “adds no value”)
 
-1. **Proposal gap** — Missing must is off the structural frontier → no arm with teleport-off can hit it; miss lists match composite.  
-2. **Index gap** — Product FAISS neighbors never become pack seeds/nodes; map cards don’t automatically inject into pack membership.  
-3. **Corpus gap** — Symbol `EmbedField` ≠ chunk FAISS; affinity scores don’t mean “same as MCP search.”  
-4. **Metric gap** — Bakeoffs that score must-hit on seed-easy boards reward structure; embed-only precision wins look like “ties.”  
-5. **Teleport trap** — When we *did* allow embed proposal (strict/loose teleport), fixture evidence was precision collapse or F1 drop — so we disabled the only path that could raise recall via vectors.  
-6. **Thin pack trap** — Aggressive keep/drop (`poly_embed`) looks “semantic” but returns almost no bodies; agents still fail the task.
+1. **Proposal gap**: Missing must is off the structural frontier → no arm with teleport-off can hit it; miss lists match composite.  
+2. **Index gap**: Product FAISS neighbors never become pack seeds/nodes; map cards don’t automatically inject into pack membership.  
+3. **Corpus gap**: Symbol `EmbedField` ≠ chunk FAISS; affinity scores don’t mean “same as MCP search.”  
+4. **Metric gap**: Bakeoffs that score must-hit on seed-easy boards reward structure; embed-only precision wins look like “ties.”  
+5. **Teleport trap**: When we *did* allow embed proposal (strict/loose teleport), fixture evidence was precision collapse or F1 drop, so we disabled the only path that could raise recall via vectors.  
+6. **Thin pack trap**: Aggressive keep/drop (`poly_embed`) looks “semantic” but returns almost no bodies; agents still fail the task.
 
 ---
 
@@ -178,28 +178,28 @@ Shared map: must-file **0.95**, seed in must-files **1.00**.
 
 These are **hypotheses to test**, not decided designs:
 
-1. **Chunk→symbol bridge** — From FAISS top-k chunks, resolve to AST node ids and **union** into pack membership (proposal), then rank with composite/fuse.  
-2. **Map→pack handoff** — Treat soft-map cards (already vector-backed) as **multi-seed** or forced membership, not just one `suggested_seed`.  
-3. **Asymmetric proposal, structural verify** — Vectors propose; graph must confirm path/edge (avoid teleport precision collapse).  
-4. **Same embed space** — Pack affinities read **product** vectors / same doc template as indexer, not a second symbol cache.  
-5. **Hard boards for recall** — Evaluate only cases where composite **misses** a must-symbol; measure Δ must-recall of vector proposal. Seed-perfect boards will always look like ties.  
-6. **Agent metric** — Not only must-hit: edit success / expand hops / tokens to first correct body.
+1. **Chunk→symbol bridge**: From FAISS top-k chunks, resolve to AST node ids and **union** into pack membership (proposal), then rank with composite/fuse.  
+2. **Map→pack handoff**: Treat soft-map cards (already vector-backed) as **multi-seed** or forced membership, not just one `suggested_seed`.  
+3. **Asymmetric proposal, structural verify**: Vectors propose; graph must confirm path/edge (avoid teleport precision collapse).  
+4. **Same embed space**: Pack affinities read **product** vectors / same doc template as indexer, not a second symbol cache.  
+5. **Hard boards for recall**: Evaluate only cases where composite **misses** a must-symbol; measure Δ must-recall of vector proposal. Seed-perfect boards will always look like ties.  
+6. **Agent metric**: Not only must-hit: edit success / expand hops / tokens to first correct body.
 
 ---
 
 ## 8. Suggested research questions
 
-1. On the u01–u20 miss set, can FAISS neighbors from the **product** collection surface the missing symbols within top-20 chunks?  
+1. On the u01, u20 miss set, can FAISS neighbors from the **product** collection surface the missing symbols within top-20 chunks?  
 2. If yes, what join (chunk → file → symbol) recovers them without heating logger/analytics?  
 3. Does multi-seed from map top-5 beat single seed more than any embed filter arm?  
 4. Is there a teleport policy that recovers musts with precision ≥ composite on a held-out OOD board?  
-5. Should pack stay structural-only while vectors stay map-only — and we invest in map→pack seed quality instead?
+5. Should pack stay structural-only while vectors stay map-only, and we invest in map→pack seed quality instead?
 
 ---
 
 ## 9. Current stance (for researchers)
 
-- **Do not** claim “semantic pack = composite + vector search power” with current code — it is **composite + affinity filter**.  
+- **Do not** claim “semantic pack = composite + vector search power” with current code, it is **composite + affinity filter**.  
 - **Do** treat product FAISS as proven for **map/search**, unproven for **pack membership**.  
 - **Ship default remains `composite_v1`** until a vector **proposal** path beats composite on **must-recall** without precision collapse on a blind, seed-hard board.  
 - Blind multipack with real DML is the clearest live-repo evidence of the recall tie; fixture bakeoffs show occasional precision/acc wins that did not transfer to a production flip.
@@ -222,7 +222,7 @@ These are **hypotheses to test**, not decided designs:
 
 ---
 
-## 11. Appendix — example identical misses (real-embed multipack)
+## 11. Appendix: example identical misses (real-embed multipack)
 
 Illustrative: composite and fuse fail the **same** symbols; fuse only lowers heat.
 

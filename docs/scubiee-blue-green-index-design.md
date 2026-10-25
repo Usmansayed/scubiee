@@ -26,7 +26,7 @@ built, then switch atomically.*
 
 ## Two candidate designs
 
-### Option A — Full blue/green generation directories (the "textbook" answer)
+### Option A: Full blue/green generation directories (the "textbook" answer)
 Build into `store.base/gen-<epoch>/`, then atomically promote by repointing an `active` pointer
 (a `current.txt` / directory junction) that both `PipelineStore.base` resolution and `load_engine`
 consult.
@@ -38,7 +38,7 @@ consult.
   privilege handling. High risk against a repo with ~uncommitted changes and a live install. Not
   safe to land quickly.
 
-### Option B — Decouple the forced reindex from the serving engine (RECOMMENDED, lower risk)
+### Option B: Decouple the forced reindex from the serving engine (RECOMMENDED, lower risk)
 Keep the single fixed `store.base`, but fix the two real defects that make `index --force`
 dangerous, using primitives that already exist:
 
@@ -55,16 +55,16 @@ dangerous, using primitives that already exist:
    `cmd_index` calls `publish_engine()` (same-process) or `ensure_daemon(root)` (CLI) after a
    successful index, so the engine reloads the freshly promoted generation instead of relying on
    the demand-gated / crash-loop-paused watchdog. The engine's `publish_engine` already keeps the
-   previous binder if the new load is empty — so a bad rebuild can't blank search.
+   previous binder if the new load is empty, so a bad rebuild can't blank search.
 
 3. **During the rebuild, keep serving.** Because we no longer overwrite in place, the live binder
    keeps answering from the old files until promote + reload. That is the "serve stale while
-   rebuilding, switch atomically" behavior from the research — achieved without directory swap.
+   rebuilding, switch atomically" behavior from the research, achieved without directory swap.
 
 - Pros: reuses `atomic_write_text` + manifest; no `store.base` indirection; no junction/privilege
   issues; small, testable surface; directly removes the crash cause and the silent-down.
 - Cons: promote is per-file atomic (not a single-rename of a whole dir), so there's a brief
-  multi-file window — but it's bounded by `store_write_lock` + the manifest invalidate/publish
+  multi-file window, but it's bounded by `store_write_lock` + the manifest invalidate/publish
   fence, which readers already honor (`index_is_usable`/`validate_manifest`). The FAISS swap is the
   fiddliest part.
 
@@ -75,7 +75,7 @@ up, serves the old index during rebuild, switches cleanly) at a fraction of Opti
 builds on primitives (`atomic_write_text`, `publication_manifest`, `store_write_lock`,
 `publish_engine`, `ensure_daemon`) that already exist and are already tested.
 
-### Phased delivery — ALL SHIPPED (0.3.143)
+### Phased delivery: ALL SHIPPED (0.3.143)
 - **B1 ✅ `cmd_index` → `ensure_daemon` handoff.** After a successful index, ensure a serving engine
   (direct owner) + republish. Fixes the "engine left DOWN" symptom of BUG-4. Shipped in the first
   0.3.143 commit.

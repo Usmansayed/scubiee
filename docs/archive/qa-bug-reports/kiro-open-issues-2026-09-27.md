@@ -1,4 +1,4 @@
-# Scubiee open issues — handoff to Kiro (2026-09-27)
+# Scubiee open issues: handoff to Kiro (2026-09-27)
 
 Every issue below is **confirmed still open**: seen live, or proven by the code, with no fix
 in the tree. Scubiee is not beta-ready until these are closed.
@@ -96,18 +96,18 @@ Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Application
 ## 3. Low-RAM guard stalls saves for up to 120s; engine commits ~4GB
 
 **Seen live.** `engine.log` filled with
-`[resources] embed waiting pressure=critical almost no free RAM — pause to avoid OOM`
+`[resources] embed waiting pressure=critical almost no free RAM - pause to avoid OOM`
 while saves did not become searchable. Measured during one probe round on this 15.7GB
 machine (Cursor, Kiro and Chrome open):
 
-- system available RAM: min **171MB** (often 2.5–3.2GB)
-- engine RSS 0.9–1.34GB; engine private (committed) bytes **3.56–3.98GB** for 7.5k chunks
+- system available RAM: min **171MB** (often 2.5-3.2GB)
+- engine RSS 0.9-1.34GB; engine private (committed) bytes **3.56-3.98GB** for 7.5k chunks
 
 **Code.** `packages/pipeline/resources.py`: `classify()` returns `critical` when
 available RAM < `min_free_ram_mb`. Then `budget()` sets `allow=False` and
 `wait_for_capacity()` blocks up to 120s. The threshold defaults disagree: 256 in
 `resources.py` (`CTX_RM_MIN_FREE_RAM_MB`) vs 512 in `packages/pipeline/settings.py`.
-A hot save embeds 1–45 chunks, a few MB at most.
+A hot save embeds 1-45 chunks, a few MB at most.
 
 **Build.** Small hot-lane embeds (e.g. ≤64 chunks) wait at most ~1s on the guard; bulk
 indexing keeps the current behaviour. Make the defaults consistent. Find what the ~4GB
@@ -115,13 +115,13 @@ commit is: the model, the ORT arena, the vector matrix, or the per-save `np.vsta
 `engine._patch_chunk_delta`. Reduce it.
 
 **Research.** ONNX Runtime memory settings (`enable_cpu_mem_arena`,
-`enable_mem_pattern` — off for DirectML, arena extend strategy); FastEmbed session
+`enable_mem_pattern`: off for DirectML, arena extend strategy); FastEmbed session
 options; `psutil.virtual_memory().available` semantics on Windows.
 
 **Pass.** Monitor running, normal apps open, 3 rounds of `disk_save_probe.py`: zero
 `embed waiting pressure=critical` lines for hot saves. Report engine private bytes before and after.
 
-## 4. Save → searchable is 3–8s (SLA 5s; target ≤3s for small files)
+## 4. Save → searchable is 3-8s (SLA 5s; target ≤3s for small files)
 
 **Seen live** (one round of `disk_save_probe.py`, plain disk writes, no `/v1/dirty`):
 
@@ -140,17 +140,17 @@ Stage lines from `engine.log` (`[keeper] hot sync ...`):
 | new small file | 1112 | 319 | 490 | 1789 | 1902 | ~3.7s |
 | big file edit (44 chunks) | 3174 | 2373 | 503 | 106 | 4150 | 7859 |
 | new file in new folder | 937 | 387 | 644 | 87 | 4102 | 5352 |
-| delete | 460 | – | 736 | 122 | 1889 | 3003 |
+| delete | 460 | - | 736 | 122 | 1889 | 3003 |
 | revert big file | 3964 | 3 | 658 | 177 | 2385 | 7067 |
 
 **Chase.**
-- `debounce_ms` should be ~250ms plus up to 1s of poll interval. 3–4s means the poll or
+- `debounce_ms` should be ~250ms plus up to 1s of poll interval. 3-4s means the poll or
   keeper was busy; `[keeper] deferred vector save` reached 3684ms. Make sure it cannot
   delay the next save.
 - `sync_ms` exceeds the sum of its stages (new-folder case: ~1.5s of stages, 4.1s total).
   Add timers until the stages add up. Suspects: RAM-guard wait (issue 3), GIL contention
   with concurrent `/v1/search`, file I/O.
-- `reconcile_ms` 0.5–0.7s on every save and `invalidate_ms` 1.8s on the first. Find out whether
+- `reconcile_ms` 0.5-0.7s on every save and `invalidate_ms` 1.8s on the first. Find out whether
   a hot save needs them synchronously.
 
 **Pass.** 3 rounds of `disk_save_probe.py` (21 samples): all ≤5s, small-file steps
@@ -170,10 +170,10 @@ records' `enriched` text (no embedding), guarded by a version field. See
 **Pass.** Unit test. Live: restart the engine on an existing store, append one function
 to a large copy of a real module. The `[embed] N/N new` line must show ≤3 chunks.
 
-## 6. Graph catch-up takes 8–15s and runs on the save keeper
+## 6. Graph catch-up takes 8-15s and runs on the save keeper
 
 **Seen live.** After each save the file is re-synced for the graph
-(`reason=graph_catchup`, 30s delay, 20s quiet window): `[sync] no chunk delta files=1 ... ms=8060–15599`.
+(`reason=graph_catchup`, 30s delay, 20s quiet window): `[sync] no chunk delta files=1 ... ms=8060-15599`.
 Most of it is `patch_and_save_graph` → `build(dedup=True)`, a whole-graph rebuild (see the
 comment in `incremental.py` ~line 926: ~6.7s for 15.9k nodes). The keeper runs one batch at
 a time, so a save that lands while a catch-up runs waits behind it.

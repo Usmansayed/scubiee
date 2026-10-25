@@ -1,6 +1,6 @@
 # Context Agent (Qwen3-1.7B + Context Engine tools)
 
-Local **retrieval orchestrator** — not a coder. Uses llama.cpp (Vulkan) + CE/Graphify tools, returns a context pack for the main agent.
+Local **retrieval orchestrator**, not a coder. Uses llama.cpp (Vulkan) + CE/Graphify tools, returns a context pack for the main agent.
 
 ## Start llama.cpp
 

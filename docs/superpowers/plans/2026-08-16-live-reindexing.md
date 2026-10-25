@@ -293,7 +293,7 @@ def test_edit_becomes_overlay_searchable_then_promotes(tmp_path, monkeypatch):
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `pytest tests/test_live_reindex_e2e.py -q`  
-Expected: FAIL until Tasks 1–4 are complete.
+Expected: FAIL until Tasks 1-4 are complete.
 
 - [ ] **Step 3: Complete missing integration seam with the minimum code**
 
@@ -313,6 +313,6 @@ Expected: one-worker warm batch result recorded; no multi-model worker setting i
 
 ## Self-Review
 
-- **Spec coverage:** Tasks 1–2 implement adaptive debounce, dirty ledger, process≠publish, tunable streak gate, and backup compatibility. Task 3 makes overlay behavior safe for sessions and connects real locate usage. Task 4 provides configuration, status, and telemetry. Task 5 proves edit→overlay→publish behavior.
+- **Spec coverage:** Tasks 1-2 implement adaptive debounce, dirty ledger, process≠publish, tunable streak gate, and backup compatibility. Task 3 makes overlay behavior safe for sessions and connects real locate usage. Task 4 provides configuration, status, and telemetry. Task 5 proves edit→overlay→publish behavior.
 - **Placeholder scan:** No deferred implementation placeholders; each task names exact files, interfaces, test commands, and expected behavior.
 - **Type consistency:** `DirtyLedger` owns per-path state; `BackgroundSyncLoop` owns execution and publish gating; `RuntimeManager` owns published generation; `SessionStore` owns handle invalidation.

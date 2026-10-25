@@ -37,7 +37,7 @@ Often followed by `No module named 'pipeline'` or broken `scubiee.exe`.
 
 **Why**
 
-Cursor (or another IDE) keeps **scubiee-mcp** alive. That process locks `python.exe` and DLLs under `%APPDATA%\uv\tools\scubiee\`. Windows blocks directory replacement. This is **not** fixed by Administrator PowerShell or reboot alone — locks return when IDE respawns MCP.
+Cursor (or another IDE) keeps **scubiee-mcp** alive. That process locks `python.exe` and DLLs under `%APPDATA%\uv\tools\scubiee\`. Windows blocks directory replacement. This is **not** fixed by Administrator PowerShell or reboot alone, locks return when IDE respawns MCP.
 
 **Fix (CLI still works)**
 
@@ -50,7 +50,7 @@ scubiee connect --cursor
 
 Reload MCP in IDE.
 
-**Fix (CLI broken — no pipeline module)**
+**Fix (CLI broken, no pipeline module)**
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
@@ -99,14 +99,14 @@ You `pip install` into conda but `scubiee --version` shows uv tool Python (or vi
 
 **Why**
 
-Multiple installs — uv tool, conda, system pip — each has its own `scubiee` and `pipeline`.
+Multiple installs, uv tool, conda, system pip, each has its own `scubiee` and `pipeline`.
 
 **Fix**
 
 Pick **one** install path:
 
 - **Recommended:** uv tool only → uninstall others from PATH or use full path to uv scubiee.
-- Run `scubiee doctor .` — read `install.active_binary` and `extra_on_path`.
+- Run `scubiee doctor .`, read `install.active_binary` and `extra_on_path`.
 
 **Verify**
 
@@ -124,7 +124,7 @@ Only one `scubiee` on PATH resolves to the version you expect.
 
 **Why**
 
-Layer 2 missing — no `~/.scubiee/accel.json` from completed setup.
+Layer 2 missing, no `~/.scubiee/accel.json` from completed setup.
 
 **Fix**
 
@@ -276,7 +276,7 @@ MCP `status()` or `gate()` → `managed: true`, `ok: true` (when daemon warm).
 
 **Why**
 
-Safety gate — prevents indexing entire `$HOME` or drive root by accident.
+Safety gate, prevents indexing entire `$HOME` or drive root by accident.
 
 **Fix**
 
@@ -295,7 +295,7 @@ scubiee init .
 
 **Why**
 
-Safety — large index needs explicit consent.
+Safety, large index needs explicit consent.
 
 **Fix**
 
@@ -315,7 +315,7 @@ Previously ran `scubiee never-index` on this path.
 
 **Fix**
 
-Clear via lifecycle/dashboard or remove block from registry prefs — see [repo-lifecycle](../docs/web-info/repo-lifecycle.md).
+Clear via lifecycle/dashboard or remove block from registry prefs, see [repo-lifecycle](../docs/web-info/repo-lifecycle.md).
 
 ---
 
@@ -341,7 +341,7 @@ Or expert: align registry + id file manually (see data reference).
 
 **Why**
 
-Index stale — sync not run; or file outside index scope (fast mode non-.py).
+Index stale, sync not run; or file outside index scope (fast mode non-.py).
 
 **Fix**
 
@@ -381,7 +381,7 @@ If zombies: `scubiee stop` then `scubiee resume` after fix.
 
 **Why**
 
-Daemon not starting — port conflict, crash loop, or resource admission.
+Daemon not starting, port conflict, crash loop, or resource admission.
 
 **Fix**
 
@@ -480,7 +480,7 @@ See [repo-lifecycle](../docs/web-info/repo-lifecycle.md).
 
 **Why**
 
-Confirm gate — intentional safety.
+Confirm gate, intentional safety.
 
 **Fix**
 

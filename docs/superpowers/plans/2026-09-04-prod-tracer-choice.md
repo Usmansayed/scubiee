@@ -15,7 +15,7 @@ On `verify_prod` (10 cases, that format):
 | recall_belt | 0/10 | 1.00 | 0.12 | 0.21 |
 | recall_fuse | 0/10 | 1.00 | 0.12 | 0.21 |
 
-Detailed prompts lift polytrace must-rec from ~0.82 (vague hard-50) to **~0.92** — already in the 90%+ band without an LLM.
+Detailed prompts lift polytrace must-rec from ~0.82 (vague hard-50) to **~0.92**, already in the 90%+ band without an LLM.
 
 **Keep `recall_belt` / `recall_fuse` as the coverage floor** for a later dual-budget product (widen → prune). Do **not** ship the 0.8B director as the main path.
 

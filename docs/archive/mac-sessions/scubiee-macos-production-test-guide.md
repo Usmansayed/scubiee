@@ -5,7 +5,7 @@
 on macOS/Apple-Silicon, and report the numbers back so we can confirm cross-platform
 production readiness.
 
-This document is **self-contained** — you do not need any prior session context. Follow it
+This document is **self-contained**, you do not need any prior session context. Follow it
 top to bottom. Everything you need (the simulator, the thresholds, the commands) is in the repo.
 
 ---
@@ -23,27 +23,27 @@ specific** and were only *run* on Windows, so macOS is the unverified surface:
   a non-issue on macOS, so grep should be fast without the flag).
 - **path canonicalization** (BUG-1): the Windows bug was `os.path.normcase` folding case +
   backslashes. macOS is **case-insensitive but case-preserving** by default (HFS+/APFS), and uses
-  forward slashes — a *different* path regime. The newcomer-canonicalization fix must be confirmed
+  forward slashes, a *different* path regime. The newcomer-canonicalization fix must be confirmed
   to behave correctly here too.
 
 Everything else (sync correctness, blue/green reindex, loud grep) is platform-neutral but should
 still be exercised.
 
 The embedder backend differs: macOS Apple Silicon uses **MLX (Metal)**, not DirectML. Warm-up
-timing and dense-ready latency will differ from the Windows numbers — that is expected; capture
+timing and dense-ready latency will differ from the Windows numbers, that is expected; capture
 the macOS numbers, don't compare 1:1.
 
 ---
 
 ## 1. Environment assumptions
 
-- macOS 13+ (Ventura or newer). Apple Silicon (M1–M4) strongly preferred; Intel Mac is CPU/CoreML.
+- macOS 13+ (Ventura or newer). Apple Silicon (M1, M4) strongly preferred; Intel Mac is CPU/CoreML.
 - Python 3.11+ available. `uv` installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 - `git` available. Repo cloned.
 - **ripgrep**: macOS editors (VS Code / Cursor / Kiro) bundle `@vscode/ripgrep`; the engine's
   `_resolve_ripgrep()` finds it under `~/.vscode*`, `/Applications`, `/opt`, `/usr/share`. If none
   is found it falls back to a pure-Python scan (slower but correct). Optionally `brew install
-  ripgrep` to guarantee a PATH copy — note which case you're in.
+  ripgrep` to guarantee a PATH copy, note which case you're in.
 
 Record exact versions:
 ```bash
@@ -84,7 +84,7 @@ Confirm the engine is up and on the MLX profile:
 curl -s http://127.0.0.1:8765/health | python3 -m json.tool
 ```
 Expect `"version": "0.3.143"`, `"warm": true`, `"index_usable": true`, and eventually
-`"dense_ready": true`. The accel profile should be `mlx` on Apple Silicon — verify:
+`"dense_ready": true`. The accel profile should be `mlx` on Apple Silicon, verify:
 ```bash
 scubiee resources 2>/dev/null | grep -i -E "profile|accel|mlx|metal" || true
 ```
@@ -112,7 +112,7 @@ thresholds (defined at the top of `scripts/perf/prod_sim.py`):
 | D. large_repo | full-glob grep finds a deep symbol, complete, locate | deep symbol found + complete |
 | E. soak | 180s dirty→sync→search→delete churn | 0 errors, drift ≤2.5x, sync p95 ≤5s |
 
-**Pass condition:** `"all_pass": true` in the report. If a dimension fails, do NOT stop — capture
+**Pass condition:** `"all_pass": true` in the report. If a dimension fails, do NOT stop, capture
 the numbers and continue; the point is to learn where macOS differs.
 
 Quick smoke variant (skips cold restart + short soak) if you want a fast first look:
@@ -124,8 +124,8 @@ python3 scripts/perf/prod_sim.py --quick
 
 ## 4. Measure the SHIPPED MCP tools end-to-end (map find / focus)
 
-The simulator measures internal endpoints. Also measure the two tools agents actually call —
-`map config=find` and `map config=focus` — through the engine. Paste this into a file
+The simulator measures internal endpoints. Also measure the two tools agents actually call
+`map config=find` and `map config=focus`, through the engine. Paste this into a file
 `scripts/perf/_mac_map_bench.py` (delete it after) and run it:
 
 ```python
@@ -178,14 +178,14 @@ rm scripts/perf/_mac_map_bench.py
 
 ## 5. Sync correctness battery (the thing that was originally broken)
 
-Run the committed sync battery — it exercises add / modify / partial-edit / delete / rapid-churn
+Run the committed sync battery, it exercises add / modify / partial-edit / delete / rapid-churn
 and asserts each becomes searchable:
 
 ```bash
 python3 scripts/perf/probe_sync_battery.py
 ```
 **Expected:** every case `"pass": true`, new-file visible in ~1s or less, 0 errors. This is the
-BUG-1/BUG-5 regression guard — it MUST pass on macOS.
+BUG-1/BUG-5 regression guard, it MUST pass on macOS.
 
 Also confirm the newcomer-canonicalization is correct on the macOS path regime:
 ```bash
@@ -193,7 +193,7 @@ PYTHONPATH=packages python3 scripts/perf/probe_bug1_newcomers.py
 ```
 **Expected:** "FIXED subtraction = 0 newcomers" on a clean, freshly-indexed corpus (i.e. an
 already-indexed file is NOT re-flagged as new). If macOS case-insensitivity causes a mismatch,
-this will show a non-zero FIXED count — flag it.
+this will show a non-zero FIXED count, flag it.
 
 ---
 
@@ -233,7 +233,7 @@ PYTHONPATH=packages python3 -m pytest \
   -p no:logfire -q
 ```
 **Expected:** all pass (Windows: 53 passed). If `fastembed` or `mlx` import issues appear, note
-them — the macOS wheel set differs.
+them, the macOS wheel set differs.
 
 ---
 
@@ -251,7 +251,7 @@ Create `docs/scubiee-macos-test-results.md` in the repo with:
 6. **zero-downtime reindex:** did the poller stay 200 throughout? (yes/no)
 7. **unit tests:** passed/failed count.
 8. **Anything slow or broken**, with the raw numbers. Specifically call out:
-   - grep latency (p50/p95) — on macOS it should be fast *without* the Windows console fix; confirm.
+   - grep latency (p50/p95), on macOS it should be fast *without* the Windows console fix; confirm.
    - cold-start soft-ready and dense-ready seconds (MLX warm-up will differ from DirectML).
    - any `UnicodeDecodeError`, crash, or engine-down event in `~/.scubiee/engine.log`.
 
@@ -262,13 +262,13 @@ differences), we confirm **cross-platform production ready**.
 
 ## 9. Known differences to EXPECT on macOS (not failures)
 
-- **Dense-ready latency** differs — MLX Metal warm-up vs DirectML. Capture the number; don't fail on it.
+- **Dense-ready latency** differs, MLX Metal warm-up vs DirectML. Capture the number; don't fail on it.
 - **grep** should be fast with no special spawn flags (the Windows console tax does not exist on macOS).
 - **Path case-insensitivity**: APFS is case-insensitive by default. `canonical_relpath` lowercases
   only on Windows (`os.name == "nt"`); on macOS it keeps original case. Confirm the sync battery
-  and newcomer probe still pass — if a rename that only changes case behaves oddly, flag it (it's a
+  and newcomer probe still pass, if a rename that only changes case behaves oddly, flag it (it's a
   macOS-specific edge the Windows run could not cover).
-- **First cold grep** may still be a second or two (ripgrep cold process + first tree walk) — a
+- **First cold grep** may still be a second or two (ripgrep cold process + first tree walk), a
   one-time startup cost, acceptable.
 
 ## 10. Cleanup

@@ -1,6 +1,6 @@
 # Scubiee action combination matrix
 
-Guardrails for every reasonable user command sequence. Two **different** stop commands — never mix them up.
+Guardrails for every reasonable user command sequence. Two **different** stop commands, never mix them up.
 
 | Command | Scope | MCP / rules | Engine | Recovery |
 |---------|-------|-------------|--------|----------|
@@ -40,14 +40,14 @@ Common compound states:
 | `scubiee stop` | ✅ | No-op (already stopped) |
 | `scubiee engine status` | ✅ | Shows `globally_paused: true` + hint |
 | `scubiee engine stop` | ✅ noop | Hint: already globally stopped |
-| `scubiee engine start` | ❌ | Blocked — use **`resume`**, not engine start |
+| `scubiee engine start` | ❌ | Blocked, use **`resume`**, not engine start |
 | `scubiee engine ensure` | ❌ | Same |
-| `scubiee init` / `connect` / `index` / `search` | ❌ | Blocked — run **`resume`** first |
+| `scubiee init` / `connect` / `index` / `search` | ❌ | Blocked, run **`resume`** first |
 | `scubiee setup` | ❌ | Blocked |
-| `scubiee wipe` | ✅ | Escape hatch — full cleanup still works |
+| `scubiee wipe` | ✅ | Escape hatch, full cleanup still works |
 | `scubiee doctor` / `gate` / `preflight` | ✅ | Read-only diagnostics |
 | `--version` / `--help` | ✅ | Always |
-| MCP tools (stale session) | ❌ | `paused: true` — do not retry |
+| MCP tools (stale session) | ❌ | `paused: true`, do not retry |
 
 ### Engine down only (`scubiee engine stop`, global still active)
 
@@ -63,8 +63,8 @@ Common compound states:
 
 | Command | Outcome |
 |---------|---------|
-| `scubiee stop` | Global stop — tears down everything Scubiee on disk |
-| `scubiee engine stop` | Daemon only — MCP still in Cursor |
+| `scubiee stop` | Global stop, tears down everything Scubiee on disk |
+| `scubiee engine stop` | Daemon only, MCP still in Cursor |
 | `scubiee disconnect` | Removes MCP/rules; enrollment kept |
 | `scubiee connect` | Wires MCP/rules for enrolled repos |
 
@@ -86,7 +86,7 @@ resume       →  full restore
 
 ```
 stop           →  global stopped
-engine start   →  ❌ BLOCKED — message says use resume
+engine start   →  ❌ BLOCKED - message says use resume
 resume         →  ✅ correct path
 ```
 
@@ -109,7 +109,7 @@ init   →  ❌ BLOCKED
 resume →  restores id.json from registry (no re-index if store kept)
 ```
 
-**Guardrail:** Don't init after stop — **resume** first.
+**Guardrail:** Don't init after stop, **resume** first.
 
 ### E. Global stop → connect (auto-resume)
 
@@ -162,7 +162,7 @@ tool call    →  paused: true / gate p
 
 | Signal | Meaning | Tell user |
 |--------|---------|-----------|
-| `gate = p` or `paused: true` | Global stop | `scubiee resume` — **not** init, **not** engine start |
+| `gate = p` or `paused: true` | Global stop | `scubiee resume`, **not** init, **not** engine start |
 | `gate = 1:ce_…`, tools fail transient | Engine down only | `scubiee engine start` or retry locate once |
 | `gate = 0` | Not enrolled | `scubiee init .` (if global **not** stopped) |
 | No Scubiee MCP in Cursor after stop | Expected | Native tools until user resumes |

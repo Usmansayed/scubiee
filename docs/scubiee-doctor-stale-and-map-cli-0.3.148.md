@@ -1,4 +1,4 @@
-# 0.3.148 — doctor stale-entry handling + map CLI path-arg fix
+# 0.3.148: doctor stale-entry handling + map CLI path-arg fix
 
 Two UX issues flagged during the production review, fixed after a reasoning pass
 on the correct behavior (not just the symptom).
@@ -8,7 +8,7 @@ on the correct behavior (not just the symptom).
 **Symptom.** After deleting/moving a repo folder without `scubiee remove`, the
 global registry keeps an entry whose path no longer exists. `audit_connect_registry`
 treated every such `stale_registry_path` as a *blocking* warning, so `doctor`
-reported `ok=False` and exited non-zero — even though the user's actual working
+reported `ok=False` and exited non-zero, even though the user's actual working
 repo was perfectly healthy.
 
 **Reasoning / decision.** Three options were weighed:
@@ -29,7 +29,7 @@ repo was perfectly healthy.
 - `doctor.doctor_repo`: `stale_registry_path` added to the non-blocking carve-out
   (alongside `bind_daemon`) so it never forces `ok=False`.
 - `doctor.plan_repairs` / `apply_safe_repairs`: `stale_registry_path` is a *safe*
-  repair that prunes via `forget_repo(pid)` — which refuses unless the path has
+  repair that prunes via `forget_repo(pid)`, which refuses unless the path has
   been missing past the retention window. A freshly-missing repo (possible
   unmounted drive) is kept; a long-gone one is pruned.
 - `doctor.doctor_repo` and `apply_safe_repairs` hardened against a missing repo
@@ -48,7 +48,7 @@ drive) is retained. 14/14 doctor tests green.
 spurious `(not resolved: .)`. argparse's `--names` (nargs="*") greedily swallowed
 the trailing `.` path positional, so `.` was treated as a second symbol name.
 
-**Fix.** `cmd_map`: a symbol name is never a real directory — pull dir-like
+**Fix.** `cmd_map`: a symbol name is never a real directory, pull dir-like
 entries (`.`, `..`, or an existing dir) out of `names` and use the last as the
 repo path. `path` defaults to ".", so detection is on the names themselves, not
 on whether `path` was set.

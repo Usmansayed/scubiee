@@ -1,4 +1,4 @@
-# Scubiee beta issues — practical test report
+# Scubiee beta issues: practical test report
 
 **Date:** 2026-09-26  
 **Build under test:** installed uv-tool `scubiee 0.3.131` + workspace `packages/` (see install skew)  
@@ -28,8 +28,8 @@ Evidence artifacts:
 | Experiment | Result |
 | --- | --- |
 | Live Cursor `gate` / `status` | Managed, `agent_ready=yes` when dense ready |
-| Live Cursor `map` | Dense `D_channel_best`, ~396–674 ms |
-| Live Cursor `pack_context` (warm session) | `ok`, `thin=false`, ~110–129 ms |
+| Live Cursor `map` | Dense `D_channel_best`, ~396-674 ms |
+| Live Cursor `pack_context` (warm session) | `ok`, `thin=false`, ~110-129 ms |
 | Live Cursor `collect_hot_context` | Bodies returned |
 | Live Cursor `workspace` show/pin/clear | OK |
 | Hot sync new file under `packages/` | Visible in search in **4.8 s** (then **1.8 s** under concurrent maps) |
@@ -40,12 +40,12 @@ Evidence artifacts:
 
 ## Issues
 
-### P0 — Blocking for polished beta
+### P0: Blocking for polished beta
 
 #### 1. Full warm is much slower than agents expect (~30s is not enough)
 
 - `status.warm_elapsed_ms` observed **~76s** and **~107s** to reach full ready.
-- Soft search can be up in a few seconds; **dense + embedder** needs **~60–90s+** here.
+- Soft search can be up in a few seconds; **dense + embedder** needs **~60-90s+** here.
 - Agents that wait ~30s after “switch on” still hit prewarm / incomplete semantic and flaky pack.
 
 **Evidence:** live `status` (`warm_elapsed_ms`), host-sim `settle_join_embedder` ~60s.
@@ -55,7 +55,7 @@ Evidence artifacts:
 - Fresh stdio bridge sessions A/B: **map OK (dense)** then **pack_0/1/2 all `ok=false`, `err=ast_warming`, `n_heat=0`** (6/6 packs).
 - Waiting **15s** after status still returned `ast_warming`.
 - Host-sim Lane A: map_first/map_second OK; **`pack_first` FAIL** (`heatmap_n=0`).
-- Same session later on Cursor MCP: pack succeeds — so this is **attach / AST hydrate race**, not permanent pack death.
+- Same session later on Cursor MCP: pack succeeds, so this is **attach / AST hydrate race**, not permanent pack death.
 
 **Evidence:** `_pract_attach_race.json`, `mcp-host-sim-20260926T105833Z.md`, reliability audit `mcp_pack_lean_happy` FAIL.
 
@@ -81,15 +81,15 @@ Watchdog log (today):
 
 **Symptoms:**
 
-- Cursor `gate` returned only `1:ce_… sid:…` — **no `index_skip` / `index_write_hint` lines**.
+- Cursor `gate` returned only `1:ce_… sid:…`, **no `index_skip` / `index_write_hint` lines**.
 - Scripted bridge with `PYTHONPATH=packages` **does** show `index_skip: builtins+scubieeignore(n=7)`.
-- Dirty filter with `dropped` reasons appeared while engine process was influenced by workspace path — **not guaranteed** for a clean uv-tool-only user install.
+- Dirty filter with `dropped` reasons appeared while engine process was influenced by workspace path, **not guaranteed** for a clean uv-tool-only user install.
 
 **Fix required before beta:** reinstall/publish so uv-tool includes ignore + gate fields, or pin MCP/engine to one consistent build.
 
 ---
 
-### P1 — Serious quality / reliability
+### P1: Serious quality / reliability
 
 #### 5. `agent_ready=yes` / dense map does not imply pack is usable
 
@@ -101,13 +101,13 @@ Status can report ready while pack still returns `ast_warming`. Agents following
 
 #### 7. Reliability audit still fails pack/expand/burst after engine stop/start
 
-Today’s audit: pass=6 fail=5 — map/pack/expand/burst fail set still present under stop→start races.
+Today’s audit: pass=6 fail=5, map/pack/expand/burst fail set still present under stop→start races.
 
 #### 8. Idle / agent-warm policy leaves engine dead with no clients
 
 When MCP clients drop to 0 and engine dies, watchdog **refuses auto-restart** (`skip auto load (agent warm)`). Next chat pays full cold start or sees refused connections.
 
-#### 9. Stale / duplicate bridge–locate–engine process trees
+#### 9. Stale / duplicate bridge: locate, engine process trees
 
 Process tree often shows multiple `mcp_bridge` / `mcp_locate` / engine PIDs (some tiny RSS leftovers). Increases flap and port confusion after restarts.
 
@@ -117,7 +117,7 @@ Example: `pack_context` seed `BackgroundSyncLoop` → loc `sync_loop.py:105-1474
 
 ---
 
-### P2 — Product / UX gaps
+### P2: Product / UX gaps
 
 #### 11. No HTTP `/v1/pack` (pack is MCP-only)
 
@@ -145,7 +145,7 @@ Status sample: **~87% RAM**, ~2 GB free while warming embedder. Increases risk o
 
 ---
 
-### P3 — Docs / operator
+### P3: Docs / operator
 
 #### 17. Operator checklist understates warm time
 
@@ -165,7 +165,7 @@ Workspace has the feature + tests; uv-tool install does not ship `ignore.py`. Be
 scubiee engine stop
 scubiee engine ensure .
 # poll status /health every 5s until embedder_loaded && dense_ready
-# record wall clock — expect >> 30s on this machine
+# record wall clock - expect >> 30s on this machine
 ```
 
 ### B. Attach pack race
@@ -181,7 +181,7 @@ scubiee engine ensure .
 ```text
 # Write packages/pipeline/_probe_TOKEN.py with unique TOKEN
 # mark_dirty / save → search/map for TOKEN within 5s
-# Measured: 1.8–4.8s when engine warm
+# Measured: 1.8-4.8s when engine warm
 ```
 
 ### D. Install skew
@@ -239,10 +239,10 @@ Test-Path …/uv/tools/scubiee/Lib/site-packages/pipeline/ignore.py   # False to
 
 ### Suggested fix order
 
-1. **BETA-04** — unify install (otherwise Cursor never sees ignore/gate fixes).
-2. **BETA-02 + BETA-05** — pack/`ast_warming` vs `agent_ready` coherence.
-3. **BETA-03 + BETA-08 + BETA-15** — watchdog / mid-session recover.
-4. **BETA-01 + BETA-17** — warm signaling + docs (even if wall clock stays high).
+1. **BETA-04**: unify install (otherwise Cursor never sees ignore/gate fixes).
+2. **BETA-02 + BETA-05**: pack/`ast_warming` vs `agent_ready` coherence.
+3. **BETA-03 + BETA-08 + BETA-15**: watchdog / mid-session recover.
+4. **BETA-01 + BETA-17**: warm signaling + docs (even if wall clock stays high).
 5. **BETA-10**, then P2/P3 as capacity allows.
 
 ### Key code surfaces (start here)
@@ -293,21 +293,21 @@ Copy everything inside the fence into a new Kiro chat:
 You are fixing Scubiee beta blockers for closed beta. Repo: context-engine (Windows). Managed project_id=ce_3536ac8e8e83bb8e4d888db37847729c.
 
 READ FIRST (do not skip):
-- docs/beta-issues-2026-09-26.md  — full issue list BETA-01…18, evidence paths, acceptance battery
+- docs/beta-issues-2026-09-26.md  - full issue list BETA-01…18, evidence paths, acceptance battery
 - Evidence JSON/MD linked at the top of that file
 - Prefer Scubiee MCP locate: map → pack_context(lean) → expand/collect if needed. BAN shell scubiee map|pack while MCP is up. Edit/Write stay native.
 
 CONTEXT:
 - Installed product is uv-tool scubiee 0.3.131; Cursor MCP pins pythonw -m pipeline.mcp_bridge from that install.
-- Workspace packages/ has newer work (e.g. .scubieeignore / ignore.py / gate index_skip) that is NOT in the uv-tool site-packages today (BETA-04). Agent shells often set PYTHONPATH=packages and accidentally make the engine look “fixed” while Cursor MCP still runs the old install — do not trust that.
-- Hot sync under packages/ works (~2–5s). Map/pack work on a fully warm Cursor session. Failures cluster on cold attach, AST hydrate, and engine/watchdog lifecycle.
+- Workspace packages/ has newer work (e.g. .scubieeignore / ignore.py / gate index_skip) that is NOT in the uv-tool site-packages today (BETA-04). Agent shells often set PYTHONPATH=packages and accidentally make the engine look “fixed” while Cursor MCP still runs the old install - do not trust that.
+- Hot sync under packages/ works (~2-5s). Map/pack work on a fully warm Cursor session. Failures cluster on cold attach, AST hydrate, and engine/watchdog lifecycle.
 
-GOAL (in order — finish each before the next unless blocked):
-1) BETA-04 — Make uv-tool install and workspace agree for ignore.py + gate index_skip/index_write_hint. Document the reinstall/repair command. Verify Cursor gate shows index_skip lines without PYTHONPATH hacks.
-2) BETA-02 + BETA-05 — Fresh MCP bridge: map dense OK must not be followed by pack_context err=ast_warming / heatmap_n=0 while agent_ready=yes. Either (a) gate agent_ready until pack/AST truly usable, and/or (b) make pack wait/retry hydrate with clear should_retry, and/or (c) ensure AST is ready before first pack after attach. Prove with a fresh-bridge script: map then pack succeeds (or one bounded retry).
-3) BETA-03 + BETA-08 + BETA-15 — Mid-session engine death: watchdog must not leave “skip auto load (agent warm)” black holes when MCP demand returns; avoid force-restart thrash during ORT prewarm while still recovering real crashes. Prove with ensure/kill/reconnect style check.
-4) BETA-01 + BETA-17 — Soft ≠ dense. status/docs must make warm wait criteria explicit (agent_ready=yes / embedder_loaded+dense). 30s wait is insufficient on this machine (~76–107s observed) — improve signaling even if wall clock stays high.
-5) BETA-10 — Pack seeds that resolve to whole classes must not return multi-thousand-line locs; prefer function/entrypoint spans agents can Native-Read.
+GOAL (in order - finish each before the next unless blocked):
+1) BETA-04 - Make uv-tool install and workspace agree for ignore.py + gate index_skip/index_write_hint. Document the reinstall/repair command. Verify Cursor gate shows index_skip lines without PYTHONPATH hacks.
+2) BETA-02 + BETA-05 - Fresh MCP bridge: map dense OK must not be followed by pack_context err=ast_warming / heatmap_n=0 while agent_ready=yes. Either (a) gate agent_ready until pack/AST truly usable, and/or (b) make pack wait/retry hydrate with clear should_retry, and/or (c) ensure AST is ready before first pack after attach. Prove with a fresh-bridge script: map then pack succeeds (or one bounded retry).
+3) BETA-03 + BETA-08 + BETA-15 - Mid-session engine death: watchdog must not leave “skip auto load (agent warm)” black holes when MCP demand returns; avoid force-restart thrash during ORT prewarm while still recovering real crashes. Prove with ensure/kill/reconnect style check.
+4) BETA-01 + BETA-17 - Soft ≠ dense. status/docs must make warm wait criteria explicit (agent_ready=yes / embedder_loaded+dense). 30s wait is insufficient on this machine (~76-107s observed) - improve signaling even if wall clock stays high.
+5) BETA-10 - Pack seeds that resolve to whole classes must not return multi-thousand-line locs; prefer function/entrypoint spans agents can Native-Read.
 6) Only then P2/P3 (expand empty-delta UX, process-tree cleanup, optional /v1/pack, RAM notes).
 
 CONSTRAINTS:
@@ -352,18 +352,18 @@ Uncommitted. All runs used the uv-tool interpreter with `PYTHONPATH` cleared, af
 | ID | Change | Proof |
 | --- | --- | --- |
 | BETA-04 / 13 / 18 | `scripts/sync-uv-install.ps1`: `uv pip install --no-deps --reinstall-package scubiee .` into the uv-tool env (keeps `onnxruntime-directml`), then byte-parity check of every packaged `.py` + `import pipeline.ignore`. `-CheckOnly` verifies only. | `ignore.py` present = True. Fresh Cursor-config bridge `gate` shows `index_skip: builtins+scubieeignore(n=7)` and `index_write_hint`. Live Cursor window not re-verified (Cursor MCP was not running at the end); reload Scubiee MCP in Cursor to pick it up. |
-| BETA-02 / 05 | Root cause: `hydrate_ast_bundle(bake_on_miss=True)` rejected the on-disk bundle whenever its fingerprint was stale (every edit) and spawned a bake child that loads the same stale bundle anyway. It now serves the stale bundle in-process. `pack_context` waits up to `CTX_MCP_PACK_AST_WAIT_S` (10 s) for the hydrate before returning `ast_warming` with `should_retry=true`, `retry_after_s=3`, and `ast_wait_ms`. `status` adds `pack_ready` and `ast_hydrated`. | `scripts/attach_pack_race.py` (map then pack, no sleep). Before: pack ×3 `ast_warming`. After: 2/2 sessions first pack ok, `n_heat=16`, first pack 1.1–1.2 s, later packs 95–205 ms (`_attach_race_battery_nowait.json`). |
+| BETA-02 / 05 | Root cause: `hydrate_ast_bundle(bake_on_miss=True)` rejected the on-disk bundle whenever its fingerprint was stale (every edit) and spawned a bake child that loads the same stale bundle anyway. It now serves the stale bundle in-process. `pack_context` waits up to `CTX_MCP_PACK_AST_WAIT_S` (10 s) for the hydrate before returning `ast_warming` with `should_retry=true`, `retry_after_s=3`, and `ast_wait_ms`. `status` adds `pack_ready` and `ast_hydrated`. | `scripts/attach_pack_race.py` (map then pack, no sleep). Before: pack ×3 `ast_warming`. After: 2/2 sessions first pack ok, `n_heat=16`, first pack 1.1-1.2 s, later packs 95-205 ms (`_attach_race_battery_nowait.json`). |
 | BETA-06 | (follows from 02) | `mcp_host_sim --lane a --live --skip-idle --settle-s 35`: `ok=true`, `pack_first` 201 ms, `map_first` 70 ms, `expand_first` 73 ms, `auto_warm` 18.0 s (`mcp-host-sim-20260926T160108Z.md`). Earlier runs today: one `WARM_TIMEOUT` (soft at 41.0 s vs 40 s budget), one hung run with no report. |
 | BETA-03 / 08 | Watchdog: dead engine + MCP demand recovers on the first failing tick (only the first recovery after a healthy stretch; crash loops keep normal pacing). `enforce_mcp_warm_contract` holds RUN (`hold_bridge`) while a non-orphan bridge is alive, so the idle policy does not stop an engine the watchdog would restart. `mcp_frontend_present` skips the per-process tree walk (~0.8 s → 0.01 s). | `scripts/engine_kill_recover_probe.py` (taskkill engine tree, no `ensure`): run 1 kill→health 20.8 s / soft 23.7 s via watchdog `recover now`; run 2 (bridge held) kill→health 6.7 s / soft 44.6 s. |
-| BETA-15 | Watchdog: a prewarm past the 45 s window is treated as slow, not wedged, while the engine tree keeps burning CPU (≥1 s per tick), up to `CTX_WATCHDOG_PREWARM_GRACE_S` (180 s). | Log: `prewarm slow but progressing cpu_delta_s=15.x — not restarting` for ~3 min, then one heal at the cap. Unit test `test_prewarm_progress_discriminates_slow_vs_wedged`. |
-| BETA-01 / 17 | `status.warm_wait` = `{done, stage, wait_for, soft_ready, dense_ready, pack_ready, elapsed_s, retry_after_s, note}`. Stages: `engine_down → soft_loading → dense_loading → pack_ast_loading → ready`. Docs: `docs/production-ready-0.3.131.md` "Warm wait criteria" + "Install sync". | Agent-style wait on `warm_wait.done`: 10–26 s when an engine was already starting, map + pack ok right after. |
+| BETA-15 | Watchdog: a prewarm past the 45 s window is treated as slow, not wedged, while the engine tree keeps burning CPU (≥1 s per tick), up to `CTX_WATCHDOG_PREWARM_GRACE_S` (180 s). | Log: `prewarm slow but progressing cpu_delta_s=15.x - not restarting` for ~3 min, then one heal at the cap. Unit test `test_prewarm_progress_discriminates_slow_vs_wedged`. |
+| BETA-01 / 17 | `status.warm_wait` = `{done, stage, wait_for, soft_ready, dense_ready, pack_ready, elapsed_s, retry_after_s, note}`. Stages: `engine_down → soft_loading → dense_loading → pack_ast_loading → ready`. Docs: `docs/production-ready-0.3.131.md` "Warm wait criteria" + "Install sync". | Agent-style wait on `warm_wait.done`: 10-26 s when an engine was already starting, map + pack ok right after. |
 | BETA-10 | Lean heatmap rows clamp spans over `CTX_PACK_LOC_MAX_LINES` (250) to the first `CTX_PACK_LOC_HEAD_LINES` (120) lines and keep the original span in `full_loc`. | Seed `BackgroundSyncLoop`: `loc sync_loop.py:105-224`, `full_loc 105-1474`, largest span in the heatmap 205 lines. |
 
 ### Still open / found during verification
 
 - **Cold dense warm is still slow and variable.** Measured `ensure` → `embedder_loaded` 171 s with no client attached; once one prewarm sat after `[embed] plan` for >4 min at ~100% CPU until the 180 s grace cap healed it. Root cause not found (the embed cache replay is 2.6 s, so it is not that).
-- **Hot sync:** 3/5 trials ≤5 s (hits 4.0–5.1 s) on the synced install. Not the 10/10 from the 0.3.131 worklog.
-- **Newcomer scan is broken in 0.3.131:** `_start_newcomer_scan` calls `_enqueue_newcomers()` without its required `now=` argument, so it logs `newcomer scan failed` every 30 s. Fixing that call made hot sync 0/5 (18–40 s; the repo walk starves the keeper). Left as is; it needs a throttling decision first.
+- **Hot sync:** 3/5 trials ≤5 s (hits 4.0-5.1 s) on the synced install. Not the 10/10 from the 0.3.131 worklog.
+- **Newcomer scan is broken in 0.3.131:** `_start_newcomer_scan` calls `_enqueue_newcomers()` without its required `now=` argument, so it logs `newcomer scan failed` every 30 s. Fixing that call made hot sync 0/5 (18-40 s; the repo walk starves the keeper). Left as is; it needs a throttling decision first.
 - Idle policy with `CTX_ENGINE_IDLE_S=10` stops the engine ~10 s after the last client leaves, so every new chat after a gap pays a cold start (by design; RAM).
 - Pre-existing test failures (fail on HEAD too): `test_attach_mcp_session_is_nonblocking`, `test_start_attach_warm_pipeline_returns_immediately`, `test_final_check_forces_held_publish`. `test_watchdog_child_stays_alive_then_exits_clean` has a tight 8 s wait and flaked once in a long batch.
 - P2/P3 not started: BETA-09, 11, 12, 14, 16. `expand_context` / `collect_hot_context` still return `ast_warming` immediately (no bounded wait like pack).

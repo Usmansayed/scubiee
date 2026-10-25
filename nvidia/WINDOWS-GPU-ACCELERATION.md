@@ -1,4 +1,4 @@
-# Windows GPU Acceleration — DirectML (v0.2.26+)
+# Windows GPU Acceleration: DirectML (v0.2.26+)
 
 ## Summary
 
@@ -15,7 +15,7 @@ This applies to NVIDIA, AMD, and Intel GPUs equally. CUDA is no longer used on W
 | RTX 20/30/40-series | Works with effort | Works |
 | AMD GPUs | Not supported | Works |
 | Intel GPUs | Not supported | Works |
-| Setup steps | nvidia-smi check, ORT swap, cuBLAS, cuDNN | Zero — included in base install |
+| Setup steps | nvidia-smi check, ORT swap, cuBLAS, cuDNN | Zero, included in base install |
 | Performance (embeddings) | 150 t/s | 28 t/s |
 | Reliability | Low | 100% |
 

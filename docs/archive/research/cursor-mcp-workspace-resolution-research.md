@@ -54,7 +54,7 @@ What was wrong: we treated “no absolute pin” as “no workspace hint at all.
 - Global: `~/.cursor/mcp.json`
 - Project: `.cursor/mcp.json` (merged; **project wins** on same server name)
 - Config interpolation in `command` / `args` / `env` / `url` / `headers`:
-  - `${workspaceFolder}` — open project root
+  - `${workspaceFolder}`: open project root
   - `${userHome}`, `${env:NAME}`, `${workspaceFolderBasename}`, `${/}`
 - MCP **Roots** capability is listed as supported (protocol-level alternative; Scubiee does not use it yet)
 
@@ -65,7 +65,7 @@ Source: [cursor.com/docs/mcp](https://cursor.com/docs/mcp)
 **codegraph** Cursor installer (public rationale):
 
 > Cursor launches MCP subprocesses with a working directory that **isn’t** the workspace root and does **not** pass `rootUri` / `workspaceFolders` in initialize.  
-> Fix: inject workspace into args — local install uses absolute path; **global install uses `${workspaceFolder}`** so one global config stays per-workspace.
+> Fix: inject workspace into args, local install uses absolute path; **global install uses `${workspaceFolder}`** so one global config stays per-workspace.
 
 **context-mode** (Cursor issue #521): MCP often sees `/` or wrong cwd; recommended override:
 
@@ -81,7 +81,7 @@ VS Code **user** `mcp.json` does **not** expand `${workspaceFolder}` ([vscode#24
 
 ### Multi-root caveat
 
-Cursor forum: project `.cursor/mcp.json` from **non-primary** folders in a multi-root window may not load. Global + `${workspaceFolder}` still follows the **primary** open folder — acceptable; document the multi-root limit.
+Cursor forum: project `.cursor/mcp.json` from **non-primary** folders in a multi-root window may not load. Global + `${workspaceFolder}` still follows the **primary** open folder, acceptable; document the multi-root limit.
 
 ---
 
@@ -90,7 +90,7 @@ Cursor forum: project `.cursor/mcp.json` from **non-primary** folders in a multi
 | Option | Multi-repo safe? | Matches Cursor? | Matches Scubiee connect UX? | Verdict |
 |--------|------------------|-----------------|-----------------------------|---------|
 | **A. Absolute `CTX_REPO` in `~/.cursor/mcp.json`** | **No** (pins one repo forever) | Works once | Accidental | **Reject** (what we did as emergency unblock) |
-| **B. Add Cursor to special-4** (project `.cursor/mcp.json` + absolute `CTX_REPO`, connect per repo) | Yes | Works | Forces per-repo connect like Kiro | **Backup only** — worse UX than Cursor allows |
+| **B. Add Cursor to special-4** (project `.cursor/mcp.json` + absolute `CTX_REPO`, connect per repo) | Yes | Works | Forces per-repo connect like Kiro | **Backup only**, worse UX than Cursor allows |
 | **C. Global Cursor entry with `CTX_REPO=${workspaceFolder}`** | **Yes** (IDE expands per open folder) | Official interpolation | Keeps `connect --cursor` global-only | **Preferred** |
 | **D. Project `.cursor/mcp.json` with `${workspaceFolder}` + drop conflicting user entry** | Yes | Works | Optional team-committed file | **Optional belt** |
 | **E. MCP Roots client request** | Yes (if Cursor fills roots) | Protocol-correct | Needs runtime proof | **Follow-up** after C |
@@ -116,7 +116,7 @@ In **`scubiee connect --cursor`** (and setup’s Cursor MCP writer), write globa
 Why this is the right design:
 
 1. Cursor expands `${workspaceFolder}` at spawn → MCP sees the **open** repo on Mac and Windows.
-2. Still one global connect — no Kiro-style “run connect inside every project.”
+2. Still one global connect, no Kiro-style “run connect inside every project.”
 3. Avoids absolute global pin (the poison we already document in `__main__.py` / tests).
 4. Aligns with how other serious Cursor MCP tools already work (codegraph / context-mode).
 5. Distinct from Copilot/Kiro, which cannot rely on user-global `${workspaceFolder}`.
@@ -131,7 +131,7 @@ In `mcp_locate._ide_workspace_candidates` / `_default_repo`:
 
 ### Optional secondary
 
-When `connect --cursor` runs **inside** an enrolled repo, also write project `.cursor/mcp.json` with the same `${workspaceFolder}` (or absolute + `CTX_PROJECT_ID` for offline tooling). If project CE exists, keep using `_drop_user_context_engine_when_project_configured` only when the **user** entry is the broken absolute/empty form — do **not** drop a healthy user entry that already uses `${workspaceFolder}`.
+When `connect --cursor` runs **inside** an enrolled repo, also write project `.cursor/mcp.json` with the same `${workspaceFolder}` (or absolute + `CTX_PROJECT_ID` for offline tooling). If project CE exists, keep using `_drop_user_context_engine_when_project_configured` only when the **user** entry is the broken absolute/empty form, do **not** drop a healthy user entry that already uses `${workspaceFolder}`.
 
 ### Explicitly do **not**
 
@@ -158,7 +158,7 @@ Mac made the cwd=`$HOME` failure obvious. The fix above is **cross-platform**.
 2. Unit: assert global connect still fails the “CTX_REPO leaked absolute path” guard.
 3. Mac manual: wipe absolute pin → `connect --cursor` → reload MCP → `status().repo` == open project, `managed=true`.
 4. Switch to a second enrolled repo window → `status().repo` follows the new folder (proves interpolation, not sticky absolute).
-5. Windows smoke: same as (3)–(4).
+5. Windows smoke: same as (3), (4).
 6. Regression: Kiro/Copilot still get **absolute** per-repo pins (unchanged).
 
 ---
@@ -169,7 +169,7 @@ Mac made the cwd=`$HOME` failure obvious. The fix above is **cross-platform**.
 |------|--------|
 | Root cause | Cursor MCP spawn cwd ≠ workspace; no workspace env unless we inject it |
 | Same class as Kiro? | **Yes (spawn/cwd)** |
-| Same fix as Kiro? | **No** — Cursor supports `${workspaceFolder}` in global config; Kiro/VS Code user MCP do not |
+| Same fix as Kiro? | **No**, Cursor supports `${workspaceFolder}` in global config; Kiro/VS Code user MCP do not |
 | Perfect solution | Global Cursor MCP: `CTX_REPO` / `CURSOR_PROJECT_DIR` = `${workspaceFolder}` |
 | Emergency absolute pin | Temporary only; replace |
 

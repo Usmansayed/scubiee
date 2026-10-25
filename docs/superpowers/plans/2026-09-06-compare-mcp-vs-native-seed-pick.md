@@ -1,4 +1,4 @@
-# Compare: MCP Scubiee vs Native — seed-pick context collect
+# Compare: MCP Scubiee vs Native: seed-pick context collect
 
 **Work prompt:** Improve map→pack seed selection (public packages/ defs; not empty cards / `_` helpers).
 

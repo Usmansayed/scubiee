@@ -1,4 +1,4 @@
-# Scubiee macOS v0.3.146 — init crash root cause + Python-pin fix
+# Scubiee macOS v0.3.146: init crash root cause + Python-pin fix
 
 _Platform: macOS 26.5.2, Apple Silicon (M5, arm64), MLX/Metal._
 _Builds: crash reproduced on 0.3.145 installed under Python 3.10; fixed in 0.3.146 (`requires-python>=3.11`)._
@@ -12,7 +12,7 @@ at the faiss vector-write step. Under **Python 3.12 (numpy 2.5.3)** the exact sa
 MLX + faiss code is clean.
 
 The fix is to **pin the install to Python 3.11+** so the toolchain never lands on
-the bad interpreter. **MLX stays the embedder — nothing in the embedding or index
+the bad interpreter. **MLX stays the embedder, nothing in the embedding or index
 architecture changed.**
 
 ## Root cause
@@ -28,7 +28,7 @@ same source):
 Crash signature was latent heap corruption surfacing at varying sites
 (`gc_collect_main`, `_abc_subclasscheck`, numpy `array_zeros` / QR `np.linalg.qr`).
 These are symptoms of memory already corrupted earlier, not of the crashing call
-itself — consistent with a numpy C-ABI mismatch on the 3.10 wheel set, not an MLX
+itself, consistent with a numpy C-ABI mismatch on the 3.10 wheel set, not an MLX
 or faiss defect.
 
 Rejected alternatives (all still crashed under Python 3.10, so none was the real

@@ -1,4 +1,4 @@
-# Scubiee deep adversarial testing — 0.3.153
+# Scubiee deep adversarial testing: 0.3.153
 
 _An in-depth, bug-hunting session that goes beyond command/sequence coverage into
 the nasty corners: concurrency/races, filesystem edge cases, malformed &
@@ -17,7 +17,7 @@ under parallel and interrupted stress.
 
 ## What was tested & results
 
-### 1. Concurrency / races — PASS
+### 1. Concurrency / races: PASS
 | Scenario | Result |
 |---|---|
 | Two parallel `init` of the **same** fresh repo | Both exit 0; **one clean enrollment**, single project_id, no duplication |
@@ -26,21 +26,21 @@ under parallel and interrupted stress.
 | Parallel `connect --cursor` + `connect --kiro` | Both exit 0, **no package corruption** (the 0.3.152 guard holds under parallel consolidation) |
 | `pause` + `search` simultaneously | Both exit 0 |
 
-### 2. Filesystem edge cases — PASS
+### 2. Filesystem edge cases: PASS
 Empty repo (enrolls; search exit 1 = nothing found), dir name with spaces +
 unicode, 12-level deep nesting, single 4000-function file, binary/non-UTF-8 file
-alongside real code — **all init + search cleanly (exit 0)**. Nonexistent path /
+alongside real code, **all init + search cleanly (exit 0)**. Nonexistent path /
 file-instead-of-dir → clean exit 1. (A "trailing-slash init failed" blip turned
-out to be a PowerShell `\"` quoting artifact, **not** a scubiee bug — verified
+out to be a PowerShell `\"` quoting artifact, **not** a scubiee bug, verified
 directly.)
 
-### 3. Malformed / adversarial input — PASS (security highlight)
-24 hostile inputs, **zero tracebacks**. Injection-style queries — `foo; rm -rf /`,
-`foo | echo`, backticks, `$(calc)`, `%PATH%` — were all treated as **literal
+### 3. Malformed / adversarial input: PASS (security highlight)
+24 hostile inputs, **zero tracebacks**. Injection-style queries, `foo; rm -rf /`,
+`foo | echo`, backticks, `$(calc)`, `%PATH%`, were all treated as **literal
 search text** (exit 0, no shell execution). 10k-char query → clean exit 1.
 Non-int `--k abc` → exit 2. All malformed flags rejected cleanly.
 
-### 4. State-file corruption + recovery — PASS (robustness highlight)
+### 4. State-file corruption + recovery: PASS (robustness highlight)
 Every state file corrupted (truncated / garbage / empty / wrong-type) and a
 command run against it:
 - `connected_tools.json` → **self-heals to valid JSON** via the atomic-write +
@@ -52,22 +52,22 @@ command run against it:
 
 No crash under any corruption.
 
-### 5. Interrupted operations — PASS (investigated hard)
+### 5. Interrupted operations: PASS (investigated hard)
 Killing `init` mid-index, killing the engine mid-search, planting stale
 dirty-markers + dead-pid `engine.json`, and deleting the store dir. Initial batch
 flagged two "HANG" timeouts; **deep isolation downgraded both**:
 - Re-`init` after a killed init **progresses normally** on a clean repo
-  (observed 23%→77%→done) — the batch "hang" was a genuinely slow 6000-function
+  (observed 23%→77%→done), the batch "hang" was a genuinely slow 6000-function
   re-embed, compounded by a corrupt `id.json` left by the test harness itself
   (not scubiee).
 - **Recovery is sound:** a repo killed mid-init and re-init'd ends up
-  `enrolled / active / chunks=6000` — a fully working index. No poisoned state.
+  `enrolled / active / chunks=6000`: a fully working index. No poisoned state.
 - Stale dirty-marker + dead-pid `engine.json` → search completes fine in
   isolation (returns hits). The batch "hang" was an engine cold-warm wait
   exceeding the 40s harness timeout.
 - Killing the parent `init` cascades to its children (no orphans).
 
-### 6. Arg / flag fuzzing — PASS
+### 6. Arg / flag fuzzing: PASS
 30 combos: conflicting flags, flag ordering (flags before/after positionals),
 repeated flags (last-wins), extra positionals (exit 2), typo flags (all exit 2
 clean argparse), `--help`/`-h`/`--version`, `--` separator. No tracebacks.
@@ -94,8 +94,8 @@ is `--pre`.)
 
 ## Verdict
 
-Under heavy adversarial pressure — parallelism, corruption, interruption,
-injection, and fuzzing — scubiee 0.3.153 did not produce a single traceback,
+Under heavy adversarial pressure, parallelism, corruption, interruption,
+injection, and fuzzing, scubiee 0.3.153 did not produce a single traceback,
 deadlock, or corrupted install, and its self-healing (state-file `.bak` recovery,
 interrupted-init recoverability, injection-safe literal query handling) is a
 genuine strength. The remaining items are cosmetic polish, not reliability bugs.

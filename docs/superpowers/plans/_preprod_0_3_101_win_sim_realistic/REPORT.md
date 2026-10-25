@@ -1,4 +1,4 @@
-# Realistic pre-prod battery (Windows) — 0.3.101
+# Realistic pre-prod battery (Windows): 0.3.101
 
 **Date:** 2026-09-21  
 **Machine:** Windows 10 (this PC)  
@@ -26,7 +26,7 @@ python scripts/mcp_host_sim.py --lane a --live --settle-s 40 --idle-s 120 --mcp-
 | status_first | True | **458** | ≤3s |
 | pack_first | True | **77** | ≤1s |
 | expand_first | True | **75** | ≤1s |
-| idle_hold | True | ~120s | — |
+| idle_hold | True | ~120s | - |
 | post_idle_map (unique) | True | **153** (attempt 1) | ≤1s |
 | post_idle_pack | True | **70** | ≤1s |
 | unload | True | 14 | 35s |
@@ -60,7 +60,7 @@ Do not ship Kiro as &lt;1s unique-map until re-run with `--idle-s 120`.
 
 ### CLI / dual install
 
-`scubiee --version` **0.3.101**. Dual conda vs `uv tool` sharing `~/.scubiee` — **WARN**; keep a single install.
+`scubiee --version` **0.3.101**. Dual conda vs `uv tool` sharing `~/.scubiee`, **WARN**; keep a single install.
 
 Safe CLI matrix JSON under this folder (`cli_matrix*.json`). Did not run wipe/halt/disconnect/`index --force`.
 

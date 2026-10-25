@@ -1,6 +1,6 @@
 # TraceLab Context-Collection Research Framework
 
-**Status:** Phase 1 approved → Phase 3–5 in progress (Nova Pro extraction)  
+**Status:** Phase 1 approved → Phase 3-5 in progress (Nova Pro extraction)  
 **Date:** 2026-08-08  
 **Dataset:** SyFI TraceLab **v0.0.2** (`syfi_coding_trace.duckdb`, SHA256 `a7bab286…e744`)  
 **LLM summarizer:** Amazon Nova Pro via Bedrock (`eu.amazon.nova-pro-v1:0`, region from `.env`)  
@@ -15,7 +15,7 @@
 |---|---|
 | Corpus | Public TraceLab v0.0.2 DuckDB only (sanitized) |
 | Agents | **100 Claude + 100 Codex** sessions |
-| Cursor | **Unavailable** in this release — defer; do not invent Cursor rows |
+| Cursor | **Unavailable** in this release, defer; do not invent Cursor rows |
 | Model priority | Top frontier models only (see §3) |
 | Analysis mode | **Structural / behavioral** (tool sequences, sizes, tokens, latency). Semantic fields (paths, queries, message text) are stripped |
 | Deliverable | Research report + “Ideas for a Better Context Engine” list grounded in multi-session evidence |
@@ -38,7 +38,7 @@ Implication: every metric and schema field must be either (a) computable from th
 
 Grouped by what they drive for a context engine.
 
-### 1.1 Session anatomy — how context collection starts
+### 1.1 Session anatomy: how context collection starts
 
 1. What is the **first retrieval action** after a user message (tool family + shell-exe proxy)?
 2. How often does the session open with **orientation** (ls/find/glob/README-ish reads) vs **targeted search** (grep/rg) vs **direct Read**?
@@ -46,7 +46,7 @@ Grouped by what they drive for a context engine.
 4. What is the typical **bootstrap length** (rounds and tool calls until first mutation)?
 5. Does bootstrap differ by provider (Claude vs Codex) and by frontier model family?
 
-### 1.2 Retrieval repertoire — which tools for which job
+### 1.2 Retrieval repertoire: which tools for which job
 
 6. For each provider, which tools dominate **locate / read / mutate / verify / plan / external** roles?
 7. How often is search done via **dedicated tools** (`Grep`/`Glob`) vs **shell** (`grep`/`rg`/`find`/`ls`/`cat` in `executables`)?
@@ -56,10 +56,10 @@ Grouped by what they drive for a context engine.
 
 ### 1.3 Evolution over the session
 
-11. How does the **mix of locate vs read vs mutate vs verify** change across session percentiles (0–10%, 10–40%, 40–70%, 70–100%)?
+11. How does the **mix of locate vs read vs mutate vs verify** change across session percentiles (0-10%, 10-40%, 40-70%, 70-100%)?
 12. When does the agent **stop collecting** and start mostly editing/verifying?
 13. Are there recurring **phase machines** (e.g. Orient → Search → Read → Edit → Test → Repair)?
-14. After an edit failure (`is_error` on mutate tools), does retrieval **widen** (new searches) or **deepen** (re-read same area — proxied by similar size/tool patterns)?
+14. After an edit failure (`is_error` on mutate tools), does retrieval **widen** (new searches) or **deepen** (re-read same area, proxied by similar size/tool patterns)?
 15. How does **context size** (`input_tokens_total`, `prefix_tokens`, `newly_append_tokens`) evolve across phases?
 
 ### 1.4 Waste, duplication, and loops
@@ -179,7 +179,7 @@ Because paths/queries are absent, duplication is **signature-based**:
 | W4 | Large unused result rate: `result_chars` ≥ P90 and no mutate within next N tool calls |
 | W5 | Append bloat: rounds where `newly_append_tokens` > P90 and role was locate/read |
 | W6 | Low-cache rounds: `prefix_hit_ratio < 0.5` after session start |
-| W7 | Estimated wasted append tokens (sum append on duplicate-signature tool rounds) — **proxy, labeled** |
+| W7 | Estimated wasted append tokens (sum append on duplicate-signature tool rounds), **proxy, labeled** |
 | W8 | Tool calls with `is_error` followed by identical signature retry |
 
 ### 2.5 Token & context-growth metrics
@@ -203,7 +203,7 @@ Because paths/queries are absent, duplication is **signature-based**:
 
 ### 2.7 Context-engine opportunity scores (derived)
 
-Per session, score hypothetical engine interventions 0–1:
+Per session, score hypothetical engine interventions 0-1:
 
 | ID | Opportunity | Heuristic |
 |---|---|---|
@@ -264,7 +264,7 @@ Select top **100 per provider**. Tie-break: more recent `max(timing_events.times
 
 | Stratum | Target |
 |---|---|
-| Opus / GPT-5.5–5.6 heavy | ≥60 |
+| Opus / GPT-5.5-5.6 heavy | ≥60 |
 | Long sessions (p90+ rounds within eligible) | ≥25 |
 | Search-heavy (locate share ≥35%) | ≥25 |
 | Edit-heavy (mutate share ≥20%) | ≥20 |
@@ -437,7 +437,7 @@ File: `research/tracelab/processed/sessions/<provider>/<session_id>.json`
 ```
 
 **Rules**
-- No free-form session essays in Phase 4 — only structured fields.  
+- No free-form session essays in Phase 4, only structured fields.  
 - Anything inferred beyond observables must set `"label": "hypothesis"` and a confidence.  
 - Unavailable semantics → `availability: "unavailable_due_to_sanitization"`.
 
@@ -478,23 +478,23 @@ research/tracelab/
 **Resumability:** `04_run_batch.py` skips sessions with existing valid JSON (`schema_version` present).  
 **No notebooks required** for the main path; optional notebook only for ad-hoc plots.
 
-**Phase gate:** Do not run 02–06 until this framework is approved.
+**Phase gate:** Do not run 02-06 until this framework is approved.
 
 ---
 
 ## 6. Final report structure (Phase 6)
 
-1. **Executive summary** — how frontier agents collect context; top 5 engine opportunities  
-2. **Data & methods** — TraceLab v0.0.2, sanitization limits, 100+100 selection criteria, metric defs  
-3. **How agents collect context** — tool repertoire, shell vs dedicated search, bootstrap patterns (with multi-session examples)  
-4. **Retrieval evolution** — phase machines, stop-collecting points, Claude vs Codex  
-5. **Token & context dynamics** — growth curves, append composition, cache behavior  
-6. **Waste & failure modes** — duplicates, loops, unused large results, error retries  
-7. **Deterministic vs LLM-needed retrieval** — classification table with evidence  
-8. **Ideas for a Better Context Engine** — master list (observed → fix → benefit), ranked by frequency × impact  
-9. **Mapping to our APIs** — `map` / `workspace` / `focus` (and related) opportunities  
-10. **Limitations & threats to validity** — sanitization, no Cursor, proxy metrics  
-11. **Appendix** — selection table, schema, extra figures, extreme sessions  
+1. **Executive summary**: how frontier agents collect context; top 5 engine opportunities  
+2. **Data & methods**: TraceLab v0.0.2, sanitization limits, 100+100 selection criteria, metric defs  
+3. **How agents collect context**: tool repertoire, shell vs dedicated search, bootstrap patterns (with multi-session examples)  
+4. **Retrieval evolution**: phase machines, stop-collecting points, Claude vs Codex  
+5. **Token & context dynamics**: growth curves, append composition, cache behavior  
+6. **Waste & failure modes**: duplicates, loops, unused large results, error retries  
+7. **Deterministic vs LLM-needed retrieval**: classification table with evidence  
+8. **Ideas for a Better Context Engine**: master list (observed → fix → benefit), ranked by frequency × impact  
+9. **Mapping to our APIs**: `map` / `workspace` / `focus` (and related) opportunities  
+10. **Limitations & threats to validity**: sanitization, no Cursor, proxy metrics  
+11. **Appendix**: selection table, schema, extra figures, extreme sessions  
 
 **Claim rule:** Every non-hypothesis claim cites ≥2 sessions (ids) or an aggregate with N.
 
@@ -502,7 +502,7 @@ research/tracelab/
 
 ## 7. Ideas-for-engine running list (always-on)
 
-Throughout Phases 4–6, append to `ideas_for_better_context_engine.json`:
+Throughout Phases 4-6, append to `ideas_for_better_context_engine.json`:
 
 ```json
 {
@@ -532,9 +532,9 @@ Seed candidates (to validate, not assert yet):
 
 - 200 session JSON files valid against schema  
 - Cross-session stats for all metrics in §2 with Claude vs Codex splits  
-- Report answers RQ groups 1.1–1.6 with evidence  
+- Report answers RQ groups 1.1-1.6 with evidence  
 - ≥15 concrete engine ideas with frequency counts  
-- Explicit honesty about sanitization limits — no fake path/query claims  
+- Explicit honesty about sanitization limits, no fake path/query claims  
 
 ---
 
@@ -545,7 +545,7 @@ Please confirm or adjust:
 1. **Sample size:** 100 Claude + 100 Codex (no Cursor)  
 2. **Frontier-first selection** + score in §3  
 3. **Structural-only analysis** with proxy fields for files/queries  
-4. **Schema + report outline** in §§4–6  
+4. **Schema + report outline** in §§4-6  
 5. Proceed to Phase 2 (documented schema dive is partly done) → Phase 3 selection scripts  
 
 **STOP here until approved.** No batch extraction / full analysis until you sign off.

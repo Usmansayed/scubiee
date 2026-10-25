@@ -1,4 +1,4 @@
-# Sync fix worklog — 0.3.128
+# Sync fix worklog: 0.3.128
 
 Date: 2026-09-14 (session). Repo: `C:\Users\usman\Downloads\context-engine`. Engine: `http://127.0.0.1:8765`.
 
@@ -15,7 +15,7 @@ A generation bump is not a pass. A token echoed in the response body is not a hi
 
 ## 1. How the diagnosis was done
 
-I did not trust the in-process unit test (`test_realistic_add_noop_and_delete`) that the report already flagged as a false positive — it uses a temp store, a fake embedder, no HTTP server, no keeper, and no memory-mapped FAISS index. Instead I measured the actual live store on disk.
+I did not trust the in-process unit test (`test_realistic_add_noop_and_delete`) that the report already flagged as a false positive, it uses a temp store, a fake embedder, no HTTP server, no keeper, and no memory-mapped FAISS index. Instead I measured the actual live store on disk.
 
 Store locations for this repo (`project_id = ce_c505c4e65dbe5e2063a6c1089fe4db4e`):
 
@@ -32,7 +32,7 @@ I wrote a throwaway diagnostic that loaded `chunks.jsonl`, `ids.npy`, `faiss.ind
 | `payloads.jsonl` lines | 7641 |
 | chunks with **no** live vector | **147** |
 | live vectors with **no** chunk | **133** |
-| rows where `chunks[i].id == live_ids[i]` | 3677 of 7641 — diverges from row 3677 onward |
+| rows where `chunks[i].id == live_ids[i]` | 3677 of 7641, diverges from row 3677 onward |
 
 Every chunk missing a vector belonged to a file edited during the earlier session: `sync_loop.py` (39), `vectordb.py` (39), `incremental.py` (24), `test_live_reindexing.py` (21), `test_locate_contract_bounds.py` (15), plus a handful more.
 
@@ -46,15 +46,15 @@ Then I traced the code paths: `load_engine` (`engine.py`), `FaissDenseAdapter` (
 
 **The chunk corpus and the vector store were addressing different things, and nothing checked.**
 
-`load_engine` builds `files`, `texts`, the BM25 docs and the graph spans from `chunks.jsonl`, indexed by **chunk position** (the record's offset in the file, which is also the index into `files`/`texts`/BM25/graph). It built the dense channel from the vector store, which is indexed by **durable chunk id** and keeps tombstones — so its row order drifts from the chunk list after any incremental upsert or delete. `FaissDenseAdapter.search` translated a FAISS id into a row of `col.ids` (the wrong space), and no code compared the two lengths.
+`load_engine` builds `files`, `texts`, the BM25 docs and the graph spans from `chunks.jsonl`, indexed by **chunk position** (the record's offset in the file, which is also the index into `files`/`texts`/BM25/graph). It built the dense channel from the vector store, which is indexed by **durable chunk id** and keeps tombstones, so its row order drifts from the chunk list after any incremental upsert or delete. `FaissDenseAdapter.search` translated a FAISS id into a row of `col.ids` (the wrong space), and no code compared the two lengths.
 
 Three consequences, each matching a symptom in the report:
 
-1. **Dense hits were mislabelled.** Measured with 40 random probes against the live store: 198 of 400 dense hits resolved to a file that was not the one in the vector's own payload. That is why deleted paths such as `packages/pipeline/_sync_pr_incoming/copy_8_dashboard_port.py` kept ranking — a surviving row aliased onto a stale chunk position.
-2. **Tail chunks raised `IndexError`.** `_best_chunk` does `float(d_all[i])` where `i` is a chunk position. `d_all` had 7641 entries and the corpus had 7655, so any chunk at position ≥ 7641 raised `index 7641 is out of bounds for axis 0 with size 7641` — the exact error from the 0.3.127 run. New chunks are appended, so a brand-new file always landed in the crash window.
+1. **Dense hits were mislabelled.** Measured with 40 random probes against the live store: 198 of 400 dense hits resolved to a file that was not the one in the vector's own payload. That is why deleted paths such as `packages/pipeline/_sync_pr_incoming/copy_8_dashboard_port.py` kept ranking, a surviving row aliased onto a stale chunk position.
+2. **Tail chunks raised `IndexError`.** `_best_chunk` does `float(d_all[i])` where `i` is a chunk position. `d_all` had 7641 entries and the corpus had 7655, so any chunk at position ≥ 7641 raised `index 7641 is out of bounds for axis 0 with size 7641`, the exact error from the 0.3.127 run. New chunks are appended, so a brand-new file always landed in the crash window.
 3. **A chunk with no vector can never be a hit.** `retrieve_D_channel_best` admits a file into the pool only if the dense channel retrieved it (`if "dense" not in chans: continue`). The 147 orphan chunks were unreachable by construction, no matter how the query was phrased.
 
-**Separate cause for the `no chunk delta` loop.** `canonical_relpath` (`merkle.py`) ends in `os.path.normcase`, which on Windows turns `/` back into `\` and lower-cases. The Merkle snapshot therefore stores `packages\pipeline\sync_live127\f0.py`, while `_patch_file_merkle` popped `packages/pipeline/sync_live127/f0.py`. The delete never matched, the entry survived, `root_probe` re-reported the path on every poll, and the keeper re-synced it forever — about 9.4 s per cycle, indefinitely. This is why the log kept printing `no chunk delta files=1/2` on deleted probe files.
+**Separate cause for the `no chunk delta` loop.** `canonical_relpath` (`merkle.py`) ends in `os.path.normcase`, which on Windows turns `/` back into `\` and lower-cases. The Merkle snapshot therefore stores `packages\pipeline\sync_live127\f0.py`, while `_patch_file_merkle` popped `packages/pipeline/sync_live127/f0.py`. The delete never matched, the entry survived, `root_probe` re-reported the path on every poll, and the keeper re-synced it forever, about 9.4 s per cycle, indefinitely. This is why the log kept printing `no chunk delta files=1/2` on deleted probe files.
 
 ---
 
@@ -79,7 +79,7 @@ Three consequences, each matching a symptom in the report:
 `/health` now reports `dense_missing`. A corpus the searcher cannot fully serve is no longer hidden behind a healthy `chunks` count.
 
 ### `packages/conductor/architectures.py`
-Added `_fit_channel(scores, n)`, which forces every channel score array to exactly `n` entries (pad with 0.0, truncate if longer). `_channel_maps` runs the graph, BM25 and dense arrays through it. A length mismatch can no longer raise inside `_best_chunk` and turn a search into a 500 — this is the defensive backstop behind the real fix.
+Added `_fit_channel(scores, n)`, which forces every channel score array to exactly `n` entries (pad with 0.0, truncate if longer). `_channel_maps` runs the graph, BM25 and dense arrays through it. A length mismatch can no longer raise inside `_best_chunk` and turn a search into a 500, this is the defensive backstop behind the real fix.
 
 ### `packages/pipeline/incremental.py`
 - **Write order reversed** in the named-delta path: vectors are upserted **before** chunk lines are written. A crash between the two now leaves orphan *vectors* (unreferenced ids, harmless) instead of orphan *chunks* (unsearchable).
@@ -90,10 +90,10 @@ Added `_fit_channel(scores, n)`, which forces every channel score array to exact
 - **`_refresh_publication(store)`** extracted to replace two copies of the invalidate/publish-manifest block, and it now runs after no-delta batches too (previously readiness could reject a live update as checksum corruption).
 
 ### `tests/test_sync_corpus_alignment.py` (new, 4 tests)
-- `test_dense_adapter_maps_faiss_hits_to_chunk_positions` — durable ids with gaps and out-of-order insertion; asserts each vector scores highest at its own chunk's position and `search` returns the right file.
-- `test_unaligned_adapter_would_index_out_of_bounds` — proves the old shape raised `IndexError` and that `_fit_channel` pads it safely.
-- `test_reconcile_embeds_orphan_chunks_and_drops_orphan_vectors` — round-trips a missing chunk and a leftover vector to an exact id match, and asserts idempotency.
-- `test_no_delta_batch_records_the_hashes_it_verified` — a nested deleted path leaves the Merkle after a no-delta sync. **Confirmed to fail when the canonical-key fix is reverted.**
+- `test_dense_adapter_maps_faiss_hits_to_chunk_positions`: durable ids with gaps and out-of-order insertion; asserts each vector scores highest at its own chunk's position and `search` returns the right file.
+- `test_unaligned_adapter_would_index_out_of_bounds`: proves the old shape raised `IndexError` and that `_fit_channel` pads it safely.
+- `test_reconcile_embeds_orphan_chunks_and_drops_orphan_vectors`: round-trips a missing chunk and a leftover vector to an exact id match, and asserts idempotency.
+- `test_no_delta_batch_records_the_hashes_it_verified`: a nested deleted path leaves the Merkle after a no-delta sync. **Confirmed to fail when the canonical-key fix is reverted.**
 
 ### `scripts/live_sync_probe.py` (new)
 The end-to-end harness the report asked for. Registers a client so idle standby cannot stop the engine mid-test, waits for the embedder, writes a **unique** probe path per run, aborts if that path is already searchable, then polls `/health` and `/v1/search` and reports both criteria. Usage: `python scripts/live_sync_probe.py [repo] [engine-url]`.
@@ -109,12 +109,12 @@ The end-to-end harness the report asked for. Registers a client so idle standby 
 The dense-alignment diagnostic on the live store: old adapter mislabelled 198/400 hits and its `d_all` was length 7641 (tail chunk 7654 → `IndexError`); new adapter mislabelled **0**, `missing_vectors=147`, `d_all` length 7655 (tail safe).
 
 ### Unit / regression
-- `tests/test_sync_corpus_alignment.py` — 4 passed.
-- `test_storage_policy.py`, `test_locate_contract_bounds.py`, `test_vectordb.py` — all pass with the changes.
+- `tests/test_sync_corpus_alignment.py`: 4 passed.
+- `test_storage_policy.py`, `test_locate_contract_bounds.py`, `test_vectordb.py`, all pass with the changes.
 - Broader slice (`-k "search or dense or conductor or retriev or incremental or sync or chunk or engine or index or storage or vectordb or merkle"`): 277 passed, 2 skipped.
 
 ### Live, installed wheel 0.3.128
-Real engine, real FastEmbed (CPU on this machine — DirectML unavailable), probe path unique and confirmed absent before the write:
+Real engine, real FastEmbed (CPU on this machine, DirectML unavailable), probe path unique and confirmed absent before the write:
 
 ```
 baseline search does not contain packages/pipeline/sync_live_1790354474/f0.py
@@ -137,7 +137,7 @@ The new file is the **rank-one hit**, 29 s after the write, and the chunk count 
 | tombstones | 1 | 0 |
 | chunks with no vector | 147 | **0** |
 | vectors with no chunk | 133 | **0** |
-| `/health` `dense_missing` | — | **0** |
+| `/health` `dense_missing` | - | **0** |
 
 The keeper `no chunk delta` loop is gone. The dirty ledger drains to `published` with nothing stuck, and stale `sync_live*` Merkle entries are deleted instead of re-reported every poll.
 
@@ -161,14 +161,14 @@ python scripts\live_sync_probe.py .
 
 ## 7. Still open
 
-- **Sync latency.** Per-batch sync is 10–20 s on this machine because FastEmbed runs on CPU (`DmlExecutionProvider not in available providers`). That is an environment problem, not a sync problem, but it sets the floor on time-to-searchable.
-- **`_best_chunk` stale AST span** (bug 3b in `docs/scubiee-bugs-found.md`) is untouched — larger, riskier surface.
+- **Sync latency.** Per-batch sync is 10-20 s on this machine because FastEmbed runs on CPU (`DmlExecutionProvider not in available providers`). That is an environment problem, not a sync problem, but it sets the floor on time-to-searchable.
+- **`_best_chunk` stale AST span** (bug 3b in `docs/scubiee-bugs-found.md`) is untouched, larger, riskier surface.
 - **Four pre-existing test failures**, all confirmed to fail before this work (verified by stashing the changes):
   - `tests/test_live_reindexing.py::test_final_check_forces_held_publish`
   - `tests/test_mcp_agent_warm_retry.py::test_search_returns_warming_without_blocking_embedder`
   - `tests/test_mcp_lifecycle_universal.py::test_warm_engine_for_mcp_waits_for_embedder`
-  - `tests/test_project_id.py::test_incremental_missing_graph_falls_back` — traces to uncommitted 0.3.115+ drift that added `or force_files` to the graph-rebuild condition.
+  - `tests/test_project_id.py::test_incremental_missing_graph_falls_back`: traces to uncommitted 0.3.115+ drift that added `or force_files` to the graph-rebuild condition.
 
 ## 8. Not yet committed / published
 
-Nothing has been committed or pushed. When it goes onto a `release/0.3.128` branch, note that `incremental.py`, `engine.py`, `ce_service.py` and `architectures.py` still carry the 0.3.115–0.3.127 work that was published to PyPI but never committed, so that drift lands in the same commit.
+Nothing has been committed or pushed. When it goes onto a `release/0.3.128` branch, note that `incremental.py`, `engine.py`, `ce_service.py` and `architectures.py` still carry the 0.3.115-0.3.127 work that was published to PyPI but never committed, so that drift lands in the same commit.

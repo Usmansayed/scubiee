@@ -1,4 +1,4 @@
-# MLX memory optimization — stay at 30+ chunks/s under 800 MB
+# MLX memory optimization: stay at 30+ chunks/s under 800 MB
 
 > 2026-08-19, Apple M5 MacBook Air, 16 GB. Follows [`mlx-m5-index-report.md`](./mlx-m5-index-report.md). Raw snapshots: [`mlx-memory-bench.json`](./mlx-memory-bench.json).
 
@@ -38,7 +38,7 @@ Target achieved: YES
 
 Peak MLX stays above 800 MB because one attention/MLP graph still allocates large temporaries. That memory is not held in process RSS. The 800 MB target is met on **RSS and active MLX**.
 
-## Phase 1 — Where the memory actually goes
+## Phase 1: Where the memory actually goes
 
 MLX 0.32.1 APIs: `get_active_memory`, `get_peak_memory`, `get_cache_memory`. There is no `get_memory`.
 
@@ -50,12 +50,12 @@ Cold embed, FP32, batch 96, 768 real chunks:
 | Tokenizer | 145 | 0 | 0 | 0 |
 | Weights loaded | 882 → **785 after mmap** | **522** | 522 | 0 |
 | First GPU eval | 795 | 522 | 522 | 0 |
-| First embed batch | ~800 | 522 | ~2000 | 0–1650 |
-| End (uncapped cache) | 386–907 | 524 | 2338 | **up to 10.8 GB** |
+| First embed batch | ~800 | 522 | ~2000 | 0-1650 |
+| End (uncapped cache) | 386-907 | 524 | 2338 | **up to 10.8 GB** |
 
 Active memory barely moves after load. It is the weights. Peak and cache explode because every batch’s workspace is kept in the Metal allocator cache.
 
-## Phase 2 — Weight footprint (parameters only)
+## Phase 2: Weight footprint (parameters only)
 
 136,731,680 parameters.
 
@@ -68,7 +68,7 @@ Active memory barely moves after load. It is the weights. Peak and cache explode
 
 FP32 weights already consume most of an 800 MB budget. Quantization is optional, not required, once FP16 is allowed. INT8/4-bit were not tested because FP16 already hit both targets.
 
-## Phase 3 — Lazy eval
+## Phase 3: Lazy eval
 
 The previous production loop called `mx.eval` four times per batch (ids, hidden states, pool, norm). That materializes the full `[B,S,768]` tensor.
 
@@ -76,34 +76,34 @@ One eval on the final vectors is **bit-identical** (max abs 0, cosine 1.0) and s
 
 Per-layer `mx.eval` did **not** cut peak and was not kept.
 
-## Phase 4 — Allocator cache
+## Phase 4: Allocator cache
 
 | Cache | Embed c/s (768 ch) | Active | Peak | Cache end | RSS |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Default (unlimited) | 60.3 | 524 | 2338 | **10822** | 386–903 |
+| Default (unlimited) | 60.3 | 524 | 2338 | **10822** | 386-903 |
 | 256 MB cap | 61.2 | 524 | 2338 | **477** | 807 |
 | 64 MB cap | 59.9 | 524 | 2338 | 119 | 908 |
 | Disabled (0) | 59.5 | 524 | 2338 | **0** | 907 |
 
 Capping cache stops the 10 GB leak. It does not change active memory or throughput much. **256 MB cap is enough.** Do not permanently disable the cache.
 
-## Phases 5–6 — Primitives (attention / LN / RoPE)
+## Phases 5-6: Primitives (attention / LN / RoPE)
 
 | Op | Current | MLX primitive | Used? |
 | --- | --- | --- | --- |
-| Embedding | gather | — | keep |
-| QKV | `x @ Wqkv` | — | keep |
+| Embedding | gather | - | keep |
+| QKV | `x @ Wqkv` | - | keep |
 | RoPE | rotate-half, base 1000 | `mx.fast.rope` | **not swapped** (math already correct) |
 | Attention | `Q@K.T/8`, mask, softmax, `@V` | `mx.fast.scaled_dot_product_attention` | **yes, env-gated** |
 | LayerNorm | mean/var | `mx.fast.layer_norm` | **yes, env-gated** |
-| MLP SwiGLU | three matmuls | — | keep |
-| Pool / L2 | mask mean, normalize | — | keep |
+| MLP SwiGLU | three matmuls | - | keep |
+| Pool / L2 | mask mean, normalize | - | keep |
 
 Fast attention vs manual (64 real chunks): cosine **0.999999**, max abs **0.00015**. Fast + LN vs CPU ORT (48 chunks): cosine **0.999986** FP32 / **0.999994** FP16.
 
 RoPE was left on the existing rotate-half path. No custom Metal kernels.
 
-## Phase 7–8 — Sequence / batch
+## Phase 7-8: Sequence / batch
 
 Real chunks still pad to the batch max (mean ~158, max ~241), cap 512. No fixed-512 padding.
 
@@ -118,7 +118,7 @@ Smaller batches cut **peak** workspace, not **active** (still ~weights). Full-co
 
 Batch 96 is **not** required. Batch **48** is faster here and uses less peak workspace. Dynamic padding kept.
 
-## Phase 9–10 — Precision
+## Phase 9-10: Precision
 
 Earlier FP16 (no fused kernels) was slower than FP32 (29.8 vs 34.8). With fused attention/LN, FP16 is fast **and** light:
 
@@ -135,7 +135,7 @@ FP16 is slower only on the old unfused path (RoPE/attention stayed FP32 with ext
 
 INT8/4-bit skipped: not needed.
 
-## Phase 11–12 — Batch around the optimum
+## Phase 11-12: Batch around the optimum
 
 Smallest batch that still clears 30+ with fused kernels: **48** (73 embed / 51 e2e). No need for 96.
 
@@ -146,7 +146,7 @@ Smallest batch that still clears 30+ with fused kernels: **48** (73 embed / 51 e
 | Current FP32 baseline (b96, staged eval) | ~1060 / 900 | 524 | 2338 | 34.8 | 31.1 | 0.99999 |
 | Optimized FP32 (mmap, fused, b48, cache 256) | 927 | 530 | 1743 | 46.4 | 39.3 | 0.999986 |
 | **FP16 fused b48 cache 256** | **718** | **269** | 1519 | **62.7** | **51.4** | **0.999994** |
-| Quantized INT8/4-bit | — | — | — | not run | — | — |
+| Quantized INT8/4-bit | - | - | - | not run | - | - |
 | Best batch (48, not 96) | see FP16/FP32 rows | | | | | |
 
 ## How to run the winning config (not persisted)

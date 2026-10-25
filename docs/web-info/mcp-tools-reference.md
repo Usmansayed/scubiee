@@ -1,6 +1,6 @@
 # MCP tools reference
 
-Detailed guide to the Scubiee **MCP tools** — what the one `map` tool's configs do, when to use each, and the typical agent workflow.
+Detailed guide to the Scubiee **MCP tools**, what the one `map` tool's configs do, when to use each, and the typical agent workflow.
 
 These tools appear in your IDE after `scubiee connect --cursor` (or another tool) and an MCP reload. They are **not** CLI commands (though `scubiee map --config …` mirrors them for scripts).
 
@@ -17,7 +17,7 @@ Setup: [Cursor & MCP](./cursor-mcp.md) · CLI equivalents: [Commands reference](
 3. IDE connected: `scubiee connect --cursor` → reload MCP
 4. At chat start: call **`gate()`** once (see below)
 
-If `gate` returns `0` (not managed), run `init` / `connect` in that workspace — do not keep calling Scubiee tools.
+If `gate` returns `0` (not managed), run `init` / `connect` in that workspace, do not keep calling Scubiee tools.
 
 If Scubiee is globally stopped (`scubiee stop`), tools are blocked until the user runs **`scubiee resume`**.
 
@@ -29,17 +29,17 @@ Scubiee ships **one locate tool, `map`**, with two configs (`find` | `focus`), p
 
 | Tool | One-line purpose |
 |------|------------------|
-| `gate` | Tiny managed check (~5 tokens) — call once at session start |
+| `gate` | Tiny managed check (~5 tokens), call once at session start |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is the code for X?" — ranked locations **+ the top result's code inline**. Also orients a wide/unknown area and pulls code near a chunk you hold (put its names in the query). |
-| `map config=focus` | "Show me this name" — its full body + callers/callees + sibling names, one unit |
+| `map config=find` | "Where is the code for X?", ranked locations **+ the top result's code inline**. Also orients a wide/unknown area and pulls code near a chunk you hold (put its names in the query). |
+| `map config=focus` | "Show me this name", its full body + callers/callees + sibling names, one unit |
 
 Exact literals / filenames / known paths → **host** Grep/Glob/Read (not Scubiee). History → `git`.
 
-The surface was narrowed from four configs to two in v0.3.142 — the old `related`
+The surface was narrowed from four configs to two in v0.3.142, the old `related`
 and `graph` configs are folded into `find` (passing a config of `related`/`graph`
 still works and degrades to `find` with a note). There is no surface switching and
-no `CTX_MCP_SURFACE` / `CTX_MCP_EXPERIMENT` — Map V3 (`find`/`focus`) is the single
+no `CTX_MCP_SURFACE` / `CTX_MCP_EXPERIMENT`, Map V3 (`find`/`focus`) is the single
 shipped surface.
 
 ---
@@ -51,8 +51,8 @@ The worker resolves the repo from `CTX_REPO` (set by `scubiee connect`). The hea
 | Signal | Meaning |
 |--------|---------|
 | `gate` → `1:ce_…` | Managed repo, bound and resolvable |
-| `gate` → `0` | Not managed — run `scubiee init .` |
-| `gate` → `p` | Globally paused — run `scubiee resume` |
+| `gate` → `0` | Not managed, run `scubiee init .` |
+| `gate` → `p` | Globally paused, run `scubiee resume` |
 
 **Cursor multi-root:** connect from the specific workspace folder so its `.kiro`/`.cursor` `mcp.json` pins `CTX_REPO` to the correct repo.
 
@@ -64,7 +64,7 @@ The worker resolves the repo from `CTX_REPO` (set by `scubiee connect`). The hea
 gate() once
     ↓ managed (1:ce_…)?
 map config=find query="<short code-vocab intent>"
-    ↓ top result is the place? EDIT it — the code is already inline, don't re-view
+    ↓ top result is the place? EDIT it - the code is already inline, don't re-view
     ↓ don't know where to start? use a broad find query to orient, THEN a focused one
     ↓ have a name and want its wiring?
 map config=focus names=[Symbol]          ← full body + callers/callees + siblings, one unit
@@ -72,9 +72,9 @@ map config=focus names=[Symbol]          ← full body + callers/callees + sibli
 
 Pick **one** config by what you know (`find` when you don't know where, `focus`
 when you know the name), act on the first good answer, and **stop**. A broad
-`find` query orients a wide area and pulls code near a chunk you already hold —
+`find` query orients a wide area and pulls code near a chunk you already hold
 that is what the old `related`/`graph` configs did. Don't poll `status()` in a
-loop while warming — retry the `map` call once after a short wait.
+loop while warming, retry the `map` call once after a short wait.
 
 ---
 
@@ -92,9 +92,9 @@ loop while warming — retry the `map` call once after a short wait.
 
 **When:** You want engine health (is it warm / dense yet?).
 
-**Returns:** one line — `ok=… warm=… dense=… phase=… chunks=… version=…`.
+**Returns:** one line, `ok=… warm=… dense=… phase=… chunks=… version=…`.
 
-**Not for:** finding code — use `map`.
+**Not for:** finding code, use `map`.
 
 ---
 
@@ -102,7 +102,7 @@ loop while warming — retry the `map` call once after a short wait.
 
 One tool, one required field `config`. Each config takes a few arguments.
 
-#### `config=find` — locate by concept
+#### `config=find`: locate by concept
 
 ```json
 {"config": "find", "query": "where the token savings summary is computed", "keywords": ["tokens_saved", "compare_queries"]}
@@ -110,14 +110,14 @@ One tool, one required field `config`. Each config takes a few arguments.
 
 | Argument | Default | Why |
 |----------|---------|-----|
-| `query` | required | Short code-vocab intent (~25–120 denser tokens: symbols, paths, APIs, verbs). |
+| `query` | required | Short code-vocab intent (~25-120 denser tokens: symbols, paths, APIs, verbs). |
 | `keywords` | `[]` | Exact names you already know; weighted in ranking. |
 | `scope` | `code` | `code` · `tests` · `docs` · `all`. |
 | `k` | 8 | Max results. |
 
-Returns ranked locations with line numbers; on a confident top hit, its **enclosing function/class is included inline**. If that's the place, edit it — don't call another config to view it.
+Returns ranked locations with line numbers; on a confident top hit, its **enclosing function/class is included inline**. If that's the place, edit it, don't call another config to view it.
 
-#### `config=focus` — a name's code and wiring
+#### `config=focus`: a name's code and wiring
 
 ```json
 {"config": "focus", "names": ["git_dirty_files"]}
@@ -126,10 +126,10 @@ Returns ranked locations with line numbers; on a confident top hit, its **enclos
 | Argument | Default | Why |
 |----------|---------|-----|
 | `names` | required | Identifier(s) to center on. |
-| `anchor` | — | Or a `file::symbol` chunk you already have. |
+| `anchor` | - | Or a `file::symbol` chunk you already have. |
 | `scope` | `code` | As `find`. |
 
-Returns the symbol's full body **plus** its callers/callees and the other symbol names in its file — one unit you can edit from without a follow-up call.
+Returns the symbol's full body **plus** its callers/callees and the other symbol names in its file, one unit you can edit from without a follow-up call.
 
 > **Retired configs.** Earlier versions had separate `related` (related code for a
 > chunk you hold) and `graph` (orient wide) configs. As of v0.3.142 both fold into
@@ -142,7 +142,7 @@ Returns the symbol's full body **plus** its callers/callees and the other symbol
 
 ## Registering a repo from the agent
 
-`scubiee init .` (CLI) is the normal path. If an MCP host exposes a register action, large repos may return a confirm-required payload — the user then runs `scubiee init . --confirm`.
+`scubiee init .` (CLI) is the normal path. If an MCP host exposes a register action, large repos may return a confirm-required payload, the user then runs `scubiee init . --confirm`.
 
 ---
 
@@ -180,4 +180,4 @@ related to a chunk, put its names in a `find` query; to orient wide, use a broad
 - [Indexing & projects](./indexing-and-projects.md)
 - [Daily use](./daily-use.md)
 - [Troubleshooting](./troubleshooting.md)
-- [Commands reference — MCP section](./commands-reference.md#mcp-tools-inside-cursor)
+- [Commands reference, MCP section](./commands-reference.md#mcp-tools-inside-cursor)

@@ -1,4 +1,4 @@
-# Bug Hunt Report — scubiee 0.2.18
+# Bug Hunt Report: scubiee 0.2.18
 
 **Date:** 2026-08-20  
 **Method:** Adversarial testing (corrupted state, path edge cases, env manipulation, safety probes)  
@@ -17,7 +17,7 @@
 
 ---
 
-## Bug 1 — HIGH: `ctx wipe` would delete system directories
+## Bug 1: HIGH: `ctx wipe` would delete system directories
 
 **Scenario:** User sets `CTX_HOME=/tmp` (or any system path) and runs `ctx wipe --confirm`.
 
@@ -49,7 +49,7 @@ def _is_safe_to_wipe(path: Path) -> bool:
 
 ---
 
-## Bug 2 — MEDIUM: Empty `CTX_REPO` makes `_is_repo_managed()` return True
+## Bug 2: MEDIUM: Empty `CTX_REPO` makes `_is_repo_managed()` return True
 
 **Scenario:** `CTX_REPO=""` (empty string) in the environment.
 
@@ -57,7 +57,7 @@ def _is_safe_to_wipe(path: Path) -> bool:
 
 **Impact:** Token waste. If an IDE launches the MCP without setting `CTX_REPO`, the agent gets forced CE instructions and may waste calls on a folder that isn't the user's intent.
 
-**Expected:** When `CTX_REPO` is explicitly empty, `_is_repo_managed()` should return `False` — treat it as "no repo configured."
+**Expected:** When `CTX_REPO` is explicitly empty, `_is_repo_managed()` should return `False`, treat it as "no repo configured."
 
 **File:** `packages/pipeline/mcp_locate.py`, function `_is_repo_managed()`
 
@@ -75,7 +75,7 @@ def _is_repo_managed() -> bool:
 
 ---
 
-## Bug 3 — MEDIUM: `ctx migrate` crashes on corrupted meta.json
+## Bug 3: MEDIUM: `ctx migrate` crashes on corrupted meta.json
 
 **Scenario:** The `meta.json` file in a project store is corrupted (invalid JSON).
 
@@ -102,7 +102,7 @@ except (json.JSONDecodeError, UnicodeDecodeError) as exc:
 
 ---
 
-## Bug 4 — MEDIUM: Full CE instructions emitted for empty CTX_REPO
+## Bug 4: MEDIUM: Full CE instructions emitted for empty CTX_REPO
 
 **Scenario:** Same root cause as Bug 2, but from the perspective of `_server_instructions()`.
 
@@ -110,13 +110,13 @@ except (json.JSONDecodeError, UnicodeDecodeError) as exc:
 
 **Impact:** Token waste per turn on sessions where the MCP was started without a project context.
 
-**Expected:** Same fix as Bug 2 — treat empty `CTX_REPO` as unmanaged.
+**Expected:** Same fix as Bug 2, treat empty `CTX_REPO` as unmanaged.
 
 **File:** `packages/pipeline/mcp_locate.py`
 
 ---
 
-## Bug 5 — LOW: Corrupted registry.json silently returns empty list
+## Bug 5: LOW: Corrupted registry.json silently returns empty list
 
 **Scenario:** `~/.context-engine/registry.json` contains invalid JSON.
 
@@ -151,10 +151,10 @@ except (json.JSONDecodeError, UnicodeDecodeError) as exc:
 
 ## Recommendations
 
-1. **Fix Bug 1 immediately** — it's a data-loss risk via user env misconfiguration.
-2. **Fix Bugs 2+4 together** — one-line check at the top of `_is_repo_managed()`.
-3. **Fix Bug 3** — simple try/except wrap in `migrate.py`.
-4. **Bug 5** can wait — it's an unusual scenario and the impact is confusion, not data loss.
+1. **Fix Bug 1 immediately**: it's a data-loss risk via user env misconfiguration.
+2. **Fix Bugs 2+4 together**: one-line check at the top of `_is_repo_managed()`.
+3. **Fix Bug 3**: simple try/except wrap in `migrate.py`.
+4. **Bug 5** can wait, it's an unusual scenario and the impact is confusion, not data loss.
 
 ---
 
@@ -162,7 +162,7 @@ except (json.JSONDecodeError, UnicodeDecodeError) as exc:
 
 Second round of adversarial tests: concurrency, path edge cases, self-referential indexing, malicious inputs.
 
-### Bug 6 — MEDIUM: Concurrent init on same folder causes race failures
+### Bug 6: MEDIUM: Concurrent init on same folder causes race failures
 
 **Scenario:** 5 threads call `initialize_repo()` simultaneously on the same folder.
 
@@ -170,15 +170,15 @@ Second round of adversarial tests: concurrency, path edge cases, self-referentia
 
 **Impact:** In theory, if an MCP process and CLI both try to register the same repo simultaneously, one will fail. In practice this is rare (single-user product).
 
-**Status:** FIXED — `initialize_repo` now wraps the registration section in `registry_lock()`. Concurrent calls wait; the first wins, subsequent ones detect "already managed" and return immediately. 5/5 threads succeed with the same project_id.
+**Status:** FIXED, `initialize_repo` now wraps the registration section in `registry_lock()`. Concurrent calls wait; the first wins, subsequent ones detect "already managed" and return immediately. 5/5 threads succeed with the same project_id.
 
 ---
 
-### Bug 7 — LOW: Migrate on non-existent path returns confusing "already_current"
+### Bug 7: LOW: Migrate on non-existent path returns confusing "already_current"
 
 **Scenario:** `ctx migrate /tmp/does_not_exist`
 
-**Behavior (before fix):** Returns `{"ok": true, "reason": "already_current", "project_id": null}`. Confusing — it's not "current," it doesn't exist.
+**Behavior (before fix):** Returns `{"ok": true, "reason": "already_current", "project_id": null}`. Confusing, it's not "current," it doesn't exist.
 
 **Fix:** Now propagates the actual reason from detection (`"not_indexed"` or `"no_index_data"`).
 
@@ -186,19 +186,19 @@ Second round of adversarial tests: concurrency, path edge cases, self-referentia
 
 ---
 
-### Bug 8 — MEDIUM: Can init a folder inside ~/.context-engine
+### Bug 8: MEDIUM: Can init a folder inside ~/.context-engine
 
 **Scenario:** `ctx init ~/.context-engine/some_folder`
 
 **Behavior (before fix):** Succeeds. Indexing CE's own storage could cause infinite loops or corrupt index data.
 
-**Fix:** Added guard in `initialize_repo()` — refuses any path that `is_relative_to(context_engine_home())`.
+**Fix:** Added guard in `initialize_repo()`, refuses any path that `is_relative_to(context_engine_home())`.
 
 **Status:** FIXED.
 
 ---
 
-### Bug 9 — LOW: migrate_all silently skips corrupt projects
+### Bug 9: LOW: migrate_all silently skips corrupt projects
 
 **Scenario:** One project has a corrupted `meta.json`. `ctx migrate --apply-all` runs.
 
@@ -210,7 +210,7 @@ Second round of adversarial tests: concurrency, path edge cases, self-referentia
 
 ---
 
-## Round 2 — What Passed (no bugs)
+## Round 2: What Passed (no bugs)
 
 | Test | Result |
 |------|--------|
@@ -240,17 +240,17 @@ Second round of adversarial tests: concurrency, path edge cases, self-referentia
 
 ---
 
-## Round 3 Findings — Chaos Testing (2026-08-20)
+## Round 3 Findings: Chaos Testing (2026-08-20)
 
 Method: Stop/start daemon mid-operation, bulk file changes, corrupt state during warm engine, rapid cycling, giant files, folder rename, file-as-CTX_REPO.
 
-### Bug 10 — HIGH: Daemon stop race — watchdog revives daemon before client detects death
+### Bug 10: HIGH: Daemon stop race, watchdog revives daemon before client detects death
 
 **Scenario:** Stop the daemon, immediately try to use search.
 
 **Behavior:** `engine stop` sends the stop signal, but by the time a client checks `is_running()` ~1s later, the watchdog (15s poll interval) or a stale TCP connection means the daemon appears alive or has already been revived. Search calls can succeed against a daemon that was "stopped."
 
-**Root cause:** The chaos test used `subprocess.run(["ctx", "engine", "stop"])` — the CLI's `cmd_engine("stop")` does call `stop_watchdog()` first, but there's a race window:
+**Root cause:** The chaos test used `subprocess.run(["ctx", "engine", "stop"])`, the CLI's `cmd_engine("stop")` does call `stop_watchdog()` first, but there's a race window:
 1. Watchdog stop signal sent
 2. Daemon stop signal sent  
 3. Between steps 1-2, the watchdog's last health poll may trigger a restart
@@ -261,11 +261,11 @@ Also: `is_running()` checks `/health` which can return 200 from a daemon that is
 
 **Recommended fix:** `stop_daemon()` should wait until the port is actually free (poll `/health` until connection refused, with a 5s timeout).
 
-**Status:** FIXED — `stop_daemon()` now polls `is_running()` for up to 5s after kill, confirming the port is free before returning.
+**Status:** FIXED, `stop_daemon()` now polls `is_running()` for up to 5s after kill, confirming the port is free before returning.
 
 ---
 
-### Bug 11 — MEDIUM: `ctx sync` crashes when meta.json is corrupt on disk
+### Bug 11: MEDIUM: `ctx sync` crashes when meta.json is corrupt on disk
 
 **Scenario:** Daemon is warm (engine loaded in memory). Someone or something corrupts `meta.json` on disk. Then `ctx sync` is called.
 
@@ -277,17 +277,17 @@ Also: `is_running()` checks `/health` which can return 200 from a daemon that is
 - Fall back to a full sync (re-create meta from the in-memory state)
 - Or return a clear error: `"meta_corrupt"` with a hint to `ctx rebuild`
 
-**Status:** FIXED — `PipelineStore.load_meta()` now catches JSONDecodeError, prints a WARNING, and returns `{}`. Sync treats it as "no prior state" and proceeds without crashing.
+**Status:** FIXED, `PipelineStore.load_meta()` now catches JSONDecodeError, prints a WARNING, and returns `{}`. Sync treats it as "no prior state" and proceeds without crashing.
 
 ---
 
 ### Not-a-bug: Grep "misses" bulk-added files
 
-The chaos test added 20 files and grep returned 10. This is **correct behavior** — `max_hits=10` was set, and grep returned `truncated=True, has_more=True`. The grep honesty contract (0.2.18 feature) correctly signals that more results exist. No bug.
+The chaos test added 20 files and grep returned 10. This is **correct behavior**, `max_hits=10` was set, and grep returned `truncated=True, has_more=True`. The grep honesty contract (0.2.18 feature) correctly signals that more results exist. No bug.
 
 ---
 
-### Round 3 — What Passed (no bugs)
+### Round 3: What Passed (no bugs)
 
 | Test | Result |
 |------|--------|
@@ -324,7 +324,7 @@ The chaos test added 20 files and grep returned 10. This is **correct behavior**
 
 ---
 
-## Bug 12 — CRITICAL: SIGSEGV in Python GC during multi-threaded embedding
+## Bug 12: CRITICAL: SIGSEGV in Python GC during multi-threaded embedding
 
 **Date:** 2026-08-20  
 **Crash log:** macOS crash report, Python 3.12.14, ARM64
@@ -346,7 +346,7 @@ This is a known class of CPython bug with native extensions that create/destroy 
 - Thread 0: MCP stdio poll (main loop)
 - Thread 4: OnnxRuntime telemetry (condition_variable wait)
 - Thread 5 (CRASHED): GC triggered during frame eval
-- Thread 7: zlib.compress + numpy — actively building embedding vectors
+- Thread 7: zlib.compress + numpy, actively building embedding vectors
 - Thread 12-13: tokenizers Rayon worker pool
 
 **Fix:** Disable Python GC for the duration of `_encode_batch()`. GC is re-enabled in a `finally` block immediately after the native work completes. This prevents GC from running on any thread while embedding intermediates exist.
@@ -391,11 +391,11 @@ def _encode_batch(self, batch):
 
 ---
 
-## Round 5 Findings — Real-Life User Journeys (2026-08-20)
+## Round 5 Findings: Real-Life User Journeys (2026-08-20)
 
-Method: Simulated actual user scenarios — registry deleted mid-session, accel.json missing, non-git repos, CTX_REPO mismatch, partial index from interruption, disk full, old-format meta, duplicate registry entries, remove mid-session, move ce_home, pip upgrade detection, rapid saves, env injection.
+Method: Simulated actual user scenarios, registry deleted mid-session, accel.json missing, non-git repos, CTX_REPO mismatch, partial index from interruption, disk full, old-format meta, duplicate registry entries, remove mid-session, move ce_home, pip upgrade detection, rapid saves, env injection.
 
-### Bug 13 — MEDIUM: Daemon /health has no version field
+### Bug 13: MEDIUM: Daemon /health has no version field
 
 **Scenario:** User does `pip install -U scubiee` (upgrades from 0.2.17 → 0.2.18). The daemon is still running from the old version. CLI is now 0.2.18. User has no way to detect the mismatch.
 
@@ -409,7 +409,7 @@ Method: Simulated actual user scenarios — registry deleted mid-session, accel.
 
 ---
 
-### Round 5 — What Passed (no bugs, scenarios that users will hit)
+### Round 5: What Passed (no bugs, scenarios that users will hit)
 
 | Scenario | Result |
 |----------|--------|
@@ -451,11 +451,11 @@ Method: Simulated actual user scenarios — registry deleted mid-session, accel.
 
 ---
 
-## Round 6 Findings — Human Behavior Simulation (2026-08-20)
+## Round 6 Findings: Human Behavior Simulation (2026-08-20)
 
-Method: Simulated real user actions — git branch switch, npm install dump, nested repos, file renames, init home dir, docs-only repos, concurrent IDE windows, 50MB files, stale sessions, i18n queries, mid-session id.json deletion.
+Method: Simulated real user actions, git branch switch, npm install dump, nested repos, file renames, init home dir, docs-only repos, concurrent IDE windows, 50MB files, stale sessions, i18n queries, mid-session id.json deletion.
 
-### Bug 14 — HIGH: ctx init accepts home directory
+### Bug 14: HIGH: ctx init accepts home directory
 
 **Scenario:** User accidentally runs `ctx init ~/` or `ctx init ~/Downloads`.
 
@@ -467,7 +467,7 @@ Method: Simulated real user actions — git branch switch, npm install dump, nes
 
 ---
 
-### Bug 15 — HIGH: Nested repo with .git gets parent's project_id
+### Bug 15: HIGH: Nested repo with .git gets parent's project_id
 
 **Scenario:** User clones a second repo inside a managed repo (e.g., `git clone X ./vendor/X`).
 
@@ -481,19 +481,19 @@ Method: Simulated real user actions — git branch switch, npm install dump, nes
 
 ---
 
-### Bug 16 — MEDIUM: Subfolder init crashed with ValueError (regression from concurrent fix)
+### Bug 16: MEDIUM: Subfolder init crashed with ValueError (regression from concurrent fix)
 
 **Scenario:** `ctx init ./some_subfolder` where subfolder has no .git and is inside a managed repo.
 
 **Behavior (before fix):** `mark_registered()` raised `ValueError: project_id_mismatch` because the subfolder resolved to parent's project_id but tried to register with the subfolder path.
 
-**Fix:** Added try/except around `mark_registered` — if it raises ValueError or RegistryConflictError for a subfolder that resolved to parent, gracefully return the parent's project result.
+**Fix:** Added try/except around `mark_registered`, if it raises ValueError or RegistryConflictError for a subfolder that resolved to parent, gracefully return the parent's project result.
 
 **Status:** FIXED.
 
 ---
 
-### Round 6 — What Passed (13/14 scenarios)
+### Round 6: What Passed (13/14 scenarios)
 
 | Scenario | Result |
 |----------|--------|

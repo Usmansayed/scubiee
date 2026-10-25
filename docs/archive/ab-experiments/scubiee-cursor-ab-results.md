@@ -1,24 +1,24 @@
-# Scubiee Map V3 vs Without — Cursor benchmark results
+# Scubiee Map V3 vs Without: Cursor benchmark results
 
 Runtime: **Cursor headless agent CLI** `agent` v2026.10.01, model `auto` (Cursor router),
 both arms identical. Scubiee engine **0.3.140** (warm, dense), map_v3 bridge as the MCP server.
-Harness: `scripts/claude_sdk_harness/run_cursor_ab.py` (faithful port of the Claude SDK harness —
+Harness: `scripts/claude_sdk_harness/run_cursor_ab.py` (faithful port of the Claude SDK harness
 same task prompts, same hidden oracle, same SHA-identical git-snapshot isolation, same map_v3
 bridge + rule). Token usage read from the Cursor CLI `result` event `usage` block
 (`inputTokens/outputTokens/cacheReadTokens/cacheWriteTokens`).
 
-## Setup validity (preflight — all passed before any token spend)
+## Setup validity (preflight: all passed before any token spend)
 - Cursor CLI installed + key authenticates; `--output-format json` emits structured token usage.
 - Per-arm workspaces are byte-identical git snapshots (`identical_tree` asserted each cell).
 - With-arm: Scubiee MCP present in the **global** `~/.cursor/mcp.json` (the headless agent only
-  reads the global file, not a per-workspace one — verified) + the map_v3 rule in CLAUDE.md.
+  reads the global file, not a per-workspace one, verified) + the map_v3 rule in CLAUDE.md.
   Without-arm: empty MCP config, native tools only. Global config backed up and restored.
-- Engine configured **read-only** for locate (`CTX_AUTO_INDEX=0`, `CTX_BACKGROUND_SYNC=0`) — neither
+- Engine configured **read-only** for locate (`CTX_AUTO_INDEX=0`, `CTX_BACKGROUND_SYNC=0`), neither
   arm can write it. Shared only as a read index, so no cross-arm contamination.
 - Scubiee calls are genuinely counted (MCP calls arrive as `mcpToolCall` with
   `serverIdentifier=scubieeab`; housekeeping `getMcpTools` excluded).
 
-## Run 1 — task `cache_aware_savings` (single-file dev task), model auto, 2 reps/arm
+## Run 1: task `cache_aware_savings` (single-file dev task), model auto, 2 reps/arm
 
 | arm | rep | total tokens | scubiee calls | tool calls | edited | oracle | success |
 |---|---|---:|---:|---:|---|---|---|
@@ -31,14 +31,14 @@ bridge + rule). Token usage read from the Cursor CLI `result` event `usage` bloc
 
 Why: this task is single-file and high-variance. Scubiee's `find`+`focus` responses are
 body-rich (thousands of chars), which inflates the transcript that every later turn re-reads
-(cache-read: map_v3 ~385–460k vs without ~109–275k). On a task the native agent can solve with a
+(cache-read: map_v3 ~385-460k vs without ~109-275k). On a task the native agent can solve with a
 couple of greps, the extra Scubiee context is a net cost, not a saving.
 
 **Cross-runtime check (same task on Claude):** Claude `map_v3` on `cache_aware_savings` = 512k
-(≈ Cursor's 514k — consistent), and Claude `without` on this task ran 529k–826k. So the result is
+(≈ Cursor's 514k, consistent), and Claude `without` on this task ran 529k, 826k. So the result is
 task-driven, not a Cursor artifact; the Cursor without-arm simply happened to explore little (290k).
 
-## Run 2 — task `add_importers_expand_alias` (hard cross-file dev task), model auto, 2 reps/arm
+## Run 2: task `add_importers_expand_alias` (hard cross-file dev task), model auto, 2 reps/arm
 
 | arm | rep | total tokens | scubiee calls | tool calls | oracle | success |
 |---|---|---:|---:|---:|---|---|
@@ -49,7 +49,7 @@ task-driven, not a Cursor artifact; the Cursor without-arm simply happened to ex
 
 **Avg: without 2.24M vs map_v3 2.18M → ~2.8% difference (within noise). 3 of 4 cells FAILED.**
 
-Why: the Cursor agent (auto router) **barely engaged Scubiee** — exactly **one** `find` call per
+Why: the Cursor agent (auto router) **barely engaged Scubiee**, exactly **one** `find` call per
 with-arm cell, then it reverted to native grep/read and spiraled to 80+ tool calls and 2M+ tokens,
 the same spiral as the native arm. Because Scubiee was effectively unused after the first call, the
 two arms converged.
@@ -60,18 +60,18 @@ two arms converged.
 
 ## Honest conclusion
 
-- The harness, isolation, and token measurement are **valid** — this is a fair comparison.
+- The harness, isolation, and token measurement are **valid**, this is a fair comparison.
 - On Cursor with the `auto` router, the agent **under-uses the Scubiee MCP** (1 call, then native
   spiral), so Scubiee did **not** reproduce the token savings it shows on Claude. On the single-file
   task it cost more (richer context, no need); on the hard task both arms spiraled to ~2M tokens and
   mostly failed.
 - This is primarily an **agent-behavior / tool-adoption** difference between the Cursor and Claude
-  runtimes, not evidence that Scubiee's retrieval is worse — Scubiee's own map output is identical
+  runtimes, not evidence that Scubiee's retrieval is worse, Scubiee's own map output is identical
   across runtimes (same bridge). The lever that made Scubiee win on Claude (the agent choosing map
   over grep, and trusting it) did not fire under Cursor's auto router.
 - **Not a clean Scubiee win on Cursor as configured.** Before claiming any Cursor result, the next
   step is to make the Cursor agent actually adopt Scubiee: pin a model known to follow tool rules,
-  strengthen the with-arm rule for Cursor, and/or constrain native tools — then re-measure. Reporting
+  strengthen the with-arm rule for Cursor, and/or constrain native tools, then re-measure. Reporting
   the current numbers as a Scubiee win would be misleading.
 
 ## Artifacts
@@ -82,13 +82,13 @@ two arms converged.
 
 ---
 
-## Hard real-dev-task run — `c_default` rule (map_v3) FIRST, then `without`
+## Hard real-dev-task run: `c_default` rule (map_v3) FIRST, then `without`
 
 Two **hard** multi-file dev tasks, both registered STRICT (oracle must match the full edit set,
 not a partial ratio). Scubiee/`c_default` arm run first, `without` second, so any shared-engine or
 ordering effect would favor `without`, not Scubiee. 1 rep/cell, model `auto`, 600s/cell cap.
 Per-cell fresh SHA-identical git snapshot, deleted after each cell; global `~/.cursor/mcp.json`
-swapped per arm and restored (verified clean after the run — no leftover config or `.cursorab_bak`).
+swapped per arm and restored (verified clean after the run, no leftover config or `.cursorab_bak`).
 
 | task | arm | total tokens | scubiee calls | tool calls | py edits | oracle | success |
 |---|---|---:|---:|---:|---:|---|---|
@@ -99,25 +99,25 @@ swapped per arm and restored (verified clean after the run — no leftover confi
 
 ### What the numbers say (honest read)
 
-**Task 1 — `unify_token_estimate`:** essentially a tie on tokens (map_v3 193k vs without 216k,
+**Task 1, `unify_token_estimate`:** essentially a tie on tokens (map_v3 193k vs without 216k,
 ~11% cheaper with the rule) and both arms fully correct. Notably the map_v3 agent did **not** call
-`map` here — it solved the task with native tools under the rule, still cheaply and correctly. On a
+`map` here, it solved the task with native tools under the rule, still cheaply and correctly. On a
 moderately-scoped cross-module edit the rule neither helped nor hurt much; both runtimes handled it.
 
-**Task 2 — `add_importers_expand_alias`:** the decisive case. Tokens are a near-tie
-(map_v3 2.675M vs without 2.633M — both spiraled on this heavy cross-file task, cache_read dominated),
+**Task 2, `add_importers_expand_alias`:** the decisive case. Tokens are a near-tie
+(map_v3 2.675M vs without 2.633M, both spiraled on this heavy cross-file task, cache_read dominated),
 **but correctness diverged sharply:**
-- **map_v3** edited **both** required files — routed `importers` as a caller-style direction in
+- **map_v3** edited **both** required files, routed `importers` as a caller-style direction in
   `packages/pipeline/context_trace.py` **and** added it to the direction whitelist in
   `packages/pipeline/mcp_locate.py` → **oracle 1.00, success**. One `map` call pointed it at both files.
 - **without** edited **only** `context_trace.py`, then concluded `mcp_locate.py` "is not in this
-  workspace" — which is **wrong**, the file is present — and skipped the whitelist edit →
+  workspace", which is **wrong**, the file is present, and skipped the whitelist edit →
   **oracle 0.33, failure**. It ran **45 greps** and still reached a false conclusion about a file's
   existence.
 
 ### Takeaway for Cursor on hard tasks
 
-- Raw token count is **not** where Scubiee wins on hard dev tasks under Cursor's `auto` router — on
+- Raw token count is **not** where Scubiee wins on hard dev tasks under Cursor's `auto` router, on
   both tasks the two arms landed within ~11% of each other, and on the heavy cross-file task both
   blew past 2.5M tokens regardless of arm.
 - **The win is correctness/recall.** On the genuinely cross-file task, native grep-and-read led the
@@ -125,7 +125,7 @@ moderately-scoped cross-module edit the rule neither helped nor hurt much; both 
   `map` gave the agent the full file set in one shot and it completed both edits (100%).
 - The Cursor agent still under-adopts `map` on hard tasks (scub=0 or 1), so the token story is
   dominated by its native exploration habit. The rule's value shows up as the agent occasionally
-  reaching for `map` at the right moment and getting the complete surface — which is what turned a
+  reaching for `map` at the right moment and getting the complete surface, which is what turned a
   failure into a success here.
 - Caveats: 1 rep/cell, `auto` model router (non-deterministic), and hard-task token totals are
   high-variance. The success/oracle split (2/2 for map_v3 vs 1/2 for without) is the signal to trust

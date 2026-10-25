@@ -1,8 +1,8 @@
-# Global MCP hosts — per-tool research (v0.3.0)
+# Global MCP hosts: per-tool research (v0.3.0)
 
-**Scope:** Tools that work with **`scubiee connect` once globally** — no per-repo MCP pin required.
+**Scope:** Tools that work with **`scubiee connect` once globally**, no per-repo MCP pin required.
 
-**Excluded (special-4):** Kiro, VS Code/Copilot, Cline, Roo Code — see [mcp-workspace-resolution-issue.md](./mcp-workspace-resolution-issue.md).
+**Excluded (special-4):** Kiro, VS Code/Copilot, Cline, Roo Code, see [mcp-workspace-resolution-issue.md](./mcp-workspace-resolution-issue.md).
 
 **Code:** `packages/pipeline/host_workspace.py`  
 **Tests:** `tests/test_global_mcp_hosts.py`
@@ -52,7 +52,7 @@ For these: run `scubiee connect --<tool>` **inside each repo**, or use legacy pr
 
 - **MCP config:** `~/.claude.json` → top-level `mcpServers`
 - **Workspace env:** `CLAUDE_PROJECT_DIR`, `CLAUDE_CODE_PROJECT_DIR`
-- **Discovery:** Official — MCP child gets project dir in env; **do not trust process cwd**
+- **Discovery:** Official, MCP child gets project dir in env; **do not trust process cwd**
 - **Rules:** Append to repo `.claude/CLAUDE.md` on init
 - **Refs:** [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp)
 
@@ -69,7 +69,7 @@ For these: run `scubiee connect --<tool>` **inside each repo**, or use legacy pr
 - **MCP config:** `~/.codeium/windsurf/mcp_config.json`
 - **Workspace env:** `CODEIUM_WINDSURF_WORKSPACE`, `WINDSURF_WORKSPACE` (best-effort)
 - **Discovery:** Cascade often spawns with project cwd when a folder is open; no project MCP file API
-- **Rules:** None — rely on MCP instructions at spawn
+- **Rules:** None, rely on MCP instructions at spawn
 - **Refs:** [docs.windsurf.com/windsurf/cascade/mcp](https://docs.windsurf.com/windsurf/cascade/mcp)
 
 ### Continue (`continue`)
@@ -84,7 +84,7 @@ For these: run `scubiee connect --<tool>` **inside each repo**, or use legacy pr
 
 - **MCP config:** `~/.config/zed/settings.json` (or `%APPDATA%\Zed\settings.json`) → `context_servers`
 - **Workspace env:** `ZED_PROJECT_DIR`, `ZED_WORKSPACE` (best-effort)
-- **Discovery:** Project-scoped servers use project root as cwd; global-only may spawn from `$HOME` — resolver falls back to cwd walk + env
+- **Discovery:** Project-scoped servers use project root as cwd; global-only may spawn from `$HOME`, resolver falls back to cwd walk + env
 - **Rules:** None
 - **Refs:** [zed.dev/docs/ai/mcp](https://zed.dev/docs/ai/mcp)
 
@@ -124,7 +124,7 @@ scubiee init .                   # per repo you want indexed
 # restart IDE / reload MCP
 ```
 
-For **special-4 only**, add: run connect from inside each repo (or accept project MCP pin on init — future option).
+For **special-4 only**, add: run connect from inside each repo (or accept project MCP pin on init, future option).
 
 ---
 

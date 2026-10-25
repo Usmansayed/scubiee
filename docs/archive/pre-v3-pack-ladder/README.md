@@ -1,4 +1,4 @@
-# Archive — pre-v3 "pack ladder" docs
+# Archive: pre-v3 "pack ladder" docs
 
 These documents describe the **retired** Scubiee MCP locate surface, built around a multi-step
 ladder:
@@ -14,17 +14,17 @@ implemented in the old `packages/pipeline/mcp_locate.py` (now at `archive/old-mc
 The product shipped **Map v3**, which replaced that ladder with a single `map` tool whose behavior
 is chosen by a `config`:
 
-- `map config=find` — ranked locations **with code inline** (top clustered files packed)
-- `map config=focus` — a symbol's full body + callers + callees + file siblings, ready to edit
-- `map config=related` — code related to an anchor chunk under a query, with bodies
-- `map config=graph` — abstract files→symbols + call-edges map, no bodies, for orientation
+- `map config=find`: ranked locations **with code inline** (top clustered files packed)
+- `map config=focus`: a symbol's full body + callers + callees + file siblings, ready to edit
+- `map config=related`: code related to an anchor chunk under a query, with bodies
+- `map config=graph`: abstract files→symbols + call-edges map, no bodies, for orientation
 
 plus `gate` / `status` for health. There is **no** `pack_context`, `expand_context`, or
 `collect_hot_context` anymore. The server is `packages/pipeline/map_v3_server.py`.
 
 ## How to read these
 
-Treat everything in this folder as a **point-in-time historical record** — beta issue lists, QA
+Treat everything in this folder as a **point-in-time historical record**, beta issue lists, QA
 findings, mac handoffs, A/B deep-dives, and the pre-v3 tool/overview reference docs. They are
 accurate for the version they were written against. For the **current** surface see:
 
@@ -36,8 +36,8 @@ accurate for the version they were written against. For the **current** surface 
 
 | File | What it was |
 |---|---|
-| `scubiee-tools-and-usage.md` | Pre-v3 tool reference (the `map→pack→expand` ladder) — superseded |
-| `scubiee-overview.md` | Pre-v3 system overview — superseded |
+| `scubiee-tools-and-usage.md` | Pre-v3 tool reference (the `map→pack→expand` ladder), superseded |
+| `scubiee-overview.md` | Pre-v3 system overview, superseded |
 | `scubiee-bugs-found.md`, `scubiee-bugs-root-cause-and-fix-plan.md` | Pre-v3 bug lists tied to pack/expand |
 | `scubiee-qa-findings.md`, `scubiee-macos-findings.md`, `scubiee-macos-test-plan.md` | Pre-v3 QA / mac test records |
 | `scubiee-token-ab-deep-dive.md`, `claude-sdk-scubiee-token-ab-report.md` | A/B token studies against the old ladder |

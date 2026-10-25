@@ -14,12 +14,12 @@ and is covered; aspirations and skipped checks cannot be presented as complete.
 
 Every answer uses four fields:
 
-1. **Decision** — exact product behavior, including defaults and limits.
-2. **Implementation** — concrete modules and public interfaces enforcing it.
-3. **Verification** — named tests or runtime checks and their actual result.
-4. **Status** — `resolved`, `partial`, or `not implemented`.
+1. **Decision**: exact product behavior, including defaults and limits.
+2. **Implementation**: concrete modules and public interfaces enforcing it.
+3. **Verification**: named tests or runtime checks and their actual result.
+4. **Status**: `resolved`, `partial`, or `not implemented`.
 
-Before final delivery, all shipping-critical questions in sections 1–12 and 15
+Before final delivery, all shipping-critical questions in sections 1-12 and 15
 must be `resolved`. Optional dashboard presentation details may be `partial` only
 when the underlying status data is complete and documented.
 

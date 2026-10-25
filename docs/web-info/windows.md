@@ -20,7 +20,7 @@ scubiee connect --cursor
 
 Always pin `--index-url https://pypi.org/simple` on Windows.
 
-If install hits **Access denied**, run `scubiee unlock-tool` first (see below) — **not** Admin PowerShell.
+If install hits **Access denied**, run `scubiee unlock-tool` first (see below), **not** Admin PowerShell.
 
 ---
 
@@ -60,7 +60,7 @@ scubiee setup --profile dml --repair
 
 **Symptom:** `uv tool install --force` cannot overwrite `Scripts\*.exe`; CLI later fails with `No module named 'pipeline'`.
 
-**Cause:** Supervisor / daemon / Cursor MCP locking `%APPDATA%\uv\tools\scubiee`. These are **file locks**, not ACLs. Admin does **not** help. Reboot only works because it kills the locker — use unlock instead.
+**Cause:** Supervisor / daemon / Cursor MCP locking `%APPDATA%\uv\tools\scubiee`. These are **file locks**, not ACLs. Admin does **not** help. Reboot only works because it kills the locker, use unlock instead.
 
 **Recovery (preferred):**
 
@@ -83,7 +83,7 @@ scubiee setup --repair
 
 Or: `scripts/repair-uv-scubiee.ps1 0.3.146`.
 
-Prefer `scubiee upgrade` when the CLI still works — it unlocks before swapping the package.
+Prefer `scubiee upgrade` when the CLI still works, it unlocks before swapping the package.
 
 After any half-broken reinstall: **`setup --repair` before `init`**.
 
@@ -162,7 +162,7 @@ scubiee connect --copilot
 scubiee connect --cline
 ```
 
-Cursor writes **project** `.cursor/mcp.json` with an absolute pin (required — global `${workspaceFolder}` is not expanded).
+Cursor writes **project** `.cursor/mcp.json` with an absolute pin (required, global `${workspaceFolder}` is not expanded).
 
 ---
 

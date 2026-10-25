@@ -3,7 +3,7 @@
 Manual + automated checklist for **Windows, macOS, and Linux**.  
 Run automated subset: `python scripts/run_cli_combination_tests.py --json /tmp/scubiee-cli-results.json`
 
-**Real CLI e2e (recommended):** see [scubiee-cli-e2e-manual-test.md](./scubiee-cli-e2e-manual-test.md) — run `bash tests/_e2e_run_cmds.sh` on macOS or `powershell -File tests\_e2e_run_cmds.ps1` on Windows.
+**Real CLI e2e (recommended):** see [scubiee-cli-e2e-manual-test.md](./scubiee-cli-e2e-manual-test.md), run `bash tests/_e2e_run_cmds.sh` on macOS or `powershell -File tests\_e2e_run_cmds.ps1` on Windows.
 
 Use an **isolated home** when testing destructive flows:
 
@@ -30,11 +30,11 @@ cd C:\path\to\repo
 | **Pass if** | How to mark pass on your OS |
 
 Expect values:
-- **OK** — exit 0, command succeeds
-- **BLOCK** — exit 1 + message mentions `resume` or `stopped`
-- **NOOP** — exit 0, already in target state
-- **CONFIRM** — exit 2 or JSON `confirm_required` (wipe --all without `--confirm`)
-- **ANY** — runs without crash; record exit + output |
+- **OK**: exit 0, command succeeds
+- **BLOCK**: exit 1 + message mentions `resume` or `stopped`
+- **NOOP**: exit 0, already in target state
+- **CONFIRM**: exit 2 or JSON `confirm_required` (wipe --all without `--confirm`)
+- **ANY**: runs without crash; record exit + output |
 
 ---
 
@@ -173,12 +173,12 @@ Start from **READY**.
 ## 9. Platform-specific checks
 
 ### Windows
-- [ ] W4 with **Cursor open** — no reboot needed
+- [ ] W4 with **Cursor open**, no reboot needed
 - [ ] `unlock-tool` renames `%APPDATA%\uv\tools\scubiee` aside
 - [ ] `taskkill` not required manually after `wipe --all`
 
 ### macOS
-- [ ] W4 with **Cursor open** — MCP stub uses `/usr/bin/true`
+- [ ] W4 with **Cursor open**, MCP stub uses `/usr/bin/true`
 - [ ] `uv tool install --force scubiee` after wipe
 - [ ] No `Access denied` on `~/.scubiee` delete
 - [ ] `scubiee --help` prints without Unicode error (UTF-8 terminal)
@@ -192,7 +192,7 @@ Start from **READY**.
 ## 10. Automated runner (subset)
 
 ```bash
-# From repo root — isolated temp CTX_HOME per run
+# From repo root - isolated temp CTX_HOME per run
 python scripts/run_cli_combination_tests.py --json /tmp/scubiee-cli-results.json
 
 # Skip slow wipe scenarios
@@ -213,7 +213,7 @@ Record results in this table when testing macOS:
 
 ### Windows automated run (2026-08-30)
 
-`python scripts/run_cli_combination_tests.py` — **24/24 passed** (isolated temp `CTX_HOME`, dev tree via `python -m pipeline`).
+`python scripts/run_cli_combination_tests.py`: **24/24 passed** (isolated temp `CTX_HOME`, dev tree via `python -m pipeline`).
 
 Verified combinations include:
 - `stop` → `init` **BLOCKED**

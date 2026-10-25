@@ -1,4 +1,4 @@
-# Context Engine — Autonomous Desktop Product
+# Context Engine: Autonomous Desktop Product
 
 **Date:** 2026-08-18  
 **User contract:** Install once. After that the only intentional command is `ctx init <repo>`. Everything else is our job.
@@ -35,7 +35,7 @@ Hard rules:
 - Desired mode `run` + engine dead → supervisor **must** restart (that was the “doesn’t power up” bug class).
 - Detached orphans that survive logoff are a defect. Supervisor is the logon-scheduled parent; engine is a child, not a breakaway process when started from the supervisor.
 
-## Features the product must have (A–Z)
+## Features the product must have (A: Z)
 
 Already in this branch (keep):
 

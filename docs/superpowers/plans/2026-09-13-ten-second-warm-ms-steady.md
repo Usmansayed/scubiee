@@ -14,29 +14,29 @@
 
 ## Global Constraints
 
-- **Hard SLA A — attach warm:** From bridge process start → `warm_ready=true` (engine healthy + embedder_loaded + AST bundle hydrated or skipped-for-map) in **≤ 10_000 ms** p95 on this Windows DML box (RX 6500M profile).
-- **Hard SLA B — steady locate:** After `warm_ready`, spaced ≥60s idle with bridge still registered: map wall p95 **≤ 300 ms**; lean 1-seed pack wall p95 **≤ 500 ms**; lean 3-seed pack wall p95 **≤ 800 ms**. Tool `elapsed_ms` already ~130–250 ms when warm — wall must not regress to seconds.
-- **Hard SLA C — unload:** Engine/embed demote only when `active_client_count == 0` after `CTX_DISCONNECT_DEBOUNCE_S` (keep 120s). Bridge `kind=bridge` counts. One remaining client = stay warm.
+- **Hard SLA A, attach warm:** From bridge process start → `warm_ready=true` (engine healthy + embedder_loaded + AST bundle hydrated or skipped-for-map) in **≤ 10_000 ms** p95 on this Windows DML box (RX 6500M profile).
+- **Hard SLA B, steady locate:** After `warm_ready`, spaced ≥60s idle with bridge still registered: map wall p95 **≤ 300 ms**; lean 1-seed pack wall p95 **≤ 500 ms**; lean 3-seed pack wall p95 **≤ 800 ms**. Tool `elapsed_ms` already ~130-250 ms when warm, wall must not regress to seconds.
+- **Hard SLA C, unload:** Engine/embed demote only when `active_client_count == 0` after `CTX_DISCONNECT_DEBOUNCE_S` (keep 120s). Bridge `kind=bridge` counts. One remaining client = stay warm.
 - **Do not** load FastEmbed into bridge or mcp_locate (0.3.78 RAM fix stays).
 - **Do not** re-enable default in-RAM AST preload that bloats locate to ~800 MB. Disk bundle hydrate only.
 - **Do not** replace `composite_v1` / weaken `merge_seed_heatmaps`.
-- Honest “ms”: true single-digit ms only on proximity cache hit; live tracer path targets low hundreds of ms (industry warm hybrid search is ~5–50 ms; our poly+merge is heavier).
+- Honest “ms”: true single-digit ms only on proximity cache hit; live tracer path targets low hundreds of ms (industry warm hybrid search is ~5-50 ms; our poly+merge is heavier).
 
 ## Why this is viable (budget math)
 
 | Cold cost today | Typical | Fix |
 |-----------------|---------|-----|
-| Engine spawn → `/health` | ~2–3 s | Already listen-first; kick at **attach**, not first map |
-| DML session + first encode | ~5–12 s | `/v1/embed/prewarm` + dummy encode **in parallel** after health; ORT reuses session |
-| Full AST `_load_repo` rebuild | ~15–19 s | **Forbid** on warm critical path; hydrate pickle via `_try_load_repo_bundle` (<1–2 s) or background bake once |
-| First-map `engine_warming` + agent retry | +3–10 s | Eliminate: wait for warm_ready **or** single in-process join ≤ remaining budget |
+| Engine spawn → `/health` | ~2-3 s | Already listen-first; kick at **attach**, not first map |
+| DML session + first encode | ~5-12 s | `/v1/embed/prewarm` + dummy encode **in parallel** after health; ORT reuses session |
+| Full AST `_load_repo` rebuild | ~15-19 s | **Forbid** on warm critical path; hydrate pickle via `_try_load_repo_bundle` (<1-2 s) or background bake once |
+| First-map `engine_warming` + agent retry | +3-10 s | Eliminate: wait for warm_ready **or** single in-process join ≤ remaining budget |
 
 **Parallel attach timeline (target):**
 
 ```
 T=0     bridge main() → register bridge client → kick ensure_daemon (nonblocking)
-T≈0–3s  /health up
-T≈3–10s PARALLEL: embed prewarm(dummy)  ||  AST bundle hydrate in locate worker
+T≈0-3s  /health up
+T≈3-10s PARALLEL: embed prewarm(dummy)  ||  AST bundle hydrate in locate worker
 T≤10s   warm_ready=true published on /v1/status + gate
 T>10s   map/pack serve from hot caches; idle minutes OK while clients > 0
 ```
@@ -96,7 +96,7 @@ def test_map_can_skip_ast_for_ready():
     assert compute_warm_ready(snap, need_ast=True) is False
 ```
 
-- [ ] **Step 2: Run tests — expect FAIL (module missing)**
+- [ ] **Step 2: Run tests, expect FAIL (module missing)**
 
 Run: `pytest tests/test_attach_warm_pipeline.py::test_warm_ready_false_until_embed_and_health -v`
 
@@ -138,7 +138,7 @@ def compute_warm_ready(snap: WarmSnapshot, *, need_ast: bool = False) -> bool:
 
 - [ ] **Step 4: Surface fields on status/gate payloads** (`agent_ready` stays; add `warm_ready`, `warm_phase`)
 
-- [ ] **Step 5: Run tests — expect PASS**
+- [ ] **Step 5: Run tests, expect PASS**
 
 Run: `pytest tests/test_attach_warm_pipeline.py -k warm_ready -v`
 
@@ -162,9 +162,9 @@ git commit -m "feat: define 10s warm_ready contract fields"
 - Produces: `start_attach_warm_pipeline(repo) -> dict` (returns immediately; sets global start timestamp)
 - Consumes: `ensure_daemon(..., wait_s=0)`, `/v1/embed/prewarm` wait=False then background join, AST hydrate kick
 
-**Policy:** Keep MCP `initialize` / tools/list fast (myelin pattern). Warm runs in background but **must finish ≤ 10s**. First tool before ready: join remaining budget once (≤ leftover ms), else one `engine_warming` — never a second unpaid cold path after deadline.
+**Policy:** Keep MCP `initialize` / tools/list fast (myelin pattern). Warm runs in background but **must finish ≤ 10s**. First tool before ready: join remaining budget once (≤ leftover ms), else one `engine_warming`, never a second unpaid cold path after deadline.
 
-- [ ] **Step 1: Failing test — pipeline sets started_at and kicks nonblocking ensure**
+- [ ] **Step 1: Failing test, pipeline sets started_at and kicks nonblocking ensure**
 
 ```python
 def test_start_attach_warm_pipeline_returns_immediately(monkeypatch):
@@ -219,7 +219,7 @@ def _attach_warm_coordinator(root: Path) -> None:
 
 Also: if engine was down at register time, coordinator retries HTTP register of bridge client once healthy (already deferred locally).
 
-- [ ] **Step 4: Default `CTX_MCP_ATTACH_WARM=1`** (new). Keep `CTX_MCP_AUTO_WARM` as legacy synonym for blocking connect warm — do **not** re-enable blocking attach.
+- [ ] **Step 4: Default `CTX_MCP_ATTACH_WARM=1`** (new). Keep `CTX_MCP_AUTO_WARM` as legacy synonym for blocking connect warm, do **not** re-enable blocking attach.
 
 - [ ] **Step 5: Tests PASS**
 
@@ -273,7 +273,7 @@ def test_prewarm_embedder_forces_dummy_encode(monkeypatch):
 - Produces: `hydrate_ast_bundle(root) -> {"ok": bool, "source": "cache"|"bundle"|"baked", "ms": float}`
 - Consumes: `_try_load_repo_bundle`, `_save_repo_bundle`, `_load_repo` only on miss
 
-- [ ] **Step 1: Failing test — hydrate prefers bundle and sets in-process `_CACHE`**
+- [ ] **Step 1: Failing test, hydrate prefers bundle and sets in-process `_CACHE`**
 
 ```python
 def test_hydrate_prefers_bundle(tmp_path, monkeypatch):
@@ -313,7 +313,7 @@ def _join_attach_warm_if_needed(*, need_ast: bool) -> dict | None:
 
 - [ ] **Step 2: After deadline, at most one warming response; background continues; next call must hit hot path**
 
-- [ ] **Step 3: Ban second full `ensure_daemon` thrash inside the same attach window (TTL already 20s — assert in test)**
+- [ ] **Step 3: Ban second full `ensure_daemon` thrash inside the same attach window (TTL already 20s, assert in test)**
 
 ---
 
@@ -324,7 +324,7 @@ def _join_attach_warm_if_needed(*, need_ast: bool) -> dict | None:
 - Modify: `packages/pipeline/lifecycle_runtime.py` (tests)
 - Test: `tests/test_lifecycle_runtime.py`
 
-- [ ] **Step 1: Regression test — with `kind=bridge` client registered, `should_idle_stop` False after simulated 2h idle activity stamp**
+- [ ] **Step 1: Regression test, with `kind=bridge` client registered, `should_idle_stop` False after simulated 2h idle activity stamp**
 
 ```python
 def test_bridge_client_holds_engine_for_hours(monkeypatch):
@@ -335,9 +335,9 @@ def test_bridge_client_holds_engine_for_hours(monkeypatch):
     assert should_idle_stop() is False
 ```
 
-- [ ] **Step 2: Test — `maybe_demote_idle` returns `hold_mcp_clients` while bridge present even if locate worker died**
+- [ ] **Step 2: Test, `maybe_demote_idle` returns `hold_mcp_clients` while bridge present even if locate worker died**
 
-- [ ] **Step 3: Test — only after unregister bridge + debounce does demote/stop arm**
+- [ ] **Step 3: Test, only after unregister bridge + debounce does demote/stop arm**
 
 - [ ] **Step 4: Fix any gap where worker leave clears `last_client_left_at` while bridge still active**
 
@@ -350,7 +350,7 @@ def test_bridge_client_holds_engine_for_hours(monkeypatch):
 - Modify: `packages/pipeline/mcp_locate.py` map path
 - Test: `tests/test_map_result_cache.py`
 
-**Policy:** TTL default 120s; cosine/token Jaccard threshold; invalidate on corpus fingerprint change. Only for `map` (not pack bodies). Env `CTX_MAP_RESULT_CACHE=1` default on after Task 1–6 green.
+**Policy:** TTL default 120s; cosine/token Jaccard threshold; invalidate on corpus fingerprint change. Only for `map` (not pack bodies). Env `CTX_MAP_RESULT_CACHE=1` default on after Task 1-6 green.
 
 - [ ] **Step 1: Unit test hit/miss/TTL/fingerprint**
 - [ ] **Step 2: Implement cache; record `timing.cache=hit|miss`**
@@ -388,8 +388,8 @@ def test_bridge_client_holds_engine_for_hours(monkeypatch):
 
 - [ ] `pytest tests/test_attach_warm_pipeline.py tests/test_lifecycle_runtime.py tests/test_multi_seed_v1.py -q`
 - [ ] `python scripts/warm_contract_acceptance.py` after `uv tool install --force . --refresh`
-- [ ] Process tree RSS: bridge ~30 MB, locate ≪ 800 MB, engine warm DML allowed ~1 GB; **total serve target still aspirational ≤800 MB — do not fail ship solely on engine ORT RSS** if SLAs A/B/C pass (document actual)
-- [ ] Manual: open Cursor, wait ≤10s, map, wait 5 min, map again — second must feel instant
+- [ ] Process tree RSS: bridge ~30 MB, locate ≪ 800 MB, engine warm DML allowed ~1 GB; **total serve target still aspirational ≤800 MB, do not fail ship solely on engine ORT RSS** if SLAs A/B/C pass (document actual)
+- [ ] Manual: open Cursor, wait ≤10s, map, wait 5 min, map again, second must feel instant
 
 ---
 
@@ -410,7 +410,7 @@ def test_bridge_client_holds_engine_for_hours(monkeypatch):
 
 ## Research anchors
 
-- ORT DirectML: shapes known at session create; first eval compiles shaders — **dummy prewarm required**
+- ORT DirectML: shapes known at session create; first eval compiles shaders, **dummy prewarm required**
 - FastEmbed production: process singleton + startup dummy request
 - MCP: respond to `initialize` immediately; warm in background; first tool joins if needed
 - Warm daemon: keep model+index resident; idle unload only when no clients

@@ -1,4 +1,4 @@
-# Locate calibration — Phase A complete
+# Locate calibration: Phase A complete
 
 **Corpus:** `docs/superpowers/plans/locate-calibration-corpus-v1.json`
 **Cases:** 65 · **with gold:** 65
@@ -25,7 +25,7 @@
 ## Next (Phase B)
 
 Run offline arms per framework §4 with metrics `rounds`, `result_tokens`,
-`total_proxy`, `must_*`, `under_use`/`over_use` — start with M1/M2 and N1
+`total_proxy`, `must_*`, `under_use`/`over_use`, start with M1/M2 and N1
 (density + over-use bounds) before Prefer/Require text experiments.
 
 Human: spot-check taxonomy on ~10 soft vs exact_edit labels.

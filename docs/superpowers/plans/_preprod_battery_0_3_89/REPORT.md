@@ -1,4 +1,4 @@
-# Scubiee pre-prod battery — 0.3.89 (2026-09-14)
+# Scubiee pre-prod battery: 0.3.89 (2026-09-14)
 
 ## Verdict: **NOT production-ready yet**
 
@@ -57,12 +57,12 @@ This is a **production blocker** for cold-attach availability.
 
 Rough groups:
 
-- **lifecycle / attach / client retry** — runtime_controller, attach_warm, lifecycle_ownership, mcp_agent_warm_retry, mcp_lifecycle_universal, production_hardening, root_probe
-- **publish** — runtime_publish generation bump
-- **install / connect / upgrade / hosts** — package_install versions, upgrade scenarios, codex connect fans-out, mcp_config_merge
-- **semantic / quality bakeoffs** — venture_stack, embed_power, polytrace, verify_board, vague_prompts, seeded_compare, locate_quality
-- **platform / CPU job / CoreML / MLX / progress** — process_job breakaway flag, coreml_mac, mlx_backend, embedder_progress, setup_progress, console_blink
-- **ERROR** — `test_venture_stack.py::test_t1_dml_provider_present` (ModuleNotFound)
+- **lifecycle / attach / client retry**: runtime_controller, attach_warm, lifecycle_ownership, mcp_agent_warm_retry, mcp_lifecycle_universal, production_hardening, root_probe
+- **publish**: runtime_publish generation bump
+- **install / connect / upgrade / hosts**: package_install versions, upgrade scenarios, codex connect fans-out, mcp_config_merge
+- **semantic / quality bakeoffs**: venture_stack, embed_power, polytrace, verify_board, vague_prompts, seeded_compare, locate_quality
+- **platform / CPU job / CoreML / MLX / progress**: process_job breakaway flag, coreml_mac, mlx_backend, embedder_progress, setup_progress, console_blink
+- **ERROR**: `test_venture_stack.py::test_t1_dml_provider_present` (ModuleNotFound)
 
 ## Environment risks seen during battery
 

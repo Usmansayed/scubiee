@@ -1,4 +1,4 @@
-# Scubiee 0.3.155 — macOS findings
+# Scubiee 0.3.155: macOS findings
 
 Branch `macos-validate-0.3.155` (from `upstream/main` 9525527). Not pushed; no PR.
 Run against `docs/scubiee-macos-handoff-0.3.155.md`.
@@ -12,21 +12,21 @@ Run against `docs/scubiee-macos-handoff-0.3.155.md`.
 | Backend | MLX (Metal) |
 | Python | tool venv 3.11.16 (uv-managed); system `python3` 3.9.6 is unused |
 | uv | 0.12.5 |
-| Install | `uv tool install scubiee` from PyPI (0.3.155) for §1–§6 and §3a/§3b; branch build (`uv tool install --force --reinstall .`) for fix verification and the final batteries |
+| Install | `uv tool install scubiee` from PyPI (0.3.155) for §1, §6 and §3a/§3b; branch build (`uv tool install --force --reinstall .`) for fix verification and the final batteries |
 | Unit tests | separate venv (uv, Python 3.11, `pip install -e . pytest`), `PYTHONPATH=packages` |
 
 Symlink chain (needed for §2):
 `~/.local/bin/scubiee` → `~/.local/share/uv/tools/scubiee/bin/scubiee`;
 `~/.local/share/uv/tools/scubiee/bin/python` → `~/.local/share/uv/python/cpython-3.11-macos-aarch64-none/bin/python3.11`
 → `cpython-3.11.16-macos-aarch64-none/…`. The tool venv's interpreter resolves **outside**
-the `tools/` tree — this is the root of bug M5.
+the `tools/` tree, this is the root of bug M5.
 
 LaunchAgent label is `com.contextengine.supervisor` (the handoff's `launchctl list | grep scubiee`
 finds nothing; grep `contextengine`).
 
 ## 2. §7 release batteries
 
-### Final run — branch build at 89a8c3c (all fixes applied)
+### Final run: branch build at 89a8c3c (all fixes applied)
 
 Lane A (`mcp_host_sim.py --lane a --live --settle-s 35`), both runs **exit 0, every phase ok=True**:
 
@@ -41,16 +41,16 @@ Lane A (`mcp_host_sim.py --lane a --live --settle-s 35`), both runs **exit 0, ev
 | map_second | 181.5 | 164.9 | |
 | status_first | 0.5 | 0.5 | |
 | pack_first | 25.0 | 25.2 | |
-| expand_first | 127.0 | 103.2 | 664–810 |
+| expand_first | 127.0 | 103.2 | 664-810 |
 | idle_hold | 120307.8 | 120266.7 | |
-| post_idle_map | 178.4 | 160.8 | 442–750 |
-| post_idle_pack | 24.3 | 24.1 | 115–122 |
+| post_idle_map | 178.4 | 160.8 | 442-750 |
+| post_idle_pack | 24.3 | 24.1 | 115-122 |
 | host_stop | 1.6 | 1.6 | |
 | unload | 131864.2 | 131350.3 | |
 
 Wall: 258 s per run.
 
-- **warm_contract:** exit 0, `"failed": 0`, 6/6 PASS — warm ready 329.7 ms, first map 108.8 ms,
+- **warm_contract:** exit 0, `"failed": 0`, 6/6 PASS, warm ready 329.7 ms, first map 108.8 ms,
   map after idle 109.4 ms (handoff reference: 6.0 s / 1,322 ms / 426 ms).
 - **ship_check:** exit 0, `"ok": true`, 3 tools, `errors: []`, 335 ms.
   (`git checkout docs/superpowers/plans/2026-09-06-mcp-ship-check.json` run afterwards.)
@@ -58,11 +58,11 @@ Wall: 258 s per run.
 ### Earlier runs on PyPI 0.3.155
 
 - Run 1 (unmodified harness): every latency phase ok (`map_first` 151, `map_second` 231,
-  `pack_first` 26, `expand_first` 163, post-idle 231 / 25 ms). **Only `unload` failed —
+  `pack_first` 26, `expand_first` 163, post-idle 231 / 25 ms). **Only `unload` failed
   `UNLOAD_TIMEOUT`** because the harness budget was 35 s while the product's disconnect
   debounce is 120 s (bug M2). In that run the engine's own shutdown also stalled ~9 s and the
   watchdog killed it at +129 s.
-- Runs 2 and 3 (harness fixed): exit 0, all ok — `map_first` 124.7 / 126.9, `map_second`
+- Runs 2 and 3 (harness fixed): exit 0, all ok, `map_first` 124.7 / 126.9, `map_second`
   166.5 / 164.7, `pack_first` 25.0 / 25.2, `expand_first` 103.2 / 104.6, post-idle map
   198.1 / 197.2, post-idle pack 24.6 / 24.5 ms, `unload` 131.7 / 131.9 s.
 - warm_contract 6/6 (warm 342.9 ms, first map 110.8, after idle 110.6); ship_check ok, 3 tools,
@@ -74,56 +74,56 @@ is expected, not a regression; `scubiee init .` (8,862 chunks, 139 s) restores i
 
 ### `find` latency (the open question from Windows)
 
-The first query after engine start took 497 ms (cold retrieve). Steady state was 115–160 ms,
-and wall time tracked the engine's own total. There was no Windows-style 800–1,000 ms
+The first query after engine start took 497 ms (cold retrieve). Steady state was 115-160 ms,
+and wall time tracked the engine's own total. There was no Windows-style 800-1,000 ms
 first-minute plateau on the M5. During a hot sync, one query spiked to 1,166 ms wall against
 98 ms of engine time, and a repeat trial did not reproduce it (OBS-5).
 
 ## 3. Per-delta results
 
-### §3 — `wipe --all` (#10 + #1)
+### §3: `wipe --all` (#10 + #1)
 
 | Check | PyPI 0.3.155 | Branch build |
 |---|---|---|
-| 3a clean wipe from `~` | exit 0, **8.93 s**, audit clean, `next: Machine is clean…` — **but the 553 MB tool venv was left behind and the audit still said clean (FAIL, M5)** | exit 0, **4.51 s** (engine + live MCP bridge running), `ok: true`, audit clean, tool dir gone (`uv tool list` → "No tools installed") |
+| 3a clean wipe from `~` | exit 0, **8.93 s**, audit clean, `next: Machine is clean…`, **but the 553 MB tool venv was left behind and the audit still said clean (FAIL, M5)** | exit 0, **4.51 s** (engine + live MCP bridge running), `ok: true`, audit clean, tool dir gone (`uv tool list` → "No tools installed") |
 | 3b wipe with engine running | exit 0, **3.33 s**, engine killed, port 8765 free; `fast_path` taken legitimately; **same 558 MB venv leftover** | covered by the 4.51 s run above |
-| §8 second wipe from `~` (TTY) | — | exit 0, **4.48 s**; progress UI and summary render correctly after the tool dir is moved aside |
+| §8 second wipe from `~` (TTY) | - | exit 0, **4.48 s**; progress UI and summary render correctly after the tool dir is moved aside |
 | Trash drained, no `sh` cleaner left | PASS (≤3 s) | PASS |
 | LaunchAgent + plist removed | PASS | PASS |
-| TCC privacy prompt | **not verifiable** — `log show` returns nothing in this sandbox; none seen on screen | same |
-| 3c reinstall right after wipe | PASS — reinstall 2.2 s, no trash-rename conflict; `setup` 162 s (wipe deletes model caches, so models re-download) | PASS — `setup` 156–159 s, agent loaded |
+| TCC privacy prompt | **not verifiable**, `log show` returns nothing in this sandbox; none seen on screen | same |
+| 3c reinstall right after wipe | PASS, reinstall 2.2 s, no trash-rename conflict; `setup` 162 s (wipe deletes model caches, so models re-download) | PASS, `setup` 156-159 s, agent loaded |
 
 The first branch build with only the M5 fix removed the venv but **exited 1**:
 `uninstall_scubiee: No module named 'pipeline.process_job'` (M7). Fixed in 89a8c3c and
 verified by both branch-build wipes above.
 
-### §2 — install identity on symlinked venvs (#2)
+### §2: install identity on symlinked venvs (#2)
 
 - PASS: `setup` prints no false "another scubiee install found" note.
 - PASS: `doctor` → `multiple_installs: false`, `binaries_match: true` (also on the final branch build).
 - PASS (negative): a Homebrew Python 3.12 venv copy is flagged `multiple_installs: true` from both sides.
 - PASS: symlinked-venv unit test passes on macOS.
 - OBS-1: the handoff's `python -c` identity snippet reports `active_binary: /private/tmp/-c`,
-  `binaries_match: false` — `sys.argv[0]` artefact of `-c`, not Mac-specific, low.
+  `binaries_match: false`: `sys.argv[0]` artefact of `-c`, not Mac-specific, low.
 
-### §4 — `init` estimate on MLX (#4)
+### §4: `init` estimate on MLX (#4)
 
 | Repo | Estimate | Real | Chunks |
 |---|---|---|---|
 | flask | "<1 min" | 16.4 s | 918 |
 | requests | "<1 min" | 12.3 s | 666 |
-| FastAPI (docs-heavy), PyPI | "~8–11 min" | 132 s | — |
-| FastAPI, branch, before overhead measured | "~5–6 min" | 130 s | — |
-| FastAPI, branch, after overhead measured | "~2–3 min" | 165.6 s | — |
+| FastAPI (docs-heavy), PyPI | "~8-11 min" | 132 s | - |
+| FastAPI, branch, before overhead measured | "~5-6 min" | 130 s | - |
+| FastAPI, branch, after overhead measured | "~2-3 min" | 165.6 s | - |
 
-- PASS for flask and requests: the estimate brackets the real time, and `embed_throughput.json` holds a sane MLX rate of about 62–75 chunk/s.
-- **FAIL (M3) on PyPI** for docs-heavy repos: the estimate was 4–5× too high. Doc files
+- PASS for flask and requests: the estimate brackets the real time, and `embed_throughput.json` holds a sane MLX rate of about 62-75 chunk/s.
+- **FAIL (M3) on PyPI** for docs-heavy repos: the estimate was 4-5× too high. Doc files
   are one chunk each (text capped at 512 chars), and the fixed 0.08 s/file overhead is about
   16× the measured 0.0048 s on the M5. Fixed in 26ae3af: docs count one chunk each, and the
   per-file overhead is measured on this machine (runs of 200+ files only) and stored next to
   the chunk/s. After one measurement the estimate brackets the real time.
 
-### §5 — quick Mac checks
+### §5: quick Mac checks
 
 - PASS #5 `resume`: 6.5 s, `engine.ok: true`, `spawn_owner: direct`.
 - PASS #6 `connect`: all 32 `mcp_paths` / `rule_paths` exist inside enrolled repos.
@@ -139,7 +139,7 @@ verified by both branch-build wipes above.
   bootstrap 3×, and decide `ok` from `launchctl print`. Verified: `setup` ×2 plus `connect`
   kept `com.contextengine.supervisor` loaded each time.
 
-### §6 — loaders
+### §6: loaders
 
 - PASS: glyphs render, no boxes or `?`.
 - PASS: redraw in place (208 CR against 21 LF over a full init).
@@ -154,50 +154,50 @@ verified by both branch-build wipes above.
 | ID | Sev | Area | Summary | Root cause | Fix | Status |
 |---|---|---|---|---|---|---|
 | M1 | low | tests | 3 `test_env_guard` failures on macOS | Windows-layout tests had no platform guard; extra binary hard-coded `scubiee.exe` | 24e1bfd | fixed |
-| M2 | med | host-sim | Lane A `unload` → `UNLOAD_TIMEOUT` on every run | harness budget 35 s, product disconnect debounce 120 s (restored in a356d2c) | 0e091d6 — budget = debounce + 35 s | fixed, batteries green |
-| M3 | med | init estimate | docs-heavy repos estimated 4–5× too long on MLX | doc files counted by bytes; per-file overhead 0.08 s fixed vs 0.0048 s measured | 26ae3af | fixed, brackets after 1 run |
+| M2 | med | host-sim | Lane A `unload` → `UNLOAD_TIMEOUT` on every run | harness budget 35 s, product disconnect debounce 120 s (restored in a356d2c) | 0e091d6, budget = debounce + 35 s | fixed, batteries green |
+| M3 | med | init estimate | docs-heavy repos estimated 4-5× too long on MLX | doc files counted by bytes; per-file overhead 0.08 s fixed vs 0.0048 s measured | 26ae3af | fixed, brackets after 1 run |
 | M4 | high | darwin autostart | re-running `setup`/`connect` leaves the LaunchAgent unloaded | async `bootout` races `bootstrap`; `load -w` fallback exits 0 regardless | cb20b53 | fixed, verified live |
-| M5 | high | wipe | `wipe --all` leaves the 553 MB tool venv and still audits clean | `uv_tool_root` called `resolve()` first; uv's python symlink points outside `tools/`, so the root was never found | 7138d14 — check absolute and resolved paths | fixed, verified live |
+| M5 | high | wipe | `wipe --all` leaves the 553 MB tool venv and still audits clean | `uv_tool_root` called `resolve()` first; uv's python symlink points outside `tools/`, so the root was never found | 7138d14, check absolute and resolved paths | fixed, verified live |
 | M6 | med | wipe UX | IDE-lock pre-flight warning never shown | `os` not imported in `__main__.py`; bare `except` hid the `NameError` | fedc7b4 | fixed, verified live |
-| M7 | high | wipe | with M5 fixed, `wipe --all` exits 1 (`No module named 'pipeline.process_job'`) | the early tool-dir unlock renames the live venv on POSIX (on Windows it fails, which is harmless), so later lazy imports break | 89a8c3c — early unlock is Windows-only; the package step moves the dir aside last | fixed, verified live ×2 |
+| M7 | high | wipe | with M5 fixed, `wipe --all` exits 1 (`No module named 'pipeline.process_job'`) | the early tool-dir unlock renames the live venv on POSIX (on Windows it fails, which is harmless), so later lazy imports break | 89a8c3c, early unlock is Windows-only; the package step moves the dir aside last | fixed, verified live ×2 |
 
 Follow-up pass: every observation was root-caused, and all but OBS-5 and OBS-12 were fixed with a regression test (each test fails without its fix). Each fix is one commit.
 
 | ID | Summary | Root cause | Fix | Live evidence |
 |---|---|---|---|---|
 | OBS-1 | `python -c` identity gives `active_binary: /private/tmp/-c` | `argv[0]` of `-c`/`-m`/`.py` was taken as the launcher path | 849a780 | `binaries_match` false → true |
-| OBS-2 | engine's own shutdown stalls ~9–10 s | idle standby runs inside the engine; `stop_daemon` then POSTed `/v1/shutdown` to itself, tried to kill its own protected pid, swept `:8765` 5 s and polled 5 s before `_retire_self` exited — port held by a half-retired engine | e8de254 — self-targeted stop returns at once | `standby_stop` → exit 10.3 s → 0.2–0.5 s (3/3); host-sim `unload` 131.8 s → 120.2 / 121.4 s (debounce is 120 s) |
-| OBS-3 | `engine start` during standby-retire returns `already_running`, then the engine exits | start adopted an engine that was mid-retire; the stopper's port sweep then killed the new spawn and `start` waited 90 s | f4516da — stopper-scoped `engine.retiring` marker, start waits it out, standby aborts if a start lands after its decision, fast-fail when the spawn dies | lost the engine 4/5 (PyPI) → 0/5 |
+| OBS-2 | engine's own shutdown stalls ~9-10 s | idle standby runs inside the engine; `stop_daemon` then POSTed `/v1/shutdown` to itself, tried to kill its own protected pid, swept `:8765` 5 s and polled 5 s before `_retire_self` exited, port held by a half-retired engine | e8de254, self-targeted stop returns at once | `standby_stop` → exit 10.3 s → 0.2-0.5 s (3/3); host-sim `unload` 131.8 s → 120.2 / 121.4 s (debounce is 120 s) |
+| OBS-3 | `engine start` during standby-retire returns `already_running`, then the engine exits | start adopted an engine that was mid-retire; the stopper's port sweep then killed the new spawn and `start` waited 90 s | f4516da, stopper-scoped `engine.retiring` marker, start waits it out, standby aborts if a start lands after its decision, fast-fail when the spawn dies | lost the engine 4/5 (PyPI) → 0/5 |
 | OBS-4 | `sync` reports `chunks_removed` for every untouched chunk | a local full-corpus sync counted all of `truly_removed`, not just touched files | 169bbf6 | 664 → 1, no-op sync 0.25 s, index intact |
-| OBS-5 | one hot-sync wall spike, 1,166 ms vs 98 ms engine | not reproduced — see below | none (no defect found) | 132 hot-sync queries, worst gap 173 ms |
-| OBS-6 | `[embed]` lines in piped CLI output | embedder diagnostics printed unconditionally to stderr | 99a1d0b — `CTX_EMBED_LOG`, off for CLI commands, on in the engine | 0 lines piped, 17 in `engine.log` |
+| OBS-5 | one hot-sync wall spike, 1,166 ms vs 98 ms engine | not reproduced, see below | none (no defect found) | 132 hot-sync queries, worst gap 173 ms |
+| OBS-6 | `[embed]` lines in piped CLI output | embedder diagnostics printed unconditionally to stderr | 99a1d0b, `CTX_EMBED_LOG`, off for CLI commands, on in the engine | 0 lines piped, 17 in `engine.log` |
 | OBS-7 | ETA sticks at "~5s left" | ETA was measured from the last render, not the last progress | 2dd3066 | counts down; switches to elapsed time on a stall |
 | OBS-8 | host-sim rewrites a tracked stderr file despite `--out-dir` | `BridgeHost` hard-coded the docs path | 61c926a | stderr lands in `--out-dir`; tracked file md5 unchanged across 2 live runs |
-| OBS-9 | wipe label says "unlock" on POSIX | fixed string | 34026dc, 936daae, 831679a — label, JSON hint and step/summary wording | TTY wipe: no "unlock" anywhere, one consistent label |
-| OBS-10 | stale `upgrade.in_progress.json` from 0.3.144 | marker written every phase, cleared only on commit, never read | 7360ea6 — `doctor` reports an interrupted upgrade and clears the marker once the installed version moved on | planted 0.3.144 marker → `cleared: True`, file gone |
-| OBS-11 | handoff greps `scubiee` in `launchctl list` | label is `com.contextengine.supervisor` | handoff doc updated | — |
-| OBS-12 | TCC prompts can't be verified from logs | environment limit | — | still needs a manual desktop check |
+| OBS-9 | wipe label says "unlock" on POSIX | fixed string | 34026dc, 936daae, 831679a, label, JSON hint and step/summary wording | TTY wipe: no "unlock" anywhere, one consistent label |
+| OBS-10 | stale `upgrade.in_progress.json` from 0.3.144 | marker written every phase, cleared only on commit, never read | 7360ea6, `doctor` reports an interrupted upgrade and clears the marker once the installed version moved on | planted 0.3.144 marker → `cleared: True`, file gone |
+| OBS-11 | handoff greps `scubiee` in `launchctl list` | label is `com.contextengine.supervisor` | handoff doc updated | - |
+| OBS-12 | TCC prompts can't be verified from logs | environment limit | - | still needs a manual desktop check |
 
 New Mac bug found during the follow-up:
 
 | ID | Sev | Summary | Root cause | Fix | Live evidence |
 |---|---|---|---|---|---|
 | M8 | med | engine and watchdog die with their spawner's process group | darwin was excluded from `start_new_session`, so closing the terminal that ran `init`/`engine start`, Ctrl-C there, or a host killing the MCP server's group took the warm engine down | 8fcdb50 | SIGHUP to the spawner's group: PyPI engine died 3/3, branch survived 3/3 (health 200) |
-| M9 | med | graph catch-up worker segfaults (`rc=-11`, empty log, no result) | `preexec_fn=os.nice(10)` makes CPython run Python and every registered at-fork hook in the forked child of a multithreaded process before `exec`; on macOS that child crashed, so graph catch-up after a save silently failed | 9efa45e — the worker renices itself (`--nice 10`) | crash 3/3 in the a–g test context before, 0/3 after |
+| M9 | med | graph catch-up worker segfaults (`rc=-11`, empty log, no result) | `preexec_fn=os.nice(10)` makes CPython run Python and every registered at-fork hook in the forked child of a multithreaded process before `exec`; on macOS that child crashed, so graph catch-up after a save silently failed | 9efa45e, the worker renices itself (`--nice 10`) | crash 3/3 in the a, g test context before, 0/3 after |
 | M11 | med | test suite unloads the developer's live LaunchAgent | wipe tests ran `unregister_logon_autostart()` with HOME isolated: the plist delete hit the temp copy but `launchctl bootout gui/<uid>/com.contextengine.supervisor` hit the real label | autouse conftest guard blocks real `launchctl`/`schtasks` in tests | agent unloaded after `test_wipe.py` (5 tests) → stays loaded through the full suite |
 | M12 | low | same-version upgrade marker reported as interrupted forever | a failed same-version run (installed == old == target) never satisfied the OBS-10 "version moved on" rule | marker older than 1 h with installed == target is stale | regression test; live `scubiee upgrade` commits and clears |
 | M13 | low | `doctor` fails (`replay dirty journal`) right after every sync | the dirty journal keeps `published` entries until the next restore drops them, and doctor counted them as pending | doctor ignores `published` entries, as the restore path already does | regression test; live doctor ok after sync |
 | M14 | med | `setup` "Downloading model" bar sits at 0% (926 KB / 523 MB, ~47m left) for minutes, then jumps to done | huggingface_hub 1.x downloads via hf_xet, which writes the 548 MB blob only when the transfer ends; the bar polls bytes in the cache dir (measured: 0.9 MB for 164 s, then 548.7 MB at 166.7 s) | the CodeRank download sets `HF_HUB_DISABLE_XET` (env + `constants`, restored after) so HTTP streams into `blobs/*.incomplete` | regression test; real download through the setup watcher: 0→100% steadily, longest stall 5.6 s, 179.8 s total (xet 166.7 s, same network bound) |
-| M15 | low | download bar ends at 99% | the byte watcher stopped without a final sample | c2c3f8d — emit once more after stop | regression test; live `setup` ends at 100% |
-| M16 | high | two watchdog loops after `stop` (supervisor killed, sidecar orphaned) | the logon supervisor and the engine's sidecar both ran `watchdog_loop`; `stop_watchdog` killed whichever pid file won | 1e20801 — `~/.scubiee/watchdog.lock` (flock); a sidecar exits if held, the supervisor waits and takes over | 3 regression tests; live sweep: one supervisor, one engine, no orphan |
-| M17 | high | `remove` leaves `id.json`, and the running keeper re-enrolls the repo under a new id (4-chunk store) | missing `id_file_path` import raised a swallowed `NameError`; the keeper kept polling, AST-revalidating and draining a repo it no longer owned | fa70aba, 01e055b — import fixed; keeper loop idles while the repo is unmanaged/paused/never-index | 5 regression tests; live: `id.json` gone and `list` empty 20 s after an edit |
-| M18 | med | `doctor` fails (`replay dirty journal`) after `rebuild`/`upgrade`/`connect` | journal entries in flight, or waiting for an idle engine (which replays them on start), counted as stuck | 3d3731a — journal `status`: clear / syncing / replays_on_engine_start / stuck (bound engine, >5 min) | regression test; live doctor ok ×3 |
-| M19 | med | `scubiee test` outside a source checkout crashes (`No module named pytest`) | ran pytest unconditionally | a02ad6f — exits 2 with a hint | regression tests; live rc 2 + hint |
-| M20 | med | `register` / `engine ensure` on a never-index repo report ok or a generic bind error | no lifecycle check in `register_project`; ensure dropped the engine's refusal | a02ad6f, b94ae97 — `never_index` error + how-to-undo hint | regression tests; live rc 1 with hint |
+| M15 | low | download bar ends at 99% | the byte watcher stopped without a final sample | c2c3f8d, emit once more after stop | regression test; live `setup` ends at 100% |
+| M16 | high | two watchdog loops after `stop` (supervisor killed, sidecar orphaned) | the logon supervisor and the engine's sidecar both ran `watchdog_loop`; `stop_watchdog` killed whichever pid file won | 1e20801, `~/.scubiee/watchdog.lock` (flock); a sidecar exits if held, the supervisor waits and takes over | 3 regression tests; live sweep: one supervisor, one engine, no orphan |
+| M17 | high | `remove` leaves `id.json`, and the running keeper re-enrolls the repo under a new id (4-chunk store) | missing `id_file_path` import raised a swallowed `NameError`; the keeper kept polling, AST-revalidating and draining a repo it no longer owned | fa70aba, 01e055b, import fixed; keeper loop idles while the repo is unmanaged/paused/never-index | 5 regression tests; live: `id.json` gone and `list` empty 20 s after an edit |
+| M18 | med | `doctor` fails (`replay dirty journal`) after `rebuild`/`upgrade`/`connect` | journal entries in flight, or waiting for an idle engine (which replays them on start), counted as stuck | 3d3731a, journal `status`: clear / syncing / replays_on_engine_start / stuck (bound engine, >5 min) | regression test; live doctor ok ×3 |
+| M19 | med | `scubiee test` outside a source checkout crashes (`No module named pytest`) | ran pytest unconditionally | a02ad6f, exits 2 with a hint | regression tests; live rc 2 + hint |
+| M20 | med | `register` / `engine ensure` on a never-index repo report ok or a generic bind error | no lifecycle check in `register_project`; ensure dropped the engine's refusal | a02ad6f, b94ae97, `never_index` error + how-to-undo hint | regression tests; live rc 1 with hint |
 | M21 | low | `--version` prints an "Engine stopped" line; wipe misses legacy `context-engine` MCP entries | lifecycle notice on every command; legacy name not in the strip list | 6cc848c, f10354d | regression tests |
 | M22 | low | a `WarmSearchEngine` on an explicit store syncs and reloads the default store, returning nothing | freshness gate and reload passed only the root | fdb1851 | regression test; `test_e2e_pipeline` passes |
-| M23 | low | 4 trace-lab quality tests always failed | `fixtures/trace-lab/app/models/user.py` was never committed (`models/` ignore for weights) | 16e9221 — un-ignore fixture `models/` dirs | 11 → 7 failing |
-| M10 | low | `stop_dashboard` reports failure after a clean stop | the dashboard is a `Popen` child; after `/api/shutdown` it is a zombie until reaped and `kill(pid, 0)` succeeds on zombies, so a process that started and stopped it waited 5 s and got `ok: False` | bcb4a12 — reap an exited child with `WNOHANG` first | `ps` showed `Z`, `stop_ok` false 2/2 → true 26/26, 0.4–0.9 s instead of 5 s |
+| M23 | low | 4 trace-lab quality tests always failed | `fixtures/trace-lab/app/models/user.py` was never committed (`models/` ignore for weights) | 16e9221, un-ignore fixture `models/` dirs | 11 → 7 failing |
+| M10 | low | `stop_dashboard` reports failure after a clean stop | the dashboard is a `Popen` child; after `/api/shutdown` it is a zombie until reaped and `kill(pid, 0)` succeeds on zombies, so a process that started and stopped it waited 5 s and got `ok: False` | bcb4a12, reap an exited child with `WNOHANG` first | `ps` showed `Z`, `stop_ok` false 2/2 → true 26/26, 0.4-0.9 s instead of 5 s |
 
 OBS-5 detail: two harnesses (warmed and cold-start, 30 functions appended to a tracked file per trial) ran 132 queries during hot syncs. No query came close to 1 s; the largest wall-minus-engine gap was 173 ms. Instrumenting request admission (`admit` → `activate_repo`, outside the engine's timer) gave p50 0.8 ms, p90 12.9 ms, max 71.5 ms; the remaining ≤150 ms is the HTTP thread waiting on the GIL while the sync thread parses and hashes, inherent to in-process sync. The original spike most likely coincided with an outside registry writer; no code change is warranted.
 
@@ -273,7 +273,7 @@ worker segfault, M10 dashboard zombie). Final live battery on the final build:
 | `idle_hold` / `unload` (s) | 120.3 / 121.2 | 120.3 / 120.9 |
 | all 15 phases ok | yes | yes |
 
-`unload` was 131.7–131.9 s before the OBS-2 fix: the 120 s disconnect debounce plus the 10 s self-kill stall.
+`unload` was 131.7-131.9 s before the OBS-2 fix: the 120 s disconnect debounce plus the 10 s self-kill stall.
 warm_contract 6/6 (`warm_ready` 331.5 ms, first map 105.6 ms, map after idle 109.6 ms).
 ship_check ok, 7/7 checks, 333.9 ms. The bridge stderr went to `--out-dir`; the tracked file was unchanged.
 A live TTY `wipe --all` took 4.51 s with a clean audit and consistent labels.
@@ -291,7 +291,7 @@ this repo re-indexed (8906 chunks), and Cursor, Kiro and Copilot reconnected. Th
 ## 7. 0.3.159 pass (fresh-machine command sweep)
 
 A wipe → install → `setup` → `init` → every CLI command sweep on 0.3.158 (psf/requests clone,
-~50 commands, plus a pty `setup`) found M15–M21; fixing the suite baseline found M22–M23.
+~50 commands, plus a pty `setup`) found M15, M21; fixing the suite baseline found M22, M23.
 The same sweep on the final 0.3.159 build: every command returns the expected rc and output,
 `doctor` ok after `rebuild`/`upgrade`, `remove` stays removed, one supervisor + one engine,
 no tracebacks in `engine.log` / `watchdog.log`.

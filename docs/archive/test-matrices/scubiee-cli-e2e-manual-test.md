@@ -17,7 +17,7 @@ This mirrors the Windows validation on 2026-08-30 and is meant to be repeated on
 | Post-wipe | `setup --repair`, `init`, `status` | Cold start after wipe |
 | Help | `--help`, `list` | CLI sanity |
 
-**Runtime:** ~30–45 minutes (most time is `init` indexing a large repo).
+**Runtime:** ~30-45 minutes (most time is `init` indexing a large repo).
 
 ---
 
@@ -62,7 +62,7 @@ Leave `CTX_HOME` **unset** to test your real `~/.scubiee` (what we did on Window
 
 ## Automated runners (recommended)
 
-These only invoke the **`scubiee` binary** — they log exit codes to `tests/_e2e_cmd_results.txt`.
+These only invoke the **`scubiee` binary**, they log exit codes to `tests/_e2e_cmd_results.txt`.
 
 **macOS / Linux:**
 

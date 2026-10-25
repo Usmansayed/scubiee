@@ -1,4 +1,4 @@
-# MLX CodeRank on the M5 — production index report
+# MLX CodeRank on the M5: production index report
 
 > 2026-08-19. Apple M5 MacBook Air, 16 GB. Companion notes: [`macbook-embed-speed.md`](./macbook-embed-speed.md). Raw numbers: [`mlx-pipeline-bench.json`](./mlx-pipeline-bench.json).
 
@@ -76,12 +76,12 @@ max  241
 | Tokens | Chunks |
 | --- | ---: |
 | ≤128 | 334 |
-| 129–256 | 2,487 |
-| 257–384 | 0 |
-| 385–512 | 0 |
+| 129-256 | 2,487 |
+| 257-384 | 0 |
+| 385-512 | 0 |
 | >512 after truncation | 0 |
 
-Observed MLX batch widths were ~166–241 tokens. Padding every batch to 512 would have been wasted GPU work.
+Observed MLX batch widths were ~166-241 tokens. Padding every batch to 512 would have been wasted GPU work.
 
 The later `ctx index` runs saw **2,904** chunks / **459,864** tokens (mean **158**) because MLX integration files were added to the repo. CPU and MLX were compared on that same 2,904-chunk snapshot.
 

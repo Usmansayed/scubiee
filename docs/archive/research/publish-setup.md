@@ -1,6 +1,6 @@
 # Publishing scubiee (PyPI + npm)
 
-End users should install with **`uv tool install scubiee`** (recommended) or `pip install scubiee`. PyPI only updates when a release is uploaded — GitHub tags alone are not enough.
+End users should install with **`uv tool install scubiee`** (recommended) or `pip install scubiee`. PyPI only updates when a release is uploaded, GitHub tags alone are not enough.
 
 ## One-time GitHub secrets
 

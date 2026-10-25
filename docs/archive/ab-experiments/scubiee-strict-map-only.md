@@ -4,23 +4,23 @@ Follow-up to the big-task tie (−3.8%). Hypothesis: the flexible map-only rule 
 once and then grep-walk anyway, so a **stricter map-usage rule** should recover the savings. This
 documents the session analysis, the strict config, the re-run, and the (honest) verdict.
 
-## 1. Session analysis — when map actually helped
+## 1. Session analysis: when map actually helped
 
 Recorded tool traces (`analyze_sessions.py` over the prior A/B runs):
 
-**Winning pattern** — small task, flexible map-only, **−45% tokens** (3-arm run):
+**Winning pattern**: small task, flexible map-only, **−45% tokens** (3-arm run):
 ```
 gate → map → map(refined) → Read the returned loc span → edit → done
 18 tool calls total · 2 map · 2 grep · 1 read
 ```
 The agent trusted the map, went straight to the located file, and barely grepped.
 
-**Losing pattern** — big task, flexible map-only, **−3.8% (tie)**:
+**Losing pattern**: big task, flexible map-only, **−3.8% (tie)**:
 ```
 gate → map → Glob, Glob, Grep, Grep, Grep … (30+) → Read (26) …
 111 tool calls · 2 map · 31 grep
 ```
-The agent mapped once, ignored the result, and grep-walked the whole area — same as the without arm.
+The agent mapped once, ignored the result, and grep-walked the whole area, same as the without arm.
 
 **Diagnosis:** the flexible rule ("use map for discovery, then Read the spans") never (a) forbade
 grepping after a map, (b) told the agent to re-map each new sub-question, or (c) told it to read
@@ -30,7 +30,7 @@ task naturally resolves in a few `map → read → stop` turns.
 
 ## 2. The strict map-only config (only allowed changes)
 
-Per the constraints, exactly two things changed vs. baseline — **nothing inside Scubiee or the
+Per the constraints, exactly two things changed vs. baseline, **nothing inside Scubiee or the
 simulation**:
 
 1. **MCP adapter exposes only `map` / `status` / `gate`.** Enforced at the adapter boundary via the
@@ -50,7 +50,7 @@ Task used: the sub-2M `cache_aware_savings` task (the one where flexible map-onl
 | Metric | A: Without | B: Strict map-only |
 |---|---:|---:|
 | **Total tokens** | 1,037,706 | 1,125,787 |
-| **% vs without** | — | **−8.5% (worse)** |
+| **% vs without** | - | **−8.5% (worse)** |
 | Output tokens | 22,208 | 18,973 |
 | Cache-read | 950,513 | 1,066,253 |
 | Tool calls | 33 | 24 |
@@ -70,14 +70,14 @@ Task used: the sub-2M `cache_aware_savings` task (the one where flexible map-onl
   greps for more map+read+reason cycles and more back-and-forth turns. Because total token cost is
   dominated by cache-read (which scales with **turns**, not with grep count), swapping a few greps
   for extra turns was a net loss. Suppressing grep did not reduce turns.
-- **Worse, correctness dropped this run:** the strict arm's oracle scored 0.33 — a **genuine task
+- **Worse, correctness dropped this run:** the strict arm's oracle scored 0.33, a **genuine task
   miss** (it added a cache field but the effective/savings number didn't actually respond to
   cache), while the without arm passed at 1.0. This is a real failure, not the skip-artifact from
   the big run.
 
 ## 5. Verdict
 
-**On this run, the strict map-only rule did not beat "without" — it was ~8.5% more expensive and
+**On this run, the strict map-only rule did not beat "without", it was ~8.5% more expensive and
 produced a worse result.** Making the map policy *stricter* did not recover the savings; it added
 turns.
 
@@ -87,7 +87,7 @@ The deeper lesson from putting all the runs together:
 |---|---|---|
 | Small (3-arm) | flexible | **−45%** (win) |
 | Big | flexible | −3.8% (tie) |
-| Big | (not re-run small-first) | — |
+| Big | (not re-run small-first) | - |
 | Small | **strict** | **+8.5%** (worse) |
 
 - The **−45% win was not reproducible by forcing more map discipline.** It came from a run where
@@ -96,17 +96,17 @@ The deeper lesson from putting all the runs together:
 - **`map`'s benefit is fragile and turn-driven, not grep-driven.** Fewer greps ≠ fewer tokens if
   the agent takes more conversational turns to get there. The token bill tracks turns (cache-read),
   so the only reliable way `map` saves tokens is by **cutting the number of turns to reach the
-  edit** — which happens on small, discovery-dominated tasks and does not happen when a rule makes
+  edit**, which happens on small, discovery-dominated tasks and does not happen when a rule makes
   the agent do a mandatory map+read loop per sub-question.
 - Over-constraining also risks **correctness**: forcing the agent through a rigid discovery
   protocol on a task that needs iterative understanding cost it the behavioral outcome once.
 
-**Recommendation:** do not ship a rigid "map before everything, never grep" rule — it can raise
+**Recommendation:** do not ship a rigid "map before everything, never grep" rule, it can raise
 both cost and error rate. The realistic sweet spot is the **lightweight** guidance ("start with one
 `map`; read its loc spans before grepping") applied to **small, discovery-heavy tasks**, and
 letting the agent fall back to native tools freely. And crucially: **n = 1 per cell.** The −45%,
 the −3.8%, and this +8.5% are single Sonnet runs with high variance; the only trustworthy
-conclusion is *directional* — map helps most on small discovery-dominated tasks, strict rules don't
+conclusion is *directional*, map helps most on small discovery-dominated tasks, strict rules don't
 reliably improve it, and a proper number needs repeats (≥5 seeds/task) which is token-expensive.
 
 ## Reproduce

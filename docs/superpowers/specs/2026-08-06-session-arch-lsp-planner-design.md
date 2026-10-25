@@ -1,11 +1,11 @@
 # Session arch + LSP + Planner (experiment design)
 
 **Date:** 2026-08-06  
-**Status:** approved (chat) — experiment only; no production engine default changes.
+**Status:** approved (chat), experiment only; no production engine default changes.
 
 ## Goal
 
-A/B session traversal arms that share **multishot blind arrow + small spans**, then differ in navigation — including a **real pyright LSP** arm and a **Context Planner** loop — on hard related-session missions (`hard_hop_v1`, `harder_chain_v1`).
+A/B session traversal arms that share **multishot blind arrow + small spans**, then differ in navigation, including a **real pyright LSP** arm and a **Context Planner** loop, on hard related-session missions (`hard_hop_v1`, `harder_chain_v1`).
 
 Winner: **rubric rate**, then **session tokens**.
 
@@ -25,7 +25,7 @@ Standalone **OutlineHop** is **not** a scored arm (already lost prior ladder).
 
 Reuse `scripts/experiments/session_arch/core.py`:
 
-- `retrieve_multishot`, span pack (~500–700 chars), `SessionState`, this-turn `must_open` rubric, memory reopen.
+- `retrieve_multishot`, span pack (~500-700 chars), `SessionState`, this-turn `must_open` rubric, memory reopen.
 
 ## Planner (no LSP)
 
@@ -35,9 +35,9 @@ Per turn budget: max **2** expand rounds; stop early if all `must_open` covered.
 
 Tools (in order by goal):
 
-1. **import-follow** — AST parse imports on seeds; resolve module → file; score by name/path overlap + BM25 confirm  
-2. **ident BM25/grep** — outline/query identifiers → `class|def Ident` grep + BM25  
-3. **graph** — `neighbor_files` + confirm (rewrite-enriched)
+1. **import-follow**: AST parse imports on seeds; resolve module → file; score by name/path overlap + BM25 confirm  
+2. **ident BM25/grep**: outline/query identifiers → `class|def Ident` grep + BM25  
+3. **graph**: `neighbor_files` + confirm (rewrite-enriched)
 
 ## Eval result (hard_hop_v1, no LSP)
 

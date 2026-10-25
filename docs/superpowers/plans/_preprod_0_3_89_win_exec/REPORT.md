@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-15  
 **Install:** `uv tool` scubiee 0.3.89 (local tree)  
-**Ship decision:** **CONDITIONAL** — Gates B/C(host-sim)/D green after fixes; Gate E advisory fails remain; Gate M not run.
+**Ship decision:** **CONDITIONAL**, Gates B/C(host-sim)/D green after fixes; Gate E advisory fails remain; Gate M not run.
 
 ## Verdict summary
 
@@ -18,35 +18,35 @@
 
 ## Root causes found and fixed (this session)
 
-1. **Host-sim `WARM_TIMEOUT`** — `clean_slate` stopped the engine but left IDE MCP bridges/locates alive; they re-registered and spawned a ~5MB zombie engine (`soft_search_ready` stuck false).  
+1. **Host-sim `WARM_TIMEOUT`**: `clean_slate` stopped the engine but left IDE MCP bridges/locates alive; they re-registered and spawned a ~5MB zombie engine (`soft_search_ready` stuck false).  
    **Fix:** kill all Scubiee MCP procs before stop; pin `CTX_DAEMON_PYTHON` to bridge’s uv-tool python.
 
-2. **`scubiee resume` wrote GATE p** — resume kept `paused=True` while `install_tool` ran, so `gate_line_for_repo` returned `p`. Engine ensure was also skipped (`globally_paused`).  
+2. **`scubiee resume` wrote GATE p**: resume kept `paused=True` while `install_tool` ran, so `gate_line_for_repo` returned `p`. Engine ensure was also skipped (`globally_paused`).  
    **Fix:** honor `resuming` for gate/ensure/watchdog; heal rules on already-active; CLI always calls `resume()`.
 
-3. **CLI combo corrupted repo `id.json` / hung** — `--quick` still ran `init_combo` + `unlock-tool` against the real cwd; connect dry-run auto-resume blocked ≤90s on `ensure_daemon`.  
+3. **CLI combo corrupted repo `id.json` / hung**: `--quick` still ran `init_combo` + `unlock-tool` against the real cwd; connect dry-run auto-resume blocked ≤90s on `ensure_daemon`.  
    **Fix:** skip wipe/recovery/init_combo on `--quick`; `resume(ensure_engine=False)` for connect `--dry-run`.
 
-4. **Warm contract required dense embedder** — product soft-ready only needs binder; acceptance used 10s + embedder.  
+4. **Warm contract required dense embedder**: product soft-ready only needs binder; acceptance used 10s + embedder.  
    **Fix:** soft OR embedder; 30s deadline; kill leftovers + synthetic client.
 
-5. **Ship expand flake** — first `expand_context` often `ast_warming`.  
+5. **Ship expand flake**: first `expand_context` often `ast_warming`.  
    **Fix:** retry expand up to 4× on warming.
 
-6. **`ensure_daemon` after fresh start** — returned before bind confirmed.  
+6. **`ensure_daemon` after fresh start**: returned before bind confirmed.  
    **Fix:** after `start_daemon`, call `_ensure_already_running` when `open_wait`.
 
-7. **Stale `test_process_job` detach flags** — soft spawn no longer sets `CREATE_BREAKAWAY_FROM_JOB` by default.  
+7. **Stale `test_process_job` detach flags**: soft spawn no longer sets `CREATE_BREAKAWAY_FROM_JOB` by default.  
    **Fix:** test soft default + hard detach under `CTX_ENGINE_HARD_DETACH=1`.
 
 ## Measured SLAs (Lane A host-sim, live)
 
 | Phase | Result |
 |-------|--------|
-| soft_ready from host_start | **~7–8 s** |
-| map_first | **~49–58 ms** |
-| pack_first | **~48–56 ms** |
-| expand_first | **~0.2–0.8 s** (AST hydrate) |
+| soft_ready from host_start | **~7-8 s** |
+| map_first | **~49-58 ms** |
+| pack_first | **~48-56 ms** |
+| expand_first | **~0.2-0.8 s** (AST hydrate) |
 
 Warm contract (after fix): soft ~**16.6 s**, first HTTP search ~1.5 s, post-idle ~0.7 s.
 

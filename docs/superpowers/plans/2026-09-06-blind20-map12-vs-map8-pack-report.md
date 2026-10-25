@@ -15,7 +15,7 @@ Cases: **20** · wall **29.82s**
 
 ## Read
 
-- Raw map@12 wins **files** if symbols empty — good neighborhood, not exact funcs.
+- Raw map@12 wins **files** if symbols empty, good neighborhood, not exact funcs.
 - Chunk-pick from wider map ≈ chunk-pick from map@8 if top files overlap.
 - pack_context wins if it lifts **symbol** recall and/or delivers bodies (exact starting code).
 

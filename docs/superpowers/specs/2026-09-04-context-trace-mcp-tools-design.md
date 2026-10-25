@@ -1,4 +1,4 @@
-# Context Tracing MCP tools — design
+# Context Tracing MCP tools: design
 
 **Date:** 2026-09-04  
 **Status:** approved to ship (chat)  
@@ -10,7 +10,7 @@
 
 **In:** `query` (detailed paragraph), `seed` (path + optional `start_line`/`symbol` or raw seed text hint), optional `seed2`, `k` (max hot cards).
 
-**Out (guide only — no bodies):**
+**Out (guide only, no bodies):**
 ```json
 {
   "ok": true,

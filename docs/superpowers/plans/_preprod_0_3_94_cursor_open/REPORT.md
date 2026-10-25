@@ -1,4 +1,4 @@
-# Cursor-open production battery — 0.3.94
+# Cursor-open production battery: 0.3.94
 
 **Date:** 2026-09-16 02:46:48
 **Harness:** cold kill → Cursor-client Lane A settle → warm_contract → ship_check → mcp.json pins
@@ -24,6 +24,6 @@
 
 ## Errors
 
-- Lane A Cursor settle failed — see host_sim_lane_a_cursor_settle.log / mcp-host-sim-*.md
-- warm_contract_acceptance failed — see warm_contract.log
-- ship_check failed — see ship_check.log
+- Lane A Cursor settle failed, see host_sim_lane_a_cursor_settle.log / mcp-host-sim-*.md
+- warm_contract_acceptance failed, see warm_contract.log
+- ship_check failed, see ship_check.log

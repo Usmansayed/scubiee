@@ -2,12 +2,12 @@
 
 Boards: verify_hard.json, verify_ood_v2.json, verify_prod.json, verify_ood_v10_realistic.json · cases 86 · **seed-hard 29** · elapsed 1187.52s
 
-**Stack gate:** PASSED — `real:fastembed` dim=768 on DML; product FAISS 8 hits; `require_real_embeds=True`.  
+**Stack gate:** PASSED, `real:fastembed` dim=768 on DML; product FAISS 8 hits; `require_real_embeds=True`.  
 Prior un-gated report is **INVALID** (`2026-09-06-top5-semantic-venture.INVALID.md`): FAISS helper used a bad kwarg and always returned 0 hits.
 
 **Winner on seed-hard (Δ must-recall vs composite):** `venture_multiview`
 
-**Caveat:** Δ must numbers match the prior (broken-FAISS) run closely — FAISS hits often map to files outside the fixture AST corpus, so proposal still leans on EmbedField affinities. Stack is live; FAISS→fixture-node join still needs work.
+**Caveat:** Δ must numbers match the prior (broken-FAISS) run closely, FAISS hits often map to files outside the fixture AST corpus, so proposal still leans on EmbedField affinities. Stack is live; FAISS→fixture-node join still needs work.
 
 Implements architectures from `SCUBIEE_TOP5_SEMANTIC_TRACER_EXPERIMENTS.md` (A1 propose+verify, A2 frontier, A3 multiview, A4 trace-state, A5 learned proxy, A6 combo).
 

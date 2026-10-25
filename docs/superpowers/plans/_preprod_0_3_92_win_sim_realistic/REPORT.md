@@ -1,4 +1,4 @@
-# Realistic MCP host-sim battery (Windows) — 0.3.92
+# Realistic MCP host-sim battery (Windows): 0.3.92
 
 **Date:** 2026-09-15  
 **Harness:** live `uv tool` scubiee + Lane A / warm_contract / ship_check  
@@ -22,7 +22,7 @@
 | map_first ≤1000ms | Yes (451ms) |
 | pack_first ≤1000ms | Yes (57ms) |
 | expand_first ≤5000ms | Yes (765ms) |
-| post-idle locate | Yes (~60–75ms) |
+| post-idle locate | Yes (~60-75ms) |
 
 ## Notes
 

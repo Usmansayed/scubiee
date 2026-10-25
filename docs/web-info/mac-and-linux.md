@@ -79,16 +79,16 @@ scubiee setup --profile cpu --repair
 
 ## Linux notes
 
-- No DirectML on Linux — AMD GPUs use CPU embed unless you have NVIDIA + CUDA.
+- No DirectML on Linux, AMD GPUs use CPU embed unless you have NVIDIA + CUDA.
 - Ensure `~/.local/bin` is on PATH for uv tool shims.
 
 ---
 
 ## Data paths
 
-- `~/.scubiee/` — state, indexes, `accel.json`
-- `~/.cursor/mcp.json` — Cursor MCP (from **connect**)
-- `<repo>/.scubiee/id.json` — project identity
+- `~/.scubiee/`: state, indexes, `accel.json`
+- `~/.cursor/mcp.json`: Cursor MCP (from **connect**)
+- `<repo>/.scubiee/id.json`: project identity
 
 Model cache: `~/.cache/fastembed/` (and MLX-related caches as configured).
 

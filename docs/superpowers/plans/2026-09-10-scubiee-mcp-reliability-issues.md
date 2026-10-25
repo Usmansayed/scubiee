@@ -9,7 +9,7 @@
 - Probe JSON: [`2026-09-10-scubiee-mcp-reliability-probes.json`](./2026-09-10-scubiee-mcp-reliability-probes.json)
 - Probe script: [`scripts/scubiee_mcp_reliability_audit.py`](../../../scripts/scubiee_mcp_reliability_audit.py)
 
-**Goal of this doc:** inventory every reliability failure we hit or reproduced so we can design fixes. Not a patch list yet — each issue ends with a *solution direction* to debate.
+**Goal of this doc:** inventory every reliability failure we hit or reproduced so we can design fixes. Not a patch list yet, each issue ends with a *solution direction* to debate.
 
 ---
 
@@ -42,7 +42,7 @@ Agents feel MCP as “unreliable” because:
 
 ## Issue catalog
 
-### P0 — IDLE-SWEEP-KILLS-INDEX
+### P0: IDLE-SWEEP-KILLS-INDEX
 
 **Symptom:** While indexing / rebuilding, engine log shows:
 
@@ -65,12 +65,12 @@ Health then flaps `indexing` ↔ connection refused. Rebuild aborts mid-flight.
 **Solution direction:**
 - Do **not** idle-stop while `warm_state in {warming,indexing}` or any index lock held.
 - Treat active index / embed / publish work as a client hold.
-- Raise default MCP idle (e.g. 300–900s) or disable idle while `CTX_AUTO_INDEX=1`.
-- `/health` alone should not be the only keepalive — but work-in-progress must veto standby.
+- Raise default MCP idle (e.g. 300-900s) or disable idle while `CTX_AUTO_INDEX=1`.
+- `/health` alone should not be the only keepalive, but work-in-progress must veto standby.
 
 ---
 
-### P0 — MAP-WINERROR-10061-RACE
+### P0: MAP-WINERROR-10061-RACE
 
 **Symptom:** Cursor `map` returns:
 
@@ -85,13 +85,13 @@ while a simultaneous shell `GET /health` sometimes succeeds (or succeeds 1s late
 **Evidence:** Repeated in this Cursor session before rebuild completed.
 
 **Solution direction:**
-- Bridge should auto-`engine ensure` / wake-on-demand with bounded wait (e.g. 5–15s) before surfacing unreachable.
+- Bridge should auto-`engine ensure` / wake-on-demand with bounded wait (e.g. 5-15s) before surfacing unreachable.
 - Distinguish `starting` vs `dead` vs `idle-standby` in error payload with `repair: ["scubiee engine ensure <root>"]`.
 - Singleflight wake so parallel MCP tools don’t stampede.
 
 ---
 
-### P0 — WARM-ERROR-DML-PROVIDER
+### P0: WARM-ERROR-DML-PROVIDER
 
 **Symptom:** After wipe/reinstall:
 
@@ -108,17 +108,17 @@ while a simultaneous shell `GET /health` sometimes succeeds (or succeeds 1s late
 
 **Solution direction:**
 - On first engine start after tool install, auto-run accel verify / setup repair (or block with one crisp `repair` field).
-- Stop classifying hard accel failure as `warming` — use `warm_state=error` + non-retryable flag so agents don’t loop `status`.
+- Stop classifying hard accel failure as `warming`, use `warm_state=error` + non-retryable flag so agents don’t loop `status`.
 - `should_retry_status` / `should_use_mcp` should go false when `warm_error` is dependency-missing.
 
 ---
 
-### P0 — CORRUPT-PUBLICATION-CHECKSUM
+### P0: CORRUPT-PUBLICATION-CHECKSUM
 
 **Symptom:** `scubiee doctor` repair plan:
 
 ```text
-corrupt publication (checksum_mismatch) — rebuild index
+corrupt publication (checksum_mismatch) - rebuild index
 ```
 
 Soft search stuck / flapping until `scubiee rebuild .` (successful rebuild: 6221 chunks in ~80s).
@@ -134,7 +134,7 @@ Soft search stuck / flapping until `scubiee rebuild .` (successful rebuild: 6221
 
 ---
 
-### P0 — MCP-HOST-DISCONNECT-AFTER-KILL
+### P0: MCP-HOST-DISCONNECT-AFTER-KILL
 
 **Symptom:** After killing `scubiee-mcp` / `scubiee-mcp-bridge` (needed for `uv tool install --force` file locks):
 
@@ -149,12 +149,12 @@ Soft search stuck / flapping until `scubiee rebuild .` (successful rebuild: 6221
 **Solution direction:**
 - Document + automate: `scubiee unlock-tool` / stop MCP before tool replace; restart bridge after.
 - Prefer in-place upgrade that doesn’t require deleting locked `Scripts/`.
-- Cursor-side: reconnect MCP automatically after bridge exit (host limitation — may need bridge supervisor).
+- Cursor-side: reconnect MCP automatically after bridge exit (host limitation, may need bridge supervisor).
 - Ship a `scubiee upgrade` that coordinates unlock → install → reconnect.
 
 ---
 
-### P0 — MCP-STDIO-BURST / EMPTY -32603
+### P0: MCP-STDIO-BURST / EMPTY -32603
 
 **Symptom:** Stdio probe happy-path `initialize → status → map → pack → expand` works; then burst `map×5` dies with:
 
@@ -173,7 +173,7 @@ Soft search stuck / flapping until `scubiee rebuild .` (successful rebuild: 6221
 
 ---
 
-### P1 — STATUS-SOFT-SEARCH-UNBOUND
+### P1: STATUS-SOFT-SEARCH-UNBOUND
 
 **Symptom:** Conflicting readiness:
 
@@ -193,16 +193,16 @@ Yet **MCP `map` can still succeed** with good cards (observed live).
 
 **Evidence:** Multiple live `status` cards in this chat; map still returned `write_project_gate_rules`.
 
-**Why it hurts:** Agents obey `agent_ready=warming` / `ready=false` and refuse to locate even when map works — *or* they ignore status and thrash.
+**Why it hurts:** Agents obey `agent_ready=warming` / `ready=false` and refuse to locate even when map works, *or* they ignore status and thrash.
 
 **Solution direction:**
-- Auto-bind `CTX_REPO` / `project_id` on every locate tool entry (`map`/`pack`) — don’t require separate ensure.
+- Auto-bind `CTX_REPO` / `project_id` on every locate tool entry (`map`/`pack`), don’t require separate ensure.
 - Unify readiness: one enum `locate_ready | starting | indexing | error | unbound` with single `repair[]`.
 - If map works, `soft_search_ready` must not be false (bug).
 
 ---
 
-### P1 — COLD-WAKE-MAP-RACE
+### P1: COLD-WAKE-MAP-RACE
 
 **Symptom:** Immediately after `scubiee engine start`, map fails while health shows `warm_state=indexing` / `index_usable=false`. CLI may dump a **traceback** instead of structured error.
 
@@ -215,15 +215,15 @@ Yet **MCP `map` can still succeed** with good cards (observed live).
 
 ---
 
-### P1 — CLI-MAP-TRACEBACK-ON-ENGINE-DOWN
+### P1: CLI-MAP-TRACEBACK-ON-ENGINE-DOWN
 
-**Symptom:** With engine stopped, `scubiee map …` exits with Python traceback (`probe cli_map_when_engine_stopped` marked pass only because “error-ish” text appeared — UX still bad).
+**Symptom:** With engine stopped, `scubiee map …` exits with Python traceback (`probe cli_map_when_engine_stopped` marked pass only because “error-ish” text appeared, UX still bad).
 
 **Solution direction:** Catch daemon-down at CLI boundary; print compact JSON `{ok:false, error:"engine_down", repair:[...]}` and exit 2.
 
 ---
 
-### P1 — PYPI-INSTALL-FILE-LOCK
+### P1: PYPI-INSTALL-FILE-LOCK
 
 **Symptom:**
 
@@ -242,7 +242,7 @@ Leaves trampoline broken (`ModuleNotFoundError: pipeline`) until processes kille
 
 ---
 
-### P1 — DEFAULT-IDLE-15-IN-CONNECT
+### P1: DEFAULT-IDLE-15-IN-CONNECT
 
 **Symptom:** Product default in `mcp_install.py`:
 
@@ -258,7 +258,7 @@ This is aggressive for indexing + agent think-time between tools.
 
 ---
 
-### P2 — AGENT-READY-VOCAB-CONFUSING
+### P2: AGENT-READY-VOCAB-CONFUSING
 
 **Symptom:** Too many parallel signals:
 
@@ -285,7 +285,7 @@ Earlier full status also showed `agent_ready=stale` while soft search was true a
 
 ---
 
-### P2 — STATUS-TTL-STALE-AFTER-FLAP
+### P2: STATUS-TTL-STALE-AFTER-FLAP
 
 **Symptom:** MCP returns cached status (`status_ttl_s: 300`) while engine already refused connections; agents trust stale “ok” card.
 
@@ -298,7 +298,7 @@ Earlier full status also showed `agent_ready=stale` while soft search was true a
 
 ---
 
-### P2 — HAPPY-PATH-LATENCY
+### P2: HAPPY-PATH-LATENCY
 
 **Symptom (stdio probe, already warm):**
 
@@ -312,13 +312,13 @@ Earlier full status also showed `agent_ready=stale` while soft search was true a
 **Why it hurts:** Feels hung; agents parallelize or abandon ladder; exceeds human patience.
 
 **Solution direction:**
-- Profile status full (keeper dump?) — default summary must be <<1s.
+- Profile status full (keeper dump?), default summary must be <<1s.
 - Keep map/pack warm-path under a few seconds when index ready.
 - Stream progress / return `retry_after` instead of blocking silently.
 
 ---
 
-### P2 — HEALTH-VS-WARM-FLAG
+### P2: HEALTH-VS-WARM-FLAG
 
 **Symptom:** `/health` often returns `"warm": false` while `"warm_state": "ready"` and `"index_usable": true`.
 
@@ -342,7 +342,7 @@ Earlier full status also showed `agent_ready=stale` while soft search was true a
 
 ## Recommended fix order (for later implementation)
 
-**Status (2026-09-10):** **scubiee 0.3.32** published + installed — reliability fixes live. Reload Scubiee MCP in Cursor after connect. Latency stretch (#7) only partially (cheap `status` summary).
+**Status (2026-09-10):** **scubiee 0.3.32** published + installed, reliability fixes live. Reload Scubiee MCP in Cursor after connect. Latency stretch (#7) only partially (cheap `status` summary).
 
 1. **Idle veto while indexing + safer default idle** (stops flaps / corrupt publish). ✅  
 2. **Atomic publish + auto-rebuild on checksum mismatch**. ✅  
@@ -368,7 +368,7 @@ Then compare `docs/superpowers/plans/2026-09-10-scubiee-mcp-reliability-probes.j
 
 ---
 
-## Appendix A — Live Cursor timeline (this session)
+## Appendix A: Live Cursor timeline (this session)
 
 1. MCP missing / auth-only after reinstall.  
 2. `status`: DML `warm_error`; `map` → `warming`.  
@@ -383,7 +383,7 @@ Then compare `docs/superpowers/plans/2026-09-10-scubiee-mcp-reliability-probes.j
 
 ---
 
-## Appendix B — Probe table
+## Appendix B: Probe table
 
 | Probe | Result | Notes |
 |-------|--------|-------|
@@ -399,4 +399,4 @@ Then compare `docs/superpowers/plans/2026-09-10-scubiee-mcp-reliability-probes.j
 | cli_map_when_engine_stopped | PASS* | errors, but via traceback |
 | cli_map_immediately_after_engine_start | FAIL | cold-wake race |
 
-\*See issue text — “pass” does not mean UX is good.
+\*See issue text, “pass” does not mean UX is good.

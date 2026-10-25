@@ -1,7 +1,7 @@
 # Warm + auto-load architecture (and why Cursor open kept failing)
 
 **Date:** 2026-09-20  
-**Code:** `0.3.99` — quiet attach, 45s hung-prewarm abort, Kiro Lane B SLA  
+**Code:** `0.3.99`, quiet attach, 45s hung-prewarm abort, Kiro Lane B SLA  
 **Evidence:** live Cursor map timeout with engine PID alive; Lane A quiet-settle false green; ORT install regressing to CPU; health-poll settle → `SETTLE_MAP_SLOW`
 
 ---
@@ -50,7 +50,7 @@ So during cold ORT load:
 4. Heartbeats keep POSTing `/v1/client/touch` + `/keepalive` → more queued work when GIL returns → storm.
 5. If clients flap to 0, **10s idle sweeper** kills the engine mid-prewarm (busy stamp was ignored).
 6. Watchdog **`skip auto load` when `clients=0`** even though Cursor MCP stdio is still up → permanent DOWN.
-7. Quiet Lane A sim **does not poll `/health` during settle** → false PASS (~150ms map). Live-like health-poll settle → FAIL (`SETTLE_MAP_SLOW` ~1.3s+) — proved 2026-09-20.
+7. Quiet Lane A sim **does not poll `/health` during settle** → false PASS (~150ms map). Live-like health-poll settle → FAIL (`SETTLE_MAP_SLOW` ~1.3s+), proved 2026-09-20.
 8. `uv tool install` once pulled plain `onnxruntime 1.30` (no DirectML) → CPU path, worse hangs.
 
 ---
@@ -65,15 +65,15 @@ File: `~/.scubiee/warm_phase.json` (and retain `embed_prewarm.busy` stamp).
 |-------|---------|------------------------|------------------------|
 | `down` | No engine | yes (expected) | start if MCP demand |
 | `soft` | Binder up, dense cold | rare | normal |
-| `prewarm` | ORT session loading (GIL held) | **yes — expected** | **ignore** |
+| `prewarm` | ORT session loading (GIL held) | **yes, expected** | **ignore** |
 | `dense` | Embedder loaded | no | normal |
-| `error` | Prewarm failed / stuck | — | heal with demand |
+| `error` | Prewarm failed / stuck | - | heal with demand |
 
 MCP attach, heartbeat, and status **must read this file** during `prewarm` and must **not** hammer `/health`.
 
 ### Rules
 
-1. **One embed lane** — all ORT work on `run_embed_infer` (already). Keepalive must not start until `dense`; interval ≥ keepalive env (default 15s+).
+1. **One embed lane**: all ORT work on `run_embed_infer` (already). Keepalive must not start until `dense`; interval ≥ keepalive env (default 15s+).
 2. **Idle stop** respects `prewarm` / busy stamp (postpone leave).
 3. **Watchdog demand** = `active_clients > 0` **OR** live `mcp_bridge` process.
 4. **Watchdog** while `phase=prewarm`: do not increment health-fail toward restart.
@@ -118,8 +118,8 @@ Unit tests alone are not enough (repo rule).
 |-------|--------|
 | Unit `test_warm_autoload` + idle/watchdog traps | **10 passed** |
 | Preflight ORT | **1.24.4** + `DmlExecutionProvider` |
-| `cursor_close_open_loop --rounds 2 --settle-s 35` | **PASS** — map_first **147.8ms** / **83.7ms**; round 2 hit `warm_phase=dense` during quiet window |
-| Live Cursor MCP map after reload | **FAIL** — map timeout; `warm_phase=prewarm` held ≥137s; `/health` dead; later PID recycled still `prewarm` |
+| `cursor_close_open_loop --rounds 2 --settle-s 35` | **PASS**, map_first **147.8ms** / **83.7ms**; round 2 hit `warm_phase=dense` during quiet window |
+| Live Cursor MCP map after reload | **FAIL**, map timeout; `warm_phase=prewarm` held ≥137s; `/health` dead; later PID recycled still `prewarm` |
 
 ---
 
@@ -131,7 +131,7 @@ Observed loop: **engine process alive → `warm_phase.json` stays `prewarm` → 
 
 ONNX Runtime Python bindings **do not release the GIL during `InferenceSession` / EP init** ([ORT #27063](https://github.com/microsoft/onnxruntime/issues/27063)). `run()` does. FastEmbed first `embed_one` creates the session.
 
-`ThreadingHTTPServer` handlers are Python. No GIL ⇒ **no `/health`, no `/v1/search`, no map HTTP**. PID can still listen. This is expected for the duration of init (~10–40s) and a **hang forever** if DML never returns.
+`ThreadingHTTPServer` handlers are Python. No GIL ⇒ **no `/health`, no `/v1/search`, no map HTTP**. PID can still listen. This is expected for the duration of init (~10-40s) and a **hang forever** if DML never returns.
 
 Code: `engine.py` `_LazyEmbedder.embed_one` → `run_embed_infer` → `_EMBED_EXECUTOR` (1 worker) → `emb._ensure()` / `embed_one`.
 
@@ -155,7 +155,7 @@ So a hung ORT is treated as “healthy enough.” Stale timeout is **180s** (`DE
 
 ### E. HTTP `wait=True` prewarm parks a server worker
 
-`mcp_lifecycle._kick_embed_prewarm` and `RuntimeController._kick_embed_prewarm` POST `{wait: true, sync: true}` (client timeout 30–45s).
+`mcp_lifecycle._kick_embed_prewarm` and `RuntimeController._kick_embed_prewarm` POST `{wait: true, sync: true}` (client timeout 30-45s).
 
 `server.py` then **busy-polls `prewarm_status()` every 50ms for up to 8s** on that HTTP thread. Those polls also need the GIL. Combined with A: attach warm **competes with ORT for the GIL** instead of staying quiet.
 
@@ -173,7 +173,7 @@ Bridge + locate heartbeats POST `/v1/client/touch` and `/v1/embed/keepalive`. Mi
 
 ### I. Dual `begin_prewarm` + process recycle
 
-Engine.json PID vs `warm_phase.pid` vs listener PID can disagree (wrapper vs `pythonw`). A killed engine leaves `phase=prewarm`. Watchdog/ensure starts a **new** PID; MCP still reports warming; new process immediately starts another DML init under live Cursor HTTP — hang repeats (seen: pid 24832 → 22740, still `prewarm`).
+Engine.json PID vs `warm_phase.pid` vs listener PID can disagree (wrapper vs `pythonw`). A killed engine leaves `phase=prewarm`. Watchdog/ensure starts a **new** PID; MCP still reports warming; new process immediately starts another DML init under live Cursor HTTP, hang repeats (seen: pid 24832 → 22740, still `prewarm`).
 
 ### J. CPU-ORT regression
 
@@ -219,7 +219,7 @@ Cursor MCP up
 ## 8. What a real fix has to change
 
 1. **Never HTTP-poll or `wait=True` join during `prewarm`** (attach, heartbeat, sim, map).
-2. **Hard-abort hung prewarm** well under 180s (e.g. 45s) and recycle the engine process — do not “ignore health” forever.
+2. **Hard-abort hung prewarm** well under 180s (e.g. 45s) and recycle the engine process, do not “ignore health” forever.
 3. **One ORT owner:** no keepalive, no search embed, no second prewarm until `end_prewarm`.
 4. **Map while `prewarm`:** return warming + side-channel, do not block on `/health` or dense embed.
 5. **Preflight DML** on every install; fail closed.
@@ -227,5 +227,5 @@ Cursor MCP up
 **0.3.99 shipped these:** attach/`_kick_embed_prewarm` is fire-and-forget (`wait=False`);
 `/v1/embed/prewarm` never parks the HTTP worker; `begin_prewarm` does not refresh a
 live stamp; `DEFAULT_PREWARM_MAX_AGE_S=45`; search/map return `warming` while
-`phase=prewarm`; keepalive does not re-kick ORT. Lane B is no longer pin-only —
+`phase=prewarm`; keepalive does not re-kick ORT. Lane B is no longer pin-only
 it runs the same close→unload→open→≥30s settle→map SLA with `CTX_MCP_CLIENT=kiro`.

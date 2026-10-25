@@ -1,8 +1,8 @@
-# Scubiee MCP Agent Feedback — Live Session
+# Scubiee MCP Agent Feedback: Live Session
 
 **Date:** 2026-08-29  
 **Evaluator:** Cursor agent (Composer)  
-**Method:** Scubiee MCP tools only — no pytest, no local harness scripts  
+**Method:** Scubiee MCP tools only, no pytest, no local harness scripts  
 **Surface:** `phase` (`gate | status | map | focus | grep | glob | workspace | expand`)  
 **Repo:** `context-engine` (managed)  
 **Project ID:** `ce_f01682314e33b2beb8cf8c0c8782bc43`  
@@ -17,7 +17,7 @@ Scubiee MCP is **production-usable for agent locate** on this repo. Semantic `ma
 
 **Overall grade: A-** (up from ~B in the first exploration session on 2026-08-29 morning).
 
-The single highest-impact bug found live: **`_assess_map_confidence` uses 0–1 thresholds but map scores are ~1–30**, so gibberish queries report `confidence: "high"` despite `max_score: 2.47`. Everything else is polish, sync noise, or agent-ergonomics.
+The single highest-impact bug found live: **`_assess_map_confidence` uses 0-1 thresholds but map scores are ~1-30**, so gibberish queries report `confidence: "high"` despite `max_score: 2.47`. Everything else is polish, sync noise, or agent-ergonomics.
 
 ---
 
@@ -43,7 +43,7 @@ The single highest-impact bug found live: **`_assess_map_confidence` uses 0–1 
 
 ## Tool-by-tool assessment
 
-### `gate` — **A**
+### `gate`: **A**
 
 One line, immediately actionable:
 
@@ -53,10 +53,10 @@ One line, immediately actionable:
 
 Confirms managed repo, project ID, and session sharing risk without calling `status()`. Best first call in any chat.
 
-### `status` — **B+**
+### `status`: **B+**
 
 **Works well:**
-- `agent_ready: "stale"` — the field agents actually need while keeper syncs
+- `agent_ready: "stale"`: the field agents actually need while keeper syncs
 - `engine.healthy`, `soft_search_ready`, chunk/file counts
 - Keeper dirty-path state with normalized keys vs raw paths
 - Session ledger summary (`n_spans`, `approx_prompt_tokens`)
@@ -66,7 +66,7 @@ Confirms managed repo, project ID, and session sharing risk without calling `sta
 - Payload can be very large when `last_sync.files` is populated
 - Keeper perpetually reports 5 AGENTS.md variants as `added` (`clean: false` every probe)
 
-### `map` — **A-**
+### `map`: **A-**
 
 **Strengths observed:**
 
@@ -85,12 +85,12 @@ Confirms managed repo, project ID, and session sharing risk without calling `sta
 | Host workspace | `docs/global-mcp-hosts-research.md` | 15.51 |
 
 **Good UX signals:**
-- `needs_outline: true` on cards with null line ranges — prompts `focus(outline)` before blind span reads
-- `span_hint: "large chunk — use focus(outline) then line ranges"` on big hits (e.g. `locate.py`)
+- `needs_outline: true` on cards with null line ranges, prompts `focus(outline)` before blind span reads
+- `span_hint: "large chunk - use focus(outline) then line ranges"` on big hits (e.g. `locate.py`)
 - `facade_hint: true` + `follow_up` on thin package stubs (e.g. `hybrid_cbm/__init__.py`)
 - Duplicate query → `cached: true` + `usage_hint: "Prefer focus() on prior hits"`
 - `k=3` respected on re-query; cache trims to requested k
-- Gibberish query card count reduced (6 vs 8 in prior session) — partial improvement
+- Gibberish query card count reduced (6 vs 8 in prior session), partial improvement
 
 **Issues:**
 
@@ -107,31 +107,31 @@ Confirms managed repo, project ID, and session sharing risk without calling `sta
    return {"confidence": "high", ...}
    ```
 
-   Live scores are **not** normalized to 0–1. Thresholds should be calibrated to the actual score scale (e.g. `< 5.0` → low).
+   Live scores are **not** normalized to 0-1. Thresholds should be calibrated to the actual score scale (e.g. `< 5.0` → low).
 
 2. **Test/meta files rank highly** on vague or meta queries (`test_mcp_exploration_regressions.py` appears in heatmap with 8 hits). Expected for this repo but may mislead agents on cleaner codebases.
 
-3. **Stale vendored copy indexed** — `scubiee-0.2.61/packages/graphify/transcribe.py` appears alongside `packages/graphify/transcribe.py` in graphify map results.
+3. **Stale vendored copy indexed**: `scubiee-0.2.61/packages/graphify/transcribe.py` appears alongside `packages/graphify/transcribe.py` in graphify map results.
 
-### `focus` — **A-**
+### `focus`: **A-**
 
 **Modes tested:**
 
 | Mode | Result |
 |------|--------|
-| `outline` (Python) | 10–22 symbols with line ranges; uncapped when small |
-| `outline` (Markdown) | `language_unsupported: true` + note to use `span` — clear |
+| `outline` (Python) | 10-22 symbols with line ranges; uncapped when small |
+| `outline` (Markdown) | `language_unsupported: true` + note to use `span`, clear |
 | `span` (line range) | Correct code; `max_chars` truncation with `next_start_line` |
 | `span` (symbol query) | Usually correct; **one mis-route** (see bugs) |
-| `neighbors` | Import adjacency with inline neighbor snippets — excellent for wiring |
+| `neighbors` | Import adjacency with inline neighbor snippets, excellent for wiring |
 
 **Dedup works:**
 - Re-fetch same span → `already_in_session`, empty body, handle preserved
 - `usage_hint` points to `expand(handle)` or `workspace(show)`
 
-**BOM visible in span/neighbors output** for UTF-8-BOM files (`sync_loop.py`, `incremental.py` show leading `\ufeff` in code block). `expand()` on `dirty_ledger` span was BOM-free — inconsistent strip behavior.
+**BOM visible in span/neighbors output** for UTF-8-BOM files (`sync_loop.py`, `incremental.py` show leading `\ufeff` in code block). `expand()` on `dirty_ledger` span was BOM-free, inconsistent strip behavior.
 
-### `grep` — **A**
+### `grep`: **A**
 
 - Exact literal `def put_span` → 1 hit at line 266
 - Broad `CTX_MCP_SURFACE` → 90 hits across docs/tests/pipeline; not truncated
@@ -139,21 +139,21 @@ Confirms managed repo, project ID, and session sharing risk without calling `sta
 
 Reliable fallback after map; default glob `**/*` is appropriate.
 
-### `glob` — **A**
+### `glob`: **A**
 
 | Pattern | Behavior |
 |---------|----------|
-| `glob=` alias | `pattern_source: "glob_alias"` — fixed from prior session |
+| `glob=` alias | `pattern_source: "glob_alias"`, fixed from prior session |
 | `packages/*` | Lists 10 package dirs |
 | `packages/pipeline/*.py` | 88 modules |
 | `pattern="."` | Orient mode: dirs + top-level files |
 | `tests/test_mcp*.py` | 6 MCP test files |
 
-### `expand` — **A-**
+### `expand`: **A-**
 
-Re-materialized `sp_0007_cc55f7` (`normalize_dirty_path` in `dirty_ledger.py`) cleanly — 499 chars, no BOM, no truncation. Essential after dedup.
+Re-materialized `sp_0007_cc55f7` (`normalize_dirty_path` in `dirty_ledger.py`) cleanly, 499 chars, no BOM, no truncation. Essential after dedup.
 
-### `workspace` — **A**
+### `workspace`: **A**
 
 Best session memory tool:
 - Heatmap ranks files by map/focus activity with roles and last queries
@@ -167,30 +167,30 @@ After ~40 calls, heatmap correctly showed `mcp_locate.py` and `test_mcp_explorat
 
 ## Bugs and friction (prioritized)
 
-### P0 — Map confidence thresholds wrong scale
+### P0: Map confidence thresholds wrong scale
 
 **Symptom:** Nonsense queries return `confidence: "high"`.  
 **Evidence:** Gibberish query `max_score: 2.466` + `"high"`; `_assess_map_confidence` compares against `0.08`, `0.15`, `0.22`.  
 **Fix:** Calibrate thresholds to live score distribution, or normalize scores before assess. Propagate `weak_match: true` on individual cards when top score < N.
 
-### P1 — Symbol focus can return wrong symbol in target file
+### P1: Symbol focus can return wrong symbol in target file
 
-**Symptom:** `focus(target=rules_installer.py, query=write_cursor_rule)` returned `gate_line_for_repo` (lines 112–128), not `write_cursor_rule`.  
-**Correct file:** `write_cursor_rule` lives in `mcp_install.py:163–174` (confirmed with correct target).  
+**Symptom:** `focus(target=rules_installer.py, query=write_cursor_rule)` returned `gate_line_for_repo` (lines 112-128), not `write_cursor_rule`.  
+**Correct file:** `write_cursor_rule` lives in `mcp_install.py:163-174` (confirmed with correct target).  
 **Impact:** Agents editing the wrong function if they trust symbol query without checking name in code block.
 
-### P1 — `call_sites` mode advertised but not implemented
+### P1: `call_sites` mode advertised but not implemented
 
 **Symptom:** `focus(mode=call_sites)` → validation error: only `outline|span|neighbors` allowed.  
 **Evidence:** Neighbors response says `"See call_sites for literal references"` but mode doesn't exist.  
 **Fix:** Implement `call_sites` or remove hint from neighbors `next` field.
 
-### P2 — UTF-8 BOM leaks into focus code blocks
+### P2: UTF-8 BOM leaks into focus code blocks
 
 **Symptom:** `\ufeff` prefix in `sync_loop.py` and `incremental.py` span/neighbors output.  
 **Impact:** Copy-paste edits may include invisible BOM; agents may misread first line.
 
-### P2 — Keeper never converges on AGENTS.md variants
+### P2: Keeper never converges on AGENTS.md variants
 
 **Symptom:** Every `status()` probe: `clean: false`, 5 paths perpetually `added`:
 - `.config/amp/agents.md`
@@ -201,15 +201,15 @@ After ~40 calls, heatmap correctly showed `mcp_locate.py` and `test_mcp_explorat
 
 Locate still works; background sync churn continues (`locate_streak_active: true` during heavy MCP use).
 
-### P2 — Session sharing requires manual isolation
+### P2: Session sharing requires manual isolation
 
 Every tool repeats shared-session hint. Gate surfaces it well, but parallel Cursor chats share `cursor@conn-*` unless `CTX_MCP_SESSION_ID` is set per chat.
 
-### P3 — `status()` payload size
+### P3: `status()` payload size
 
 Full keeper sync details inline. Consider truncating file lists or gating verbose fields behind a flag.
 
-### P3 — Stale `scubiee-0.2.61/` tree in index
+### P3: Stale `scubiee-0.2.61/` tree in index
 
 Duplicate hits for vendored/old package copies. Consider exclude patterns for versioned snapshot dirs.
 
@@ -244,7 +244,7 @@ Files → Merkle diff → Graphify AST → enrich (RepoIR metadata) → embed (C
 
 ### Conductor fusion (read via focus span)
 
-`Conductor.retrieve_conductor` min-ranks Graphify affinity vs BM25+dense hybrid per file, applies agree bonus when both signals align, expands via graph neighbors — all visible in a 40-line focus span without reading the full 187-line file.
+`Conductor.retrieve_conductor` min-ranks Graphify affinity vs BM25+dense hybrid per file, applies agree bonus when both signals align, expands via graph neighbors, all visible in a 40-line focus span without reading the full 187-line file.
 
 ---
 
@@ -252,16 +252,16 @@ Files → Merkle diff → Graphify AST → enrich (RepoIR metadata) → embed (C
 
 | Issue (morning session) | Status now |
 |-------------------------|------------|
-| `glob:` param silently ignored | **Fixed** — `glob=` alias, `pattern_source: "glob_alias"` |
+| `glob:` param silently ignored | **Fixed**, `glob=` alias, `pattern_source: "glob_alias"` |
 | `packages/*` didn't list dirs | **Fixed** |
-| No `agent_ready` field | **Fixed** — `"stale"` while syncing |
-| Duplicate map re-search | **Fixed** — `cached: true` + usage hint |
-| Doc mismatch (phase tools) | **Fixed** — `docs/context-engine-mcp.md` indexed with tool table |
-| Gate missing session hint | **Fixed** — inline `sid:… shared` |
-| Map cards null line ranges | **Fixed** — `needs_outline: true` |
-| Daemon drop on parallel maps | **Not reproduced** — 8 parallel maps, 0 drops |
-| Gibberish returns 8 cards | **Partial** — now 6 cards, still `confidence: high` |
-| Keeper stuck `processing` | **Intermittent** — flips between `processing`, `published`, `queued` |
+| No `agent_ready` field | **Fixed**, `"stale"` while syncing |
+| Duplicate map re-search | **Fixed**, `cached: true` + usage hint |
+| Doc mismatch (phase tools) | **Fixed**, `docs/context-engine-mcp.md` indexed with tool table |
+| Gate missing session hint | **Fixed**, inline `sid:… shared` |
+| Map cards null line ranges | **Fixed**, `needs_outline: true` |
+| Daemon drop on parallel maps | **Not reproduced**, 8 parallel maps, 0 drops |
+| Gibberish returns 8 cards | **Partial**, now 6 cards, still `confidence: high` |
+| Keeper stuck `processing` | **Intermittent**, flips between `processing`, `published`, `queued` |
 
 ---
 
@@ -269,7 +269,7 @@ Files → Merkle diff → Graphify AST → enrich (RepoIR metadata) → embed (C
 
 ```text
 1. gate()                    → managed? project_id? session shared?
-2. map(code-vocabulary q)    → pick 1–3 cards (check confidence + scores)
+2. map(code-vocabulary q)    → pick 1-3 cards (check confidence + scores)
 3. focus(outline)            → line ranges; required when needs_outline: true
 4. focus(span | symbol)      → verify symbol name in returned code
 5. focus(neighbors)          → wiring / imports (not call graph)
@@ -298,7 +298,7 @@ Files → Merkle diff → Graphify AST → enrich (RepoIR metadata) → embed (C
 3. Implement `call_sites` focus mode or remove neighbors hint.
 4. Strip UTF-8 BOM consistently in all focus/expand code paths.
 5. Add `agent_ready_note` one-liner to `status()` payload.
-6. Investigate AGENTS.md keeper loop — merkle probe never `clean: true`.
+6. Investigate AGENTS.md keeper loop, merkle probe never `clean: true`.
 
 ### Nice to have
 7. Truncate verbose `status()` file lists for MCP agents.

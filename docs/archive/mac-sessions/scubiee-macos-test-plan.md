@@ -1,4 +1,4 @@
-# Scubiee — macOS Cross-Platform Reliability Test Plan
+# Scubiee: macOS Cross-Platform Reliability Test Plan
 
 _Target: an agent running on macOS (Apple Silicon preferred; also note Intel if available)._
 _Version under test: **0.3.133** (published to PyPI; includes the BUG-MH graph-lane fix and the QA-4 `/health` warm_phase fix)._
@@ -6,14 +6,14 @@ _Goal: confirm Scubiee is reliable on macOS the same way it was verified on Wind
 
 ---
 
-## 0. Read this first — what you're doing and why
+## 0. Read this first: what you're doing and why
 
 Scubiee is a **local AI code-context engine + MCP server**. It indexes a repo and answers "where is the relevant code?" for an AI agent, via three surfaces: an **MCP server** (the `@scubiee/*` tools), a local **HTTP engine** on `127.0.0.1:8765`, and a **CLI** (`scubiee <cmd>`). It was QA'd thoroughly on Windows (DirectML GPU). Your job is to repeat that QA on **macOS** and confirm the platform-specific pieces work, because these differ from Windows:
 
 - **Embedder backend:** macOS uses **MLX (Metal GPU)** or **CoreML** instead of Windows DirectML. This is the single biggest platform difference and the most likely place for bugs. (Windows-only file `_minhash.py` bug we fixed was platform-agnostic, but the embedder path is genuinely different here.)
 - **Process/lifecycle management:** macOS uses a **launchd LaunchAgent** (plist at `~/Library/LaunchAgents/`), not a Windows service/watchdog process.
 - **Paths:** config/state live under `~/Library/Application Support/…`, `~/.scubiee/`, and `~/Library/Logs/`.
-- **CPU fallback:** if MLX/CoreML is unavailable, the embedder should fall back to FastEmbed/CPU — that path must be exercised too.
+- **CPU fallback:** if MLX/CoreML is unavailable, the embedder should fall back to FastEmbed/CPU, that path must be exercised too.
 
 **How to record results:** create `docs/scubiee-macos-findings.md` and log every check with: what you ran, the observed output, and PASS / FAIL / OBSERVATION. Use the same severity legend as the Windows doc: **BUG** (broken), **ISSUE** (rough edge), **OBS** (by-design nuance), **OK** (verified). Cross-reference any Windows finding IDs (QA-1..QA-9, BUG-MH) if you see the same or different behavior on macOS.
 
@@ -48,7 +48,7 @@ Capture:
 
 ## 2. Install the latest published version
 
-Scubiee **0.3.133** has been **built and published to PyPI** (this is the build that contains both bug fixes). Install it directly — do **not** build from the working tree, since you want to test exactly what shipped.
+Scubiee **0.3.133** has been **built and published to PyPI** (this is the build that contains both bug fixes). Install it directly, do **not** build from the working tree, since you want to test exactly what shipped.
 
 ```bash
 # Install (or upgrade to) the published 0.3.133 release from PyPI as a uv tool:
@@ -62,10 +62,10 @@ scubiee --help | head -5
 curl -s http://127.0.0.1:8765/health | grep -o '"version":[^,]*'   # after the engine starts
 ```
 
-Then **restart Kiro** so it reconnects to the freshly installed MCP server, wait ~15–20s for the engine to warm, and begin the tests below.
+Then **restart Kiro** so it reconnects to the freshly installed MCP server, wait ~15-20s for the engine to warm, and begin the tests below.
 
 Checks:
-- **[ ] PASS/FAIL** Installed version is **0.3.133** (check `/health` `version` or `scubiee status` meta). If it isn't, stop and re-install — the rest of the plan assumes 0.3.133.
+- **[ ] PASS/FAIL** Installed version is **0.3.133** (check `/health` `version` or `scubiee status` meta). If it isn't, stop and re-install, the rest of the plan assumes 0.3.133.
 - **[ ] PASS/FAIL** `scubiee --help` lists ~40 subcommands (index, resources, test, preflight, doctor, certify, register, initialize, activate, pause, resume, sync-now, rebuild, remove, never-index, list, settings, search, status, gate, map, pack, expand, sync, serve, dashboard, engine, mcp, init, setup, wipe, stop, halt, unlock-tool, heal, migrate, diagnose, connect, disconnect, upgrade).
 - **[ ] PASS/FAIL** After restarting Kiro, the `@scubiee/*` MCP tools are callable and `gate`/`status` report the repo as managed.
 - **[ ] OBS** Note any macOS-specific install friction (Gatekeeper, quarantine, codesigning prompts, `xcrun`/CommandLineTools requirements).
@@ -109,7 +109,7 @@ Checks:
 - **[ ] PASS/FAIL** `scubiee engine start` brings the engine up and `engine status` reports `running:true`, `health.ok:true`.
 - **[ ] PASS/FAIL** A LaunchAgent plist exists at `~/Library/LaunchAgents/` (label starts with the Scubiee supervisor label). Confirm with `ls ~/Library/LaunchAgents/ | grep -i scubiee` and `launchctl list | grep -i scubiee`.
 - **[ ] PASS/FAIL** Supervisor log is being written at `~/Library/Logs/scubiee-supervisor.log` (tail it during a start).
-- **[ ] PASS/FAIL** After a manual `scubiee engine stop`, the engine goes down and (if the LaunchAgent is registered) is kickstarted back up as designed — confirm the intended auto-restart behavior, and that it does **not** thrash (repeated rapid restarts).
+- **[ ] PASS/FAIL** After a manual `scubiee engine stop`, the engine goes down and (if the LaunchAgent is registered) is kickstarted back up as designed, confirm the intended auto-restart behavior, and that it does **not** thrash (repeated rapid restarts).
 - **[ ] PASS/FAIL** Reboot test (optional but valuable): confirm whether the LaunchAgent auto-starts the engine after a logout/login or reboot, matching the documented autostart behavior.
 - **[ ] OBS** Note the `~/.scubiee/` directory contents (watchdog.log, warm phase file, prefs.json, id/registry). Compare to the Windows `%USERPROFILE%\.scubiee\` layout.
 
@@ -133,7 +133,7 @@ done
 Checks:
 - **[ ] Record** time to `soft_search_ready:true` (BM25/index usable, `map` works).
 - **[ ] Record** time to `embedder_loaded:true` / `dense_ready:true` (full dense ranking).
-- **[ ] PASS/FAIL (QA-4 regression):** while warm, `/health` must report a **live** `warm_phase` (`soft`/`dense`), **not** a stuck `"down"`. This was a Windows bug we fixed in `ce_service.py` — confirm the fix holds on macOS. Cross-check that `warm_state`, `embedder_loaded`, `dense_ready`, and `warm_phase` all agree.
+- **[ ] PASS/FAIL (QA-4 regression):** while warm, `/health` must report a **live** `warm_phase` (`soft`/`dense`), **not** a stuck `"down"`. This was a Windows bug we fixed in `ce_service.py`, confirm the fix holds on macOS. Cross-check that `warm_state`, `embedder_loaded`, `dense_ready`, and `warm_phase` all agree.
 - **[ ] OBS** Note whether MLX/Metal warm-up is faster/slower than DirectML. Report honest numbers; don't assume parity.
 
 ---
@@ -143,14 +143,14 @@ Checks:
 Use the real `@scubiee/*` MCP tools if available; otherwise the CLI equivalents (`scubiee map|pack|expand|search|status|gate`). Test each with a valid input and at least one error/edge input. Mirror the Windows §1 tests.
 
 For each, record PASS/FAIL + notable output:
-- **[ ] `gate`** — returns `1:<project_id>` managed line.
-- **[ ] `status`** — `summary`, `full`, and `gate` detail levels all work; `full` shows engine meta, keeper, dirty ledger, lifecycle.
-- **[ ] `map`** — enriched query returns ranked cards + `suggested_seeds`, `dense:true`. A vague one-word query sets `weak_match:true`. **Compare top results to the Windows run for the same query** to confirm ranking parity across the MLX vs DirectML embedder. _(Windows QA-2: `suggested_seed` sometimes returns a `_`-private helper against the tool's own guidance — check if macOS does the same.)_
-- **[ ] `pack_context`** — valid `seed_file`+`seed_symbol` returns a coherent heatmap with `loc` spans; `include_bodies=1` + `budget_chars` returns bodies within budget; bad seed → clean `ok:false` error with hint; missing `seed_file` → `"seed_file required"`.
-- **[ ] `expand_context`** — `direction=callees`/`callers`/`effects` all return sensible deltas; `already_in_pack` dedup flag appears; empty case gives `empty_reason`. _(Windows QA-3 OBS: `callers` is structural-only, not every textual ref — expected.)_
-- **[ ] `collect_hot_context`** — explicit `ids=` returns bodies within `max_chars`.
-- **[ ] `workspace`** — `show` returns the session brain (topic/heatmap/pins); `pin` adds a file; `clear` resets everything.
-- **[ ] `expand`** — a valid `file::symbol` handle returns the body; a bad handle → clean `ok:false` with hint.
+- **[ ] `gate`**: returns `1:<project_id>` managed line.
+- **[ ] `status`**: `summary`, `full`, and `gate` detail levels all work; `full` shows engine meta, keeper, dirty ledger, lifecycle.
+- **[ ] `map`**: enriched query returns ranked cards + `suggested_seeds`, `dense:true`. A vague one-word query sets `weak_match:true`. **Compare top results to the Windows run for the same query** to confirm ranking parity across the MLX vs DirectML embedder. _(Windows QA-2: `suggested_seed` sometimes returns a `_`-private helper against the tool's own guidance, check if macOS does the same.)_
+- **[ ] `pack_context`**: valid `seed_file`+`seed_symbol` returns a coherent heatmap with `loc` spans; `include_bodies=1` + `budget_chars` returns bodies within budget; bad seed → clean `ok:false` error with hint; missing `seed_file` → `"seed_file required"`.
+- **[ ] `expand_context`**: `direction=callees`/`callers`/`effects` all return sensible deltas; `already_in_pack` dedup flag appears; empty case gives `empty_reason`. _(Windows QA-3 OBS: `callers` is structural-only, not every textual ref, expected.)_
+- **[ ] `collect_hot_context`**: explicit `ids=` returns bodies within `max_chars`.
+- **[ ] `workspace`**: `show` returns the session brain (topic/heatmap/pins); `pin` adds a file; `clear` resets everything.
+- **[ ] `expand`**: a valid `file::symbol` handle returns the body; a bad handle → clean `ok:false` with hint.
 
 ---
 
@@ -179,10 +179,10 @@ curl -s -X POST http://127.0.0.1:8765/v1/query_graph -H 'content-type: applicati
 
 Checks:
 - **[ ] PASS/FAIL** All GET endpoints return 200; unknown returns 404.
-- **[ ] PASS/FAIL** `/health` reports the correct live `warm_phase` (QA-4 regression — see §5).
+- **[ ] PASS/FAIL** `/health` reports the correct live `warm_phase` (QA-4 regression, see §5).
 - **[ ] PASS/FAIL** All POST retrieval endpoints return `ok:true` with the correct body shapes.
 - **[ ] ISSUE watch (QA-5):** `graph_neighbors` needs `paths[]`, `query_graph` needs `question`; a wrong shape returns a **bare 400 with no JSON error envelope** on Windows. Confirm the same on macOS and note it.
-- **Do NOT** call `/v1/shutdown`, `/shutdown`, `/reload`, or `/v1/session/end` except in teardown — they disrupt the engine.
+- **Do NOT** call `/v1/shutdown`, `/shutdown`, `/reload`, or `/v1/session/end` except in teardown, they disrupt the engine.
 
 ---
 
@@ -211,13 +211,13 @@ Checks:
 - **[ ] OBS (QA-6)** `pack` takes `query` as a required **positional** (plus `--seed-file`/`--seed-symbol`); `expand` requires `--node`. Confirm the arg shapes match Windows.
 - **[ ] OBS (QA-7)** `doctor` may flag stale registry entries (dead test enrollments). Note any it reports on macOS.
 - **[ ] PASS/FAIL** `certify` runs its release-certification gate with `failures:[]`.
-- **[ ] OBS** Note any macOS shell/stderr noise that interferes with output capture (on Windows a Miniconda/pydantic warning swallowed stdout — check for a macOS analog).
+- **[ ] OBS** Note any macOS shell/stderr noise that interferes with output capture (on Windows a Miniconda/pydantic warning swallowed stdout, check for a macOS analog).
 
 ---
 
 ## 9. Lifecycle & sync propagation
 
-Mirror the Windows §5 tests. Use a **unique marker symbol** so you can search precisely, and check the `hits[].file` field (not a raw text match — the search response echoes the query, which causes false positives; this bit us on Windows).
+Mirror the Windows §5 tests. Use a **unique marker symbol** so you can search precisely, and check the `hits[].file` field (not a raw text match, the search response echoes the query, which causes false positives; this bit us on Windows).
 
 1. **New file:** create `packages/pipeline/zz_mac_synctest.py` with a unique function, e.g. `zzmac_marker_alpha()`. POST `/v1/dirty` for the path, then poll `/v1/search` for the marker.
    - **[ ] Record** hot-lane latency (Windows: ~360ms). Confirm `pack_context` can resolve the new symbol as a seed (graph lane).
@@ -225,7 +225,7 @@ Mirror the Windows §5 tests. Use a **unique marker symbol** so you can search p
    - **[ ] PASS/FAIL** File no longer in hits after settle.
 3. **Rename:** create `zz_mac_rename_src.py`, index it, rename to `zz_mac_rename_dst.py`, `/v1/dirty` both.
    - **[ ] OBS (QA-9)** New path indexes immediately; old path may linger one reconcile pass before eviction. Confirm the old path eventually drops.
-4. **Ignore rules:** create a file under an ignored dir (`sandbox/`, `testdata/`, `research/`, etc. — see `.scubieeignore`) with a unique symbol.
+4. **Ignore rules:** create a file under an ignored dir (`sandbox/`, `testdata/`, `research/`, etc., see `.scubieeignore`) with a unique symbol.
    - **[ ] PASS/FAIL** File exists on disk but is **not** indexed (`ignored_in_hits=0`).
 5. **Graph lane health (BUG-MH regression):** touch a source file and force a sync/rebuild (`scubiee sync-now` or `scubiee rebuild`), then check the keeper `last_sync.warnings` in `/v1/search` output.
    - **[ ] PASS/FAIL** No `graph rebuild failed: 'MinHash' object has no attribute 'update_batch'` (or any `graph_error`). This was the high-severity Windows bug BUG-MH; confirm the fix holds on macOS. Then confirm `expand_context` on a symbol returns its real callees (graph edges intact).
@@ -237,8 +237,8 @@ Mirror the Windows §5 tests. Use a **unique marker symbol** so you can search p
 - **[ ] ** Delete every `zz_mac_*` test file you created and `/v1/dirty` the paths to drop them from the index.
 - **[ ] ** Remove any empty test dirs you created (e.g. a `sandbox/` you made just for the ignore test).
 - **[ ] ** Confirm `find . -name "zz_mac_*"` returns nothing.
-- **[ ] ** `git status` — confirm you left no stray test files staged/committed. Do **not** commit test artifacts.
-- **[ ] ** Leave the engine in a healthy warm state (or stopped cleanly), your choice — note which.
+- **[ ] ** `git status`, confirm you left no stray test files staged/committed. Do **not** commit test artifacts.
+- **[ ] ** Leave the engine in a healthy warm state (or stopped cleanly), your choice, note which.
 
 ---
 
@@ -246,23 +246,23 @@ Mirror the Windows §5 tests. Use a **unique marker symbol** so you can search p
 
 Write `docs/scubiee-macos-findings.md` containing:
 1. **Environment** (macOS version, chip, Apple Silicon vs Intel, backend used).
-2. **Per-section results** (§2–§9) with PASS/FAIL/OBS and the actual output snippets.
+2. **Per-section results** (§2, §9) with PASS/FAIL/OBS and the actual output snippets.
 3. **A consolidated issue register table** (same format as `scubiee-qa-findings.md` §6): ID, severity, area, summary, status.
 4. **Cross-platform comparison:** for each Windows finding (BUG-MH, QA-1..QA-9), state whether macOS behaves the same, better, or worse. Explicitly confirm the two fixed bugs (BUG-MH graph lane, QA-4 `/health` warm_phase) do **not** reproduce on macOS.
-5. **macOS-only findings:** anything platform-specific — MLX/Metal/CoreML behavior, launchd lifecycle, path/permission issues, Gatekeeper/codesign friction.
+5. **macOS-only findings:** anything platform-specific, MLX/Metal/CoreML behavior, launchd lifecycle, path/permission issues, Gatekeeper/codesign friction.
 6. **Honest verdict:** is Scubiee reliable on macOS? What's proven, what's not (e.g. Intel path if you only tested Apple Silicon, large-repo scale, reboot autostart).
 
 ### Priorities if you're short on time
-1. **§3 embedder backend (MLX/Metal)** — the biggest platform risk.
-2. **§9.5 graph-lane/BUG-MH regression** and **§5/QA-4 warm_phase** — confirm the two fixes hold.
-3. **§4 launchd lifecycle** — macOS-specific process management.
-4. Everything else (MCP/HTTP/CLI parity) — should mostly match Windows, but verify.
+1. **§3 embedder backend (MLX/Metal)**: the biggest platform risk.
+2. **§9.5 graph-lane/BUG-MH regression** and **§5/QA-4 warm_phase**, confirm the two fixes hold.
+3. **§4 launchd lifecycle**: macOS-specific process management.
+4. Everything else (MCP/HTTP/CLI parity), should mostly match Windows, but verify.
 
 ---
 
-## Appendix — key facts for the macOS agent
+## Appendix: key facts for the macOS agent
 
-- **Engine:** local HTTP server on `127.0.0.1:8765`. GET `/health /status /v1/status /api/settings /v1/settings /v1/resources /dashboard`; POST `/v1/search /grep /outline /read_span /follow_imports /grep_ident /graph_neighbors /query_graph /dirty /note_locate /session_anchors /reopen_anchors` (+ control: `/v1/shutdown /reload /v1/session/end` — avoid).
+- **Engine:** local HTTP server on `127.0.0.1:8765`. GET `/health /status /v1/status /api/settings /v1/settings /v1/resources /dashboard`; POST `/v1/search /grep /outline /read_span /follow_imports /grep_ident /graph_neighbors /query_graph /dirty /note_locate /session_anchors /reopen_anchors` (+ control: `/v1/shutdown /reload /v1/session/end`, avoid).
 - **8 MCP tools:** `gate`, `status`, `map`, `pack_context`, `expand_context`, `collect_hot_context`, `workspace`, `expand`.
 - **Retrieval:** graph + BM25 + dense (CodeRankEmbed 768-dim) fused; FAISS + int8 quant. macOS dense backend = MLX (Metal) or CoreML; Windows = DirectML.
 - **Two sync lanes:** hot BM25 (sub-second) + deferred graph catch-up (~30s or after clients disconnect). `pack`/`expand` depend on the graph lane; `search`/`map` ride the hot lane.

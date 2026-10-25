@@ -1,4 +1,4 @@
-# Session log — multi-file + hard cross-module A/B suite (old mini_v3 vs new map_v3 vs native)
+# Session log: multi-file + hard cross-module A/B suite (old mini_v3 vs new map_v3 vs native)
 
 Date: 2026-10-02/03. Harness: scripts/claude_sdk_harness, model claude-sonnet-5,
 engine warm/dense ~8.3-8.4k chunks. All runs offline-preflighted before live tokens.
@@ -6,7 +6,7 @@ engine warm/dense ~8.3-8.4k chunks. All runs offline-preflighted before live tok
 ## What this session set out to do
 Decide whether the NEW map_v3 surface (production prompt "U": find/focus/related/graph,
 bodies+wiring folded into one call) is actually better than the OLD mini_v3 (single
-`map` returning location cards only) and than native-only (no Scubiee) — on REAL
+`map` returning location cards only) and than native-only (no Scubiee), on REAL
 multi-file dev work, not toy locates.
 
 ## Arc of the session
@@ -18,12 +18,12 @@ multi-file dev work, not toy locates.
    fixed overhead (a ToolSearch turn to load the tool, the ~1442-tok U prompt re-sent
    every turn, bigger focus payloads) that is only repaid when locating is genuinely
    hard. On a greppable literal, native Grep is simply cheaper.
-3. Built preflight_all.py — ONE no-Claude "is everything working perfectly?" self-check
+3. Built preflight_all.py, ONE no-Claude "is everything working perfectly?" self-check
    (engine health, both bridges + sync, budgets, every oracle's discrimination, arm
    wiring). Caught + fixed a self-inflicted test-isolation race (concurrent bridge
    spawns vs a live re-indexing engine). Now the gate before every live run.
 4. 3-way easy run (without/mini_v3/map_v3): mini looked best on raw tokens on the
-   SEMANTIC easy task — but only by doing LESS correct work (dropped the full hash;
+   SEMANTIC easy task, but only by doing LESS correct work (dropped the full hash;
    0/2 strict) while map_v3 was 2/2 strict. User correctly pushed back: easy tasks
    can't separate the arms.
 5. Built ONE hard cross-module task (unify_cpu_thread_budget) with a strict oracle.
@@ -67,7 +67,7 @@ returns ~5-20k compact chars in 1-5 calls and converges in 11-16 turns.
   CAVEAT: the cap truncates the worst native/mini spirals, so their true means are
   UNDER-stated -> the real gap favors map_v3 even more.
 - STRICT_TASKS: hard tasks must be graded on oracle_strict (all checks), because the
-  lenient 2/3 "ok" lets a partial (one-file) edit pass — which is exactly the failure
+  lenient 2/3 "ok" lets a partial (one-file) edit pass, which is exactly the failure
   we need to catch.
 - Oracle design that works: name-agnostic + deterministic + a CROSS-FILE discriminator
   (a check that only passes when the grep-invisible second consumer is also edited).

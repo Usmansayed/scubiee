@@ -28,20 +28,20 @@
 - r=11 heat=cold `packages/pipeline/rules_installer.py:1109-1122` `_write_rule_append_md` sc=0.99
 - r=12 heat=cold `packages/pipeline/rules_installer.py:1133-1136` `_write_rule` sc=0.99
 
-**read guidance:** {'top': 5, 'how': 'Native-Read loc for top ~5 (heat=hot first, then warm). Spans only (file:start-end) — BAN whole-file Read. expand_context if a hop is missing; collect_hot_context(ids=) only when you need bodies batched.'}
+**read guidance:** {'top': 5, 'how': 'Native-Read loc for top ~5 (heat=hot first, then warm). Spans only (file:start-end), BAN whole-file Read. expand_context if a hop is missing; collect_hot_context(ids=) only when you need bodies batched.'}
 
 ## Agent needed
 
-- `packages/pipeline/__main__.py:1706-1744` — cmd_connect entry (1567 chars)
-- `packages/pipeline/rules_installer.py:1560-1640` — install_tool fan-out (2690 chars)
-- `packages/pipeline/rules_installer.py:1487-1553` — apply_connected_tools_to_repo (2241 chars)
-- `packages/pipeline/rules_installer.py:1312-1374` — write_project_tool_surface (2264 chars)
-- `packages/pipeline/rules_installer.py:1139-1202` — write_project_gate_rules (2152 chars)
-- `packages/pipeline/mcp_permissions.py:518-531` — apply_permissions_to_repo_tool_surface (397 chars)
-- `packages/pipeline/mcp_permissions.py:253-320` — merge_cursor_permissions (2327 chars)
+- `packages/pipeline/__main__.py:1706-1744`: cmd_connect entry (1567 chars)
+- `packages/pipeline/rules_installer.py:1560-1640`: install_tool fan-out (2690 chars)
+- `packages/pipeline/rules_installer.py:1487-1553`: apply_connected_tools_to_repo (2241 chars)
+- `packages/pipeline/rules_installer.py:1312-1374`: write_project_tool_surface (2264 chars)
+- `packages/pipeline/rules_installer.py:1139-1202`: write_project_gate_rules (2152 chars)
+- `packages/pipeline/mcp_permissions.py:518-531`: apply_permissions_to_repo_tool_surface (397 chars)
+- `packages/pipeline/mcp_permissions.py:253-320`: merge_cursor_permissions (2327 chars)
 
 ## Missing from heatmap
 
-- `packages/pipeline/__main__.py:1706-1744` — cmd_connect entry
+- `packages/pipeline/__main__.py:1706-1744`: cmd_connect entry
 
 Full JSON: `docs/superpowers/plans/2026-09-06-heatmap-pack-vs-agent-reads.json`

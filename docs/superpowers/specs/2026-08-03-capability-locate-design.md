@@ -1,4 +1,4 @@
-# Capability locate — design
+# Capability locate: design
 
 **Date:** 2026-08-03  
 **Status:** implement  

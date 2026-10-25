@@ -5,7 +5,7 @@
 > for the corrected per-tool plan. This file’s **Cursor = global `${workspaceFolder}`** recommendation is **outdated** (live Mac + Cursor docs + Gortex show project MCP is required).
 
 **Date:** 2026-08-26  
-**Scope:** Every tool in `pipeline.tool_registry.TOOLS` — does global MCP get the open project, and what have vendors / other MCP installers already figured out?  
+**Scope:** Every tool in `pipeline.tool_registry.TOOLS`, does global MCP get the open project, and what have vendors / other MCP installers already figured out?  
 **Companion:** [`cursor-mcp-workspace-resolution-research.md`](./cursor-mcp-workspace-resolution-research.md) (Cursor deep-dive)
 
 ---
@@ -24,18 +24,18 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 | Pattern | Idea | Best when |
 |---------|------|-----------|
-| **P1 — Host-injected env** | Host sets `CLAUDE_PROJECT_DIR` / similar; server reads it | Host documents a stable env |
-| **P2 — Config interpolation** | `"CTX_REPO": "${workspaceFolder}"` in mcp.json | Host expands vars in global config (Cursor) |
-| **P3 — Explicit `cwd` in MCP config** | `"cwd": "${workspaceFolder}"` or absolute | Host supports `cwd` and expands it (Cline/Roo/Codex) |
-| **P4 — Per-project MCP file + absolute pin** | `.kiro/.../mcp.json` with absolute `CTX_REPO` | Host cannot expand vars / cannot pass cwd from global (Kiro, VS Code user MCP) |
+| **P1, Host-injected env** | Host sets `CLAUDE_PROJECT_DIR` / similar; server reads it | Host documents a stable env |
+| **P2, Config interpolation** | `"CTX_REPO": "${workspaceFolder}"` in mcp.json | Host expands vars in global config (Cursor) |
+| **P3, Explicit `cwd` in MCP config** | `"cwd": "${workspaceFolder}"` or absolute | Host supports `cwd` and expands it (Cline/Roo/Codex) |
+| **P4, Per-project MCP file + absolute pin** | `.kiro/.../mcp.json` with absolute `CTX_REPO` | Host cannot expand vars / cannot pass cwd from global (Kiro, VS Code user MCP) |
 
-**Protocol-level (P5):** MCP **Roots** (`roots/list`) — Claude Code implements it; Cursor lists Roots as supported. Scubiee does **not** request Roots yet → follow-up after P1–P4.
+**Protocol-level (P5):** MCP **Roots** (`roots/list`), Claude Code implements it; Cursor lists Roots as supported. Scubiee does **not** request Roots yet → follow-up after P1, P4.
 
 ---
 
 ## 2. Per-tool matrix (research verdict)
 
-### Cursor — **P2 (confirmed)**
+### Cursor: **P2 (confirmed)**
 
 | Item | Finding |
 |------|---------|
@@ -48,13 +48,13 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Claude Code — **P1 (best — host already injects)**
+### Claude Code: **P1 (best, host already injects)**
 
 | Item | Finding |
 |------|---------|
 | Official | Claude Code sets **`CLAUDE_PROJECT_DIR`** on the MCP child to the project root ([docs](https://code.claude.com/docs/en/mcp)) |
 | Also | Answers MCP **`roots/list`** (launch dir + `--add-dir`) |
-| Caveat | User-scope helper cwd may be `~/.claude`; **do not trust process cwd** — trust `CLAUDE_PROJECT_DIR` |
+| Caveat | User-scope helper cwd may be `~/.claude`; **do not trust process cwd**, trust `CLAUDE_PROJECT_DIR` |
 | Caveat | Some reports that `--scope user` storage is path-keyed under `projects[...]` ([#16728](https://github.com/anthropics/claude-code/issues/16728)); Scubiee writes top-level `mcpServers` in `~/.claude.json` (correct for true user-wide) |
 | Scubiee today | **Does not read `CLAUDE_PROJECT_DIR`** in `_IDE_WORKSPACE_ENV_KEYS` |
 | **Recommended** | Add `CLAUDE_PROJECT_DIR` to resolver (no connect UX change). Optional later: Roots client |
@@ -62,7 +62,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Codex (OpenAI) — **P3 + read `CODEX_WORKSPACE_ROOT`**
+### Codex (OpenAI): **P3 + read `CODEX_WORKSPACE_ROOT`**
 
 | Item | Finding |
 |------|---------|
@@ -76,7 +76,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Kiro — **P4 (already Scubiee special-4)**
+### Kiro: **P4 (already Scubiee special-4)**
 
 | Item | Finding |
 |------|---------|
@@ -89,7 +89,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### VS Code / GitHub Copilot — **P4 (already special-4)**
+### VS Code / GitHub Copilot: **P4 (already special-4)**
 
 | Item | Finding |
 |------|---------|
@@ -101,7 +101,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Cline — **P3 improving + keep P4 belt**
+### Cline: **P3 improving + keep P4 belt**
 
 | Item | Finding |
 |------|---------|
@@ -113,7 +113,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Roo Code — **P3 + keep P4**
+### Roo Code: **P3 + keep P4**
 
 | Item | Finding |
 |------|---------|
@@ -124,11 +124,11 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Windsurf (Cascade) — **P2 if expanded, else wrapper / P4-like**
+### Windsurf (Cascade): **P2 if expanded, else wrapper / P4-like**
 
 | Item | Finding |
 |------|---------|
-| Config | **Global only** `~/.codeium/windsurf/mcp_config.json` — **no** project MCP ([community](https://www.rapidevelopers.com/mcp-tutorial/how-to-connect-mcp-to-windsurf)) |
+| Config | **Global only** `~/.codeium/windsurf/mcp_config.json`, **no** project MCP ([community](https://www.rapidevelopers.com/mcp-tutorial/how-to-connect-mcp-to-windsurf)) |
 | Failure mode | MCP often **not** started in project root (Laravel Boost [#47](https://github.com/laravel/boost/issues/47)) |
 | Ecosystem fixes | Some use `${workspaceFolder}` in args; others use **launcher scripts** that discover Windsurf’s active project; or absolute per-project server names |
 | Scubiee today | Global only, no workspace hint |
@@ -137,7 +137,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Continue — **project YAML preferred**
+### Continue: **project YAML preferred**
 
 | Item | Finding |
 |------|---------|
@@ -148,7 +148,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Zed — **cwd careful; remote is special**
+### Zed: **cwd careful; remote is special**
 
 | Item | Finding |
 |------|---------|
@@ -160,7 +160,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### OpenCode — **global `environment`; project mcp may shadow**
+### OpenCode: **global `environment`; project mcp may shadow**
 
 | Item | Finding |
 |------|---------|
@@ -173,7 +173,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Amp — **global OK for availability; cwd TBD**
+### Amp: **global OK for availability; cwd TBD**
 
 | Item | Finding |
 |------|---------|
@@ -183,7 +183,7 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ---
 
-### Pi — **adapter-dependent**
+### Pi: **adapter-dependent**
 
 | Item | Finding |
 |------|---------|
@@ -195,22 +195,22 @@ There is **no single fix for all hosts**. The ecosystem converges on **four patt
 
 ## 3. Cross-cutting ecosystem solutions (what “MCP people” do)
 
-1. **Never trust `getcwd()` alone** — every serious repo MCP reads a host env or config pin first (Claude’s `CLAUDE_PROJECT_DIR`, Cursor’s `${workspaceFolder}`, Codex’s `CODEX_WORKSPACE_ROOT` / `cwd`).
+1. **Never trust `getcwd()` alone**: every serious repo MCP reads a host env or config pin first (Claude’s `CLAUDE_PROJECT_DIR`, Cursor’s `${workspaceFolder}`, Codex’s `CODEX_WORKSPACE_ROOT` / `cwd`).
 2. **Prefer host-native interpolation over absolute global pins** when the host expands vars (Cursor ≠ VS Code).
 3. **Per-project MCP file** when the host cannot expand / cannot pass workspace from user config (Kiro, VS Code user MCP, Cline/Roo belt).
 4. **Launcher wrappers** when the host is global-only and does not expand vars (Windsurf community pattern).
-5. **MCP Roots** as the long-term protocol answer (Claude Code already; Cursor claims support) — Scubiee should implement `roots/list` consumption as a second wave.
+5. **MCP Roots** as the long-term protocol answer (Claude Code already; Cursor claims support), Scubiee should implement `roots/list` consumption as a second wave.
 6. **codegraph / context-mode / qdrant-rag** all independently rediscovered the same Cursor/Windsurf cwd bug and fixed with **env injection**, not “reinstall on each OS.”
 
 ---
 
 ## 4. Scubiee implementation plan (priority)
 
-### Wave A — resolver (safe, all hosts)
+### Wave A: resolver (safe, all hosts)
 
 Extend `_IDE_WORKSPACE_ENV_KEYS` / pin readers to include:
 
-- `CLAUDE_PROJECT_DIR` (**Claude Code — official**)
+- `CLAUDE_PROJECT_DIR` (**Claude Code, official**)
 - `CODEX_WORKSPACE_ROOT` (Codex IDE workaround)
 - `CURSOR_PROJECT_DIR` / `CURSOR_WORKSPACE` / `CURSOR_CWD` (after connect writes them)
 - `OPENCODE_DEFAULT_PROJECT` (if we set it)
@@ -218,7 +218,7 @@ Extend `_IDE_WORKSPACE_ENV_KEYS` / pin readers to include:
 
 Treat literal unexpanded `${workspaceFolder}` as empty.
 
-### Wave B — connect writers (host-specific)
+### Wave B: connect writers (host-specific)
 
 | Tool | Change |
 |------|--------|
@@ -230,7 +230,7 @@ Treat literal unexpanded `${workspaceFolder}` as empty.
 | **Continue** | Prefer project `.continue/mcpServers/…` with pin |
 | **Zed / OpenCode / Amp / Pi** | Wave A first; escalate only if field bugs |
 
-### Wave C — protocol
+### Wave C: protocol
 
 - Implement MCP Roots client in `mcp_locate` when the host advertises roots.
 - Prefer Roots over cwd when both exist.
@@ -239,7 +239,7 @@ Treat literal unexpanded `${workspaceFolder}` as empty.
 
 - One absolute `CTX_REPO` in every global mcp.json (breaks multi-repo).
 - Treating Cursor like Kiro (absolute per-repo) as the **default** (Cursor has a better native tool: `${workspaceFolder}`).
-- Assuming Windows spawn always works — same writers on both OSes.
+- Assuming Windows spawn always works, same writers on both OSes.
 
 ---
 
@@ -270,6 +270,6 @@ Treat literal unexpanded `${workspaceFolder}` as empty.
 | Windsurf | High | **P2 or wrapper** | Smoke `${workspaceFolder}` |
 | Continue | Medium | Project YAML | Prefer project mcpServers |
 | Zed | Medium (remote High) | cwd / remote flag | Document; Wave A |
-| OpenCode / Amp / Pi | Low–Med | Wave A | Resolver first |
+| OpenCode / Amp / Pi | Low, Med | Wave A | Resolver first |
 
-**Bottom line:** The industry did figure this out — but **per host**, not one magic flag. Scubiee’s special-4 is still right for Kiro/Copilot/Cline/Roo. Cursor and Claude Code should **not** be forced into that model; they already expose better native signals (`${workspaceFolder}`, `CLAUDE_PROJECT_DIR`) that we currently underuse.
+**Bottom line:** The industry did figure this out, but **per host**, not one magic flag. Scubiee’s special-4 is still right for Kiro/Copilot/Cline/Roo. Cursor and Claude Code should **not** be forced into that model; they already expose better native signals (`${workspaceFolder}`, `CLAUDE_PROJECT_DIR`) that we currently underuse.

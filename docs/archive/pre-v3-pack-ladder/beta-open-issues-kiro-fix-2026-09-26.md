@@ -1,4 +1,4 @@
-# Scubiee open beta issues — Kiro fix handoff
+# Scubiee open beta issues: Kiro fix handoff
 
 **Date:** 2026-09-26 (evening)  
 **Repo:** `C:\Users\usman\Downloads\context-engine`  
@@ -6,13 +6,13 @@
 **Build:** uv-tool `scubiee 0.3.131` + workspace `packages/` (keep in sync with `scripts/sync-uv-install.ps1`)  
 **Host:** Windows 10, Cursor / Kiro MCP + engine `:8765`
 
-**Purpose:** Fix **all remaining open issues** where possible. Some costs (cold dense warm wall-clock, RAM) may stay high on this machine — still look for **wrong-path / thrash / misleading signals / queue starvation** and fix those. Do not claim green on unit tests alone.
+**Purpose:** Fix **all remaining open issues** where possible. Some costs (cold dense warm wall-clock, RAM) may stay high on this machine, still look for **wrong-path / thrash / misleading signals / queue starvation** and fix those. Do not claim green on unit tests alone.
 
 **Related docs (read first):**
-- `docs/beta-issues-2026-09-26.md` — original BETA-01…18 + evening fix log
-- `docs/scubiee-bugs-found.md` — live tool exercise + BUG-1 / OBS-*
-- `docs/production-ready-0.3.131.md` — warm wait / install sync notes
-- `docs/sync-fix-worklog-0.3.131.md` — hot-lane history (10/10 @ 5s once; regress under churn)
+- `docs/beta-issues-2026-09-26.md`: original BETA-01…18 + evening fix log
+- `docs/scubiee-bugs-found.md`: live tool exercise + BUG-1 / OBS-*
+- `docs/production-ready-0.3.131.md`: warm wait / install sync notes
+- `docs/sync-fix-worklog-0.3.131.md`: hot-lane history (10/10 @ 5s once; regress under churn)
 
 ---
 
@@ -26,7 +26,7 @@
 
 ---
 
-## Already fixed — DO NOT re-litigate (verify only)
+## Already fixed: DO NOT re-litigate (verify only)
 
 | ID | What shipped | Proof to re-check |
 | --- | --- | --- |
@@ -34,7 +34,7 @@
 | BETA-06 | Host-sim pack_first | `python scripts/mcp_host_sim.py --lane a --live --skip-idle --settle-s 35` → `ok=true`, pack_first ok |
 | BETA-03 / 08 / 15 | Recover-on-demand; hold_bridge; prewarm progress grace | `python scripts/engine_kill_recover_probe.py --hold-bridge --budget-s 120` |
 | BETA-04 / 13 / 18 | `sync-uv-install.ps1`; ignore + gate hints | `gate` shows `index_skip` + `index_write_hint`; `ignore.py` present in uv-tool |
-| BETA-01 / 17 (signaling) | `status.warm_wait` block | Live `status` has `warm_wait.done` / stages — **wall clock still open** (see OPEN-A) |
+| BETA-01 / 17 (signaling) | `status.warm_wait` block | Live `status` has `warm_wait.done` / stages, **wall clock still open** (see OPEN-A) |
 | BETA-10 lean | `_heat_card` loc clamp + `full_loc` | Lean pack on `BackgroundSyncLoop` → loc head + `full_loc` |
 | BETA-10 bodies (BUG-1) | `_slim_loc_item` / `_slim_pack_item` clamp loc (text body kept) | `test_include_bodies_paths_clamp_loc`; reload MCP then `include_bodies=1` |
 
@@ -42,16 +42,16 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-## Open issues — fix these
+## Open issues: fix these
 
-### OPEN-A — Cold dense warm still too slow / variable (ex BETA-01 wall clock)
+### OPEN-A: Cold dense warm still too slow / variable (ex BETA-01 wall clock)
 
-**Symptom:** Soft search can be up in seconds; **dense + embedder** often **~60–90s+**, sometimes **~100–170s**. Agents that wait ~30s still fail. Host-sim / ensure can hang or hit prewarm grace (~180s) then heal.
+**Symptom:** Soft search can be up in seconds; **dense + embedder** often **~60-90s+**, sometimes **~100-170s**. Agents that wait ~30s still fail. Host-sim / ensure can hang or hit prewarm grace (~180s) then heal.
 
 **Why it might be wrong (not just “hardware is slow”):**
-- Misleading deadline: MCP env sets `CTX_WARM_DEADLINE_MS=90000` (`mcp_install.py`) but `status.warm_deadline_ms` often still reports **30000** (default in `warm_contract.warm_deadline_ms` / `runtime_controller`) — agents trust 30s.
-- Prewarm can sit after `[embed] plan` at ~100% CPU for minutes; embed cache replay itself is only ~2.6s — something else is wedging or redoing work.
-- Multiple warm helpers (`warm_contract.py` vs `runtime_controller.py`) both define `warm_deadline_ms()` — risk of which one status uses vs which attach uses.
+- Misleading deadline: MCP env sets `CTX_WARM_DEADLINE_MS=90000` (`mcp_install.py`) but `status.warm_deadline_ms` often still reports **30000** (default in `warm_contract.warm_deadline_ms` / `runtime_controller`), agents trust 30s.
+- Prewarm can sit after `[embed] plan` at ~100% CPU for minutes; embed cache replay itself is only ~2.6s, something else is wedging or redoing work.
+- Multiple warm helpers (`warm_contract.py` vs `runtime_controller.py`) both define `warm_deadline_ms()`, risk of which one status uses vs which attach uses.
 - Idle stop (`CTX_ENGINE_IDLE_S`) + new chat = full cold start every gap (by design for RAM, but compounds perceived “warm is broken”).
 
 **What to do:**
@@ -66,9 +66,9 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-B — OBS-1: `warm_deadline_ms=30000` while warm took 55s+ / env is 90000
+### OPEN-B: OBS-1: `warm_deadline_ms=30000` while warm took 55s+ / env is 90000
 
-**Symptom:** Live `status` shows `warm_deadline_ms: 30000` with `warm_elapsed_ms` ~55k–100k+. MCP pin env has `CTX_WARM_DEADLINE_MS=90000`.
+**Symptom:** Live `status` shows `warm_deadline_ms: 30000` with `warm_elapsed_ms` ~55k, 100k+. MCP pin env has `CTX_WARM_DEADLINE_MS=90000`.
 
 **Likely cause:** Status path uses a helper whose default is 30000, or reads deadline before MCP env is applied / from a different process than the bridge.
 
@@ -78,29 +78,29 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-C — Hot sync under churn: misses ~8–10s ceiling (ex BETA-14 / hot-lane regress)
+### OPEN-C: Hot sync under churn: misses ~8-10s ceiling (ex BETA-14 / hot-lane regress)
 
-**Product bar (owner):** ~6s is OK if close to 5; **must not** routinely exceed **~8–10s**. Steady idle save ~4.5s is fine.
+**Product bar (owner):** ~6s is OK if close to 5; **must not** routinely exceed **~8-10s**. Steady idle save ~4.5s is fine.
 
 **Symptom (measured 2026-09-26):**
-- Idle keeper: ~4.3–4.8s PASS.
-- Trial burst: early trials **not searchable within 8s** (`search_ms=None`); engine.log shows they finished at **~9.2s / ~10.0s** — past the probe window, not “lost forever”.
-- Cleanup after each trial: delete dir → dirty `f1`+`__init__` → almost always `publish=full` with `publish_call_ms` **6–8s**, `total_ms` **10–13s**.
+- Idle keeper: ~4.3-4.8s PASS.
+- Trial burst: early trials **not searchable within 8s** (`search_ms=None`); engine.log shows they finished at **~9.2s / ~10.0s**, past the probe window, not “lost forever”.
+- Cleanup after each trial: delete dir → dirty `f1`+`__init__` → almost always `publish=full` with `publish_call_ms` **6-8s**, `total_ms` **10-13s**.
 - Then next save: `vec_open` spikes (**~3870ms**), `write_ms` **~4.7s**.
 - `hot patch declined (binder drift: live chunks N != delta base M)` → full reload.
-- Concurrent `[sync] no chunk delta … ms=10–12s` on same probe paths (vector reconcile / no-op touch) steals the keeper thread.
-- `/v1/dirty` itself sometimes **3–4s** when keeper is busy (SLA clock starts after dirty returns → user-facing worse than `hit_ms`).
+- Concurrent `[sync] no chunk delta … ms=10-12s` on same probe paths (vector reconcile / no-op touch) steals the keeper thread.
+- `/v1/dirty` itself sometimes **3-4s** when keeper is busy (SLA clock starts after dirty returns → user-facing worse than `hit_ms`).
 
 **Likely causes (wrong path / queue design):**
 1. Deletion batches always take **full publish** and invalidate FAISS reuse → next hot save pays cold open.
 2. Binder drift after overlapping patch/full publishes → hot patch aborted.
 3. Graph catchup / no-delta reconcile on deleted probe paths queues behind or ahead of hot saves.
-4. Probe creates `__init__.py` + file then deletes both — worst-case churn; still reflects real agent “add then delete” patterns.
+4. Probe creates `__init__.py` + file then deletes both, worst-case churn; still reflects real agent “add then delete” patterns.
 5. Newcomer / background work on keeper thread (see OPEN-D).
 
 **What to do:**
 1. Map→pack into `sync_loop` / `ce_service.mark_dirty` / publish / `apply_chunk_delta` with query about binder drift + full publish + vec_open.
-2. Prefer: hot deletions use append-only or cheaper publish when safe; or prioritize **explicit hot saves ahead of** deletion/full/catchup (worklog already claimed this — verify it still holds under probe cleanup).
+2. Prefer: hot deletions use append-only or cheaper publish when safe; or prioritize **explicit hot saves ahead of** deletion/full/catchup (worklog already claimed this, verify it still holds under probe cleanup).
 3. Fix binder drift: ensure `base_chunk_count` matches live binder after full reload / concurrent publish; don’t leave delta bases stale.
 4. Ensure `[sync] no chunk delta` reconcile cannot run a 10s+ job on the keeper while a hot save is due (defer, shorter path, or off-thread).
 5. Re-run: `CTX_PROBE_SLA_S=8 CTX_PROBE_TRIALS=5` with PYTHONPATH cleared; target **≥4/5** within 8s, none routinely >10s when settled. Also one idle single-round.
@@ -111,11 +111,11 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-D — Newcomer scan broken + starves hot sync if naively fixed
+### OPEN-D: Newcomer scan broken + starves hot sync if naively fixed
 
 **Symptom:** Every ~30s: `newcomer scan failed` because `_start_newcomer_scan` calls `_enqueue_newcomers()` **without required `now=`** (`sync_loop.py` ~390).
 
-**Trap:** Passing `now=` alone made hot sync **0/5** (18–40s) — full repo walk on the keeper starves the hot lane.
+**Trap:** Passing `now=` alone made hot sync **0/5** (18-40s), full repo walk on the keeper starves the hot lane.
 
 **What to do:**
 1. Fix the call signature **and** keep the walk **off the hot critical path** (already intended: own thread / throttle). Verify walk cannot hold the keeper during a hot save.
@@ -126,7 +126,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-E — expand_context / collect_hot_context return `ast_warming` with no wait (unlike pack)
+### OPEN-E: expand_context / collect_hot_context return `ast_warming` with no wait (unlike pack)
 
 **Symptom:** Pack has bounded AST wait (`CTX_MCP_PACK_AST_WAIT_S`); expand/collect can still return `ast_warming` immediately.
 
@@ -136,7 +136,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-F — BETA-12 / OBS-4: empty expand delta UX
+### OPEN-F: BETA-12 / OBS-4: empty expand delta UX
 
 **Symptom:** `expand_context(..., direction=config)` (and sometimes other directions) → `ok=true`, `delta=[]`, `count=0`. Agent cannot tell **“no hop”** vs **“AST not ready”** vs **“bad node”**.
 
@@ -149,7 +149,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-G — OBS-3: first map after attach ~14s with opaque timings
+### OPEN-G: OBS-3: first map after attach ~14s with opaque timings
 
 **Symptom:** First `map` `elapsed_ms` ~14322 while `embed_ms`~1.5 + `retrieve_ms`~113. Second map ~5.7s; later cold topic ~1.9s.
 
@@ -161,7 +161,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-H — BETA-09: stale / duplicate bridge–locate–engine process trees
+### OPEN-H: BETA-09: stale / duplicate bridge, locate, engine process trees
 
 **Symptom:** Multiple `mcp_bridge` / `mcp_locate` / engine PIDs after restarts; host-sim `clean_slate` kills leftovers; Cursor can show Not connected after host-sim.
 
@@ -171,7 +171,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-I — BETA-11: No HTTP `/v1/pack` (optional / decide)
+### OPEN-I: BETA-11: No HTTP `/v1/pack` (optional / decide)
 
 **Symptom:** `EngineClient` POST `/v1/pack` → not found. Pack is MCP-only.
 
@@ -181,17 +181,17 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-J — BETA-16: RAM pressure during warm
+### OPEN-J: BETA-16: RAM pressure during warm
 
 **Symptom:** ~87% RAM / ~2GB free while warming on 16GB machines → OS kill / Cursor crash risk (seen mid-session).
 
-**What to do:** Cap concurrent prewarm work; ensure idle stop / single embedder load; avoid duplicate engine processes (ties to OPEN-H). Measure RSS during warm before/after. Full “half the RAM” may be impossible with DirectML — reduce thrash and duplicate processes first.
+**What to do:** Cap concurrent prewarm work; ensure idle stop / single embedder load; avoid duplicate engine processes (ties to OPEN-H). Measure RSS during warm before/after. Full “half the RAM” may be impossible with DirectML, reduce thrash and duplicate processes first.
 
 **Done when:** Peak warm RSS improved or duplicate processes gone; document floor RAM recommendation for beta notes.
 
 ---
 
-### OPEN-K — Pre-existing flaky / failing tests (cleanup)
+### OPEN-K: Pre-existing flaky / failing tests (cleanup)
 
 **Known fail/flake on HEAD:**
 - `test_attach_mcp_session_is_nonblocking`
@@ -203,7 +203,7 @@ If any of the above regresses, fix regression first before new work.
 
 ---
 
-### OPEN-L — include_bodies still returns full class **text** (by design of BUG-1)
+### OPEN-L: include_bodies still returns full class **text** (by design of BUG-1)
 
 **Note:** Loc is clamped; `pack[].text` may still be the whole class when `include_bodies=1`. That is intentional for “agent asked for bodies.” Optional follow-up: cap body chars for class seeds or prefer method seeds. **Lower priority** than OPEN-A…D.
 
@@ -211,9 +211,9 @@ If any of the above regresses, fix regression first before new work.
 
 ## Suggested fix order
 
-1. **OPEN-B** (deadline label) — small, high leverage for agent behavior.  
-2. **OPEN-D** (newcomer) — fix call + keep off hot path; prove hot sync.  
-3. **OPEN-C** (hot sync churn / binder drift / full publish) — main reliability.  
+1. **OPEN-B** (deadline label): small, high leverage for agent behavior.  
+2. **OPEN-D** (newcomer): fix call + keep off hot path; prove hot sync.  
+3. **OPEN-C** (hot sync churn / binder drift / full publish): main reliability.  
 4. **OPEN-E + OPEN-F** (expand wait + empty delta UX).  
 5. **OPEN-A** (cold warm thrash instrumentation + any real thrash fix).  
 6. **OPEN-G** (first-map timings).  
@@ -239,7 +239,7 @@ powershell -File scripts/sync-uv-install.ps1
 python scripts/attach_pack_race.py --sessions 2 --packs 3
 # Expect: ok=true, first pack n_heat>0
 
-# 3) Host-sim (LAST — kills MCP bridges)
+# 3) Host-sim (LAST - kills MCP bridges)
 python scripts/mcp_host_sim.py --lane a --live --skip-idle --settle-s 35
 # Expect: ok=true including pack_first
 # Then reload MCP in IDE
@@ -278,23 +278,23 @@ READ FIRST:
 - docs/beta-issues-2026-09-26.md (history + already-fixed table)
 - docs/scubiee-bugs-found.md (OBS-1/3/4, BUG-1 bodies clamp)
 
-RULES (this repo — VERY STRICTLY):
+RULES (this repo - VERY STRICTLY):
 - Soft/structural locate MUST use Scubiee MCP: map → pack_context(lean) → expand/collect.
 - BAN shell scubiee map|pack|expand while MCP callable. Edit/Write native.
 - After code changes: scripts/sync-uv-install.ps1 + reload MCP. Strip PYTHONPATH for probes.
 
-ALREADY FIXED — verify only, do not rewrite: BETA-02/05/06 attach pack, BETA-03/08/15 watchdog, BETA-04/13/18 install sync, BETA-10 lean+bodies loc clamp, warm_wait signaling.
+ALREADY FIXED - verify only, do not rewrite: BETA-02/05/06 attach pack, BETA-03/08/15 watchdog, BETA-04/13/18 install sync, BETA-10 lean+bodies loc clamp, warm_wait signaling.
 
-GOAL — fix all OPEN-* in docs/beta-open-issues-kiro-fix-2026-09-26.md in the suggested order (B → D → C → E/F → A → …). Prefer fixing wrong-path/thrash/misleading signals over “accept slow.”
+GOAL - fix all OPEN-* in docs/beta-open-issues-kiro-fix-2026-09-26.md in the suggested order (B → D → C → E/F → A → …). Prefer fixing wrong-path/thrash/misleading signals over “accept slow.”
 
 CONSTRAINTS:
 - Minimal focused patches; no drive-by refactors; no commits unless I ask.
 - Prove with the acceptance battery in that file (host-sim last). Report timings and ok flags.
-- Hot sync bar: ~6s OK; must not routinely exceed ~8–10s. Newcomer fix must not starve hot lane.
+- Hot sync bar: ~6s OK; must not routinely exceed ~8-10s. Newcomer fix must not starve hot lane.
 
 START NOW:
-1) gate + status (confirm warm_deadline_ms vs CTX_WARM_DEADLINE_MS — OPEN-B).
-2) Confirm newcomer scan failure in engine.log — OPEN-D.
+1) gate + status (confirm warm_deadline_ms vs CTX_WARM_DEADLINE_MS - OPEN-B).
+2) Confirm newcomer scan failure in engine.log - OPEN-D.
 3) Short plan (files + approach) for OPEN-B then OPEN-D then OPEN-C, then implement.
 ```
 
@@ -309,7 +309,7 @@ START NOW:
 | OPEN-C | deletion defer when on-disk hot pending; hot-first; keep VDB on non-hot | Hot sync **5/5 @8s** (p50 4.1s max 4.8s) after restart; cleanup still `publish=full` between trials but settled before measure | mostly done |
 | OPEN-E | `_await_ast_ready` before expand/pack | attach_pack_race ok; host-sim expand ok | done |
 | OPEN-F | `empty_reason` only when delta empty (omit None) | Live MCP expand config → `empty_reason=already_expanded`; unit golden expand 39 pass | done |
-| OPEN-A | signaling OK; cold wall clock still ~60–90s+ on this host | status `warm_wait` honest; host-sim soft_ready +15.6s this run | partial |
+| OPEN-A | signaling OK; cold wall clock still ~60-90s+ on this host | status `warm_wait` honest; host-sim soft_ready +15.6s this run | partial |
 | OPEN-G | | | open |
 | OPEN-H | | | open |
 | OPEN-J | | | open |
@@ -329,7 +329,7 @@ START NOW:
 | engine_kill_recover --hold-bridge | **ok=true** kill→soft **70.8s** |
 | expand empty_reason (MCP) | `already_expanded` on empty config delta |
 
-**Ops note:** syncing uv-tool does **not** hot-reload a running engine — stop/ensure after sync or probes run old code (newcomer `now=` miss, hung 0/5).
+**Ops note:** syncing uv-tool does **not** hot-reload a running engine, stop/ensure after sync or probes run old code (newcomer `now=` miss, hung 0/5).
 
 ---
 

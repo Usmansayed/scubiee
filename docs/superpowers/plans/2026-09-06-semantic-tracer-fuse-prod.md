@@ -1,4 +1,4 @@
-# Semantic tracer fuse bakeoff — `verify_prod.json`
+# Semantic tracer fuse bakeoff: `verify_prod.json`
 
 Cases: 10 · 9.32s · `real:fastembed`
 
@@ -30,7 +30,7 @@ Cases: 10 · 9.32s · `real:fastembed`
 
 ## Recommendation
 
-Fuse did not beat composite_v1 on balanced metrics — keep composite_v1; retain fuse for ablation research.
+Fuse did not beat composite_v1 on balanced metrics, keep composite_v1; retain fuse for ablation research.
 
 ### Fusion contents
 

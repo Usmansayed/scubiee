@@ -1,4 +1,4 @@
-# Semantic novel strategies — OOD hard board v2
+# Semantic novel strategies: OOD hard board v2
 
 Board: `verify_ood_v2.json` (18 NEW cases) · 7.56s
 
@@ -16,16 +16,16 @@ Board: `verify_ood_v2.json` (18 NEW cases) · 7.56s
 | `semantic_waypoint` | 0.7222 | 0.719 | 0.9583 | 0.6454 | 0.9583 |
 | `semantic_ensemble` | 0.7222 | 0.6976 | 0.9583 | 0.6143 | 0.9583 |
 
-**Best (must→F1→acc):** `hybrid_teleport` (recall-only — prec collapse)
-**Best balanced (acc+F1):** **`poly_embed`** — hard acc **0.83** vs composite **0.72**
+**Best (must→F1→acc):** `hybrid_teleport` (recall-only, prec collapse)
+**Best balanced (acc+F1):** **`poly_embed`**, hard acc **0.83** vs composite **0.72**
 **Ship-gate winners vs composite_v1:** (none)
 
 See full write-up: [`2026-09-06-semantic-ood-v2-findings.md`](2026-09-06-semantic-ood-v2-findings.md).
 
 ### Strategies under test
 
-- `semantic_waypoint` — ANN targets + heat shortest seed→target paths
-- `semantic_meet` — forward BFS ∩ backward from semantic targets
-- `semantic_dual` — second embed seed + merge structural expands (linked-only)
-- `semantic_ensemble` — max(composite, fuse, poly)
+- `semantic_waypoint`: ANN targets + heat shortest seed→target paths
+- `semantic_meet`: forward BFS ∩ backward from semantic targets
+- `semantic_dual`: second embed seed + merge structural expands (linked-only)
+- `semantic_ensemble`: max(composite, fuse, poly)
 - baselines: composite_v1, semantic_tracer_v1/fuse, poly_embed, hybrid_teleport

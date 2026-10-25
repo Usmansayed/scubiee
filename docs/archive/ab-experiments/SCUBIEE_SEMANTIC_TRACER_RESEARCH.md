@@ -1,4 +1,4 @@
-# Scubiee — Semantic Tracer Research & Cursor Agent Task
+# Scubiee: Semantic Tracer Research & Cursor Agent Task
 
 ## Mission
 
@@ -533,7 +533,7 @@ Propagate relevance through the heterogeneous graph.
 
 Use edge-type-specific weights.
 
-Example starting point only — these values must be benchmarked, not assumed:
+Example starting point only, these values must be benchmarked, not assumed:
 
 ```text
 DATA_FLOW            1.00
@@ -807,7 +807,7 @@ HEATMAP
 🔥 0.99
 src/middleware/auth.ts
  authMiddleware()
- Lines 40–120
+ Lines 40-120
 
 Reason:
 Seed node / authentication entry point
@@ -815,7 +815,7 @@ Seed node / authentication entry point
 🔥 0.96
 src/services/jwt.ts
  verifyJWT()
- Lines 22–90
+ Lines 22-90
 
 Reason:
 Direct downstream call + strong data-flow relationship
@@ -823,7 +823,7 @@ Direct downstream call + strong data-flow relationship
 🟠 0.84
 src/repositories/user.ts
  findUserById()
- Lines 44–88
+ Lines 44-88
 
 Reason:
 User identity propagated from authentication flow
@@ -849,7 +849,7 @@ Each result should ideally include:
 
 ---
 
-# 26. Benchmark / Verification System — Build First
+# 26. Benchmark / Verification System: Build First
 
 Verification is a first-class product requirement.
 
@@ -1332,7 +1332,7 @@ Generate the final line/symbol-level heatmap and detailed failure reports.
 
 The central question for the entire project is:
 
-> **Can a query-conditioned heterogeneous program graph, combined with program slicing, data/control-flow analysis, BM25, embeddings, relevance diffusion, and lightweight ranking, accurately reconstruct the smallest useful behavioral subgraph of a large repository starting from a single seed chunk—without requiring a large language model?**
+> **Can a query-conditioned heterogeneous program graph, combined with program slicing, data/control-flow analysis, BM25, embeddings, relevance diffusion, and lightweight ranking, accurately reconstruct the smallest useful behavioral subgraph of a large repository starting from a single seed chunk, without requiring a large language model?**
 
 If the answer is yes, that behavioral subgraph becomes the foundation of Scubiee's context acquisition system.
 

@@ -1,4 +1,4 @@
-# CE Production Hardening Release — Design
+# CE Production Hardening Release: Design
 
 **Date:** 2026-08-17  
 **Branch / worktree:** `feat/ce-dashboard` / `.worktrees/ce-dashboard`  
@@ -6,7 +6,7 @@
 
 ## Problem
 
-Context Engine already has production certification, live reindexing, and an operator dashboard (Tasks 1–5 committed; Task 6 Graph + UI polish present but uncommitted). The product is not yet “complete for production” because:
+Context Engine already has production certification, live reindexing, and an operator dashboard (Tasks 1-5 committed; Task 6 Graph + UI polish present but uncommitted). The product is not yet “complete for production” because:
 
 1. Graph API/UI and UI polish are uncommitted.
 2. One UI contract test fails after CSS token renames (`--surface:`).
@@ -16,7 +16,7 @@ Context Engine already has production certification, live reindexing, and an ope
 ## Goals
 
 1. Ship a **production-ready operator shell** that is autonomous on localhost and safe under restart.
-2. Keep Graph as a **bounded, already-working** read-only feature — no further Graph visualization development.
+2. Keep Graph as a **bounded, already-working** read-only feature, no further Graph visualization development.
 3. Make the **main operator path completely reliable**: dashboard process control, presence/lifecycle, admission settings, health/runtime/storage/sync, and static UI contracts.
 4. Leave a clear release gate: tests green, smoke commands succeed, runbook accurate, branch reviewable/PR-ready.
 
@@ -68,7 +68,7 @@ loopback HTTP (/ce-dashboard)
 
 Reliability rules that stay binding:
 
-- Bind `127.0.0.1` only; base path `/ce-dashboard`; ports `49152–65535`.
+- Bind `127.0.0.1` only; base path `/ce-dashboard`; ports `49152-65535`.
 - Missing ≠ deleted; Forget requires eligibility + typed `project_id`.
 - Stop must prove PID ownership before kill.
 - Mutating APIs refuse non-loopback clients.
@@ -76,24 +76,24 @@ Reliability rules that stay binding:
 
 ## Workstreams
 
-### W1 — Stabilize current uncommitted surface
+### W1: Stabilize current uncommitted surface
 
 - Fix UI contract for CSS tokens (either restore expected tokens or update contracts to match intentional shadcn/zinc tokens).
 - Ensure Lucide asset is allowlisted and served.
 - Keep Graph API/UI as implemented; only fix clear correctness bugs if regression fails.
 
-### W2 — Reliability regression
+### W2: Reliability regression
 
 - Run full dashboard suite: port, presence, lifecycle actions, API, UI contract.
 - Smoke: `dashboard --no-open`, `--status`, overview/repos/health curl, Graph smoke if artifact present, `dashboard stop`.
 - Confirm process does not leave orphan PIDs and restart reuses lock correctly.
 
-### W3 — Operator docs + release evidence
+### W3: Operator docs + release evidence
 
-- Runbook already documents dashboard start/status/stop, Missing vs Forget, Auto vs Manual — verify and tighten if wrong.
+- Runbook already documents dashboard start/status/stop, Missing vs Forget, Auto vs Manual, verify and tighten if wrong.
 - Record release checklist results in SDD ledger / short release note (not marketing docs).
 
-### W4 — Finish branch
+### W4: Finish branch
 
 - Commit Task 6 + polish + reliability fixes with clear messages.
 - Whole-branch review against dashboard + production-certification expectations.
@@ -117,6 +117,6 @@ Reliability rules that stay binding:
 
 ## Out of release if they appear
 
-- Slow overview API under heavy doctor/accel probing — mitigate only if smoke fails or hangs; do not redesign doctor.
+- Slow overview API under heavy doctor/accel probing, mitigate only if smoke fails or hangs; do not redesign doctor.
 - Cross-platform GPU claims beyond existing certification policy.
 - React/Vite rewrite of the static dashboard.

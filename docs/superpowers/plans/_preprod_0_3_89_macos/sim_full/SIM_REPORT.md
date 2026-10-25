@@ -1,4 +1,4 @@
-# Full MCP / engine simulation run — Mac 0.3.89
+# Full MCP / engine simulation run: Mac 0.3.89
 
 **Date:** 2026-09-15  
 **Machine:** Apple M5 / macOS 26.5.2  
@@ -11,11 +11,11 @@
 |------------|--------|-------|
 | `scubiee_mcp_ship_check.py` | **PASS** | All tools ok, `errors: []`, engine_healthy |
 | `warm_contract_acceptance.py` | **PASS** | failed=0; soft ~1.1s; map after idle 126ms |
-| `run_mcp_ship_preprod.py --require-live --skip-cli` | **PASS** | L1–L4 pytest + live ladder + ship_check |
+| `run_mcp_ship_preprod.py --require-live --skip-cli` | **PASS** | L1, L4 pytest + live ladder + ship_check |
 | `mcp_host_sim --lane a --live --idle-s 45` | **PASS** | soft 0.59s; map 5.4ms; pack 3.8ms; expand 131ms; **unload ok** |
 | `mcp_host_sim --lane b` | **PASS (pins only)** | Lane B is pin/setup only by design (v1) |
 | `e2e_mcp_idle_reconnect.py` | **PASS** | Stopped 19.7s after disconnect; reconnect warm |
-| `mcp_host_sim --lane a --true-first-map` (earlier) | **FAIL** | WARM_TIMEOUT while engine still opening — flaky under churn |
+| `mcp_host_sim --lane a --true-first-map` (earlier) | **FAIL** | WARM_TIMEOUT while engine still opening, flaky under churn |
 | First `host_sim --lane both --idle-s 120` | **FAIL unload** | See root cause below (fixed) |
 
 ## SLA numbers (Lane A, idle=45, after unload fix)

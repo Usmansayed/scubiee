@@ -1,4 +1,4 @@
-# Scubiee — RULES and INSTRUCTIONS (the two layers)
+# Scubiee: RULES and INSTRUCTIONS (the two layers)
 
 Two separate artifacts. RULES = short persistent anchor (<200 tokens). INSTRUCTIONS = detailed
 operating manual (<1000 tokens). Verified token counts (tiktoken cl100k_base): RULES = 112,
@@ -6,23 +6,23 @@ INSTRUCTIONS = 510.
 
 ---
 
-# RULES  (persistent anchor — 112 tokens, limit <200 ✓)
+# RULES  (persistent anchor: 112 tokens, limit <200 ✓)
 
 ```
 Scubiee is your semantic code retrieval layer. When you need to find code whose location
 or name you do not already know, use Scubiee `map` for that discovery rather than blind
 grep/glob sweeps. When you already know the exact file, symbol, path, or literal, go straight
-to native tools. After map returns locations, read those spans directly — do not re-search
+to native tools. After map returns locations, read those spans directly - do not re-search
 what map already found, and never repeat a search that already failed. Follow the Scubiee
 instructions for how to choose.
 ```
 
 ---
 
-# INSTRUCTIONS  (operating manual — 510 tokens, limit <1000 ✓)
+# INSTRUCTIONS  (operating manual: 510 tokens, limit <1000 ✓)
 
 ```
-## Scubiee retrieval — operating manual
+## Scubiee retrieval - operating manual
 
 Objective: reach the next correct action with the least unnecessary exploration. Retrieve the
 smallest context that removes your current uncertainty, not the most context. Extra retrieved
@@ -39,18 +39,18 @@ Choose retrieval by what you already know (strong preferences, not a fixed order
 - Exact literal / import / identifier you already know → grep.
 
 After `map` returns relevant locations: read those `loc` spans directly. Do not re-search the same
-concept to confirm it — map already located it, so another search spends a turn without adding new
+concept to confirm it - map already located it, so another search spends a turn without adding new
 evidence. Prefer the returned line range over reading the whole file.
 
 Retrieval is adaptive, not a ritual:
 - If an attempt does not reduce uncertainty, CHANGE strategy (refine the query, switch tool, or read
-  a neighbor). Do NOT repeat a search that already failed — repeating identical input yields
+  a neighbor). Do NOT repeat a search that already failed - repeating identical input yields
   identical output.
 - Do not remap an area you already understand; map again only when the task moves into genuinely
   new semantic territory.
 - Stop retrieving once you know enough to make the next edit; then edit.
 
-Strength: MUST — never repeat an identical failed search; never read a whole large file when a line
+Strength: MUST - never repeat an identical failed search; never read a whole large file when a line
 range was given. Everything else is a strong default you may override when the situation clearly
 warrants it.
 
@@ -70,11 +70,11 @@ Bad patterns (avoid):
 
 ## For contrast: the current GUIDED rule (single block, no separate instruction layer)
 
-GUIDED does not split into rules + instructions — it is one block. Shown here so you can compare
+GUIDED does not split into rules + instructions, it is one block. Shown here so you can compare
 wording; it is the thing the new two-layer artifact replaces.
 
 ```
-## Scubiee map — when to use it (map is the only Scubiee locate tool here)
+## Scubiee map - when to use it (map is the only Scubiee locate tool here)
 A managed Scubiee context system is available, but the ONLY Scubiee locate tool exposed is `map`
 (plus `gate`/`status`). Use your native tools (Read/Grep/Glob/Edit/Write/Bash) freely otherwise.
 `map` is a semantic code locator: a short code-vocabulary query returns ranked cards with `file`,

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Bind `127.0.0.1` only; base path `/ce-dashboard`; private port range `49152–65535`.
+- Bind `127.0.0.1` only; base path `/ce-dashboard`; private port range `49152-65535`.
 - Light Apple/Google-like UI; shadcn-style components; no dark-theme redesign.
 - Missing ≠ deleted; Forget requires eligibility + typed project ID confirmation.
 - Admission modes remain exactly `automatic` and `mcp_cli`.

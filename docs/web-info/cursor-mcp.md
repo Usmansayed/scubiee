@@ -49,7 +49,7 @@ One MCP process is shared across chats. A pin must not make an unindexed sidebar
 
 - On `status()` (and later `map` / `grep` / …), pass `root` = that chat’s Workspace Path.
 - Managed is true only if that folder (walking up) has `.scubiee/id.json` and is in the registry.
-- Other chats: `managed: false` after one `status()` — use native tools; do not keep calling Scubiee.
+- Other chats: `managed: false` after one `status()`, use native tools; do not keep calling Scubiee.
 - After a successful `status()`, you can pass `project_id` (`ce_…`) instead of the full path.
 
 ---
@@ -74,8 +74,8 @@ At session start the agent calls **`status()` once**:
 | Fields | Meaning |
 |--------|---------|
 | `managed: true` | This workspace is enrolled (after `init`) |
-| `ok: true` | Daemon is healthy — use Scubiee tools |
-| `warming: true` | Managed but daemon not ready yet — use tools; retry tool once; **do not poll `status()` in a loop** |
+| `ok: true` | Daemon is healthy, use Scubiee tools |
+| `warming: true` | Managed but daemon not ready yet, use tools; retry tool once; **do not poll `status()` in a loop** |
 | `managed: false` | Use native tools for now; retry `status()` after you run `init` / `connect` |
 
 When paused/stopped, follow **`scubiee resume`** (not `wake`).
@@ -90,7 +90,7 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 |------|---------|
 | `gate` | Tiny managed check at session start (~5 tokens) |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is X?" — ranked locations + the top result's code inline. Also orients a wide area / pulls code near a chunk you hold (put its names in the query). |
+| `map config=find` | "Where is X?", ranked locations + the top result's code inline. Also orients a wide area / pulls code near a chunk you hold (put its names in the query). |
 | `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
 
 Exact/name/path → **host** Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus`. (The old `related`/`graph` configs folded into `find` in v0.3.142.)

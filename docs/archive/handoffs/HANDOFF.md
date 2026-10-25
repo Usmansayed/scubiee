@@ -1,8 +1,8 @@
-# MacBook Handoff — Full Session Summary & Test Plan
+# MacBook Handoff: Full Session Summary & Test Plan
 
 **Date:** Sep 2026  
-**Base on Mac today:** `0.3.10` (last pull — commit `3da2c4f`)  
-**Branch state on Windows:** `0.3.11` **uncommitted** — all work below is local, not pushed  
+**Base on Mac today:** `0.3.10` (last pull, commit `3da2c4f`)  
+**Branch state on Windows:** `0.3.11` **uncommitted**, all work below is local, not pushed  
 
 ---
 
@@ -61,7 +61,7 @@ packages/pipeline/upgrade_platform.py
 
 ### A. Declarative upgrade system (biggest backend change)
 
-**Problem:** Upgrades were ad-hoc — often wipe-and-reinstall. Needed incremental, version-to-version migrations.
+**Problem:** Upgrades were ad-hoc, often wipe-and-reinstall. Needed incremental, version-to-version migrations.
 
 **Built:**
 
@@ -76,18 +76,18 @@ packages/pipeline/upgrade_platform.py
 
 **Upgrade scenarios (10):**
 
-1. `stale_mcp_pins` — old MCP pin format  
-2. `stale_gate_rules` — outdated GATE rules  
-3. `stale_instructions` — stale MCP instructions  
-4. `stale_index_schema` — old index schema  
-5. `embed_abi_mismatch` — embed ABI drift (needs `scubiee setup`)  
-6. `missing_accel` — missing accel.json  
-7. `stale_home_layout` — old `~/.scubiee` layout  
-8. `legacy_mcp_command` — old MCP command string  
-9. `combined_surface` — multiple stale surfaces at once  
-10. `force_reindex` — forced reindex flag (needs accel)  
+1. `stale_mcp_pins`: old MCP pin format  
+2. `stale_gate_rules`: outdated GATE rules  
+3. `stale_instructions`: stale MCP instructions  
+4. `stale_index_schema`: old index schema  
+5. `embed_abi_mismatch`: embed ABI drift (needs `scubiee setup`)  
+6. `missing_accel`: missing accel.json  
+7. `stale_home_layout`: old `~/.scubiee` layout  
+8. `legacy_mcp_command`: old MCP command string  
+9. `combined_surface`: multiple stale surfaces at once  
+10. `force_reindex`: forced reindex flag (needs accel)  
 
-**Tests:** `tests/test_upgrade_*.py` — 45+ passed on Windows (2 skipped without setup).
+**Tests:** `tests/test_upgrade_*.py`, 45+ passed on Windows (2 skipped without setup).
 
 ---
 
@@ -159,7 +159,7 @@ packages/pipeline/upgrade_platform.py
 
 - `pyproject.toml` → **0.3.11**
 - `npm/package.json` → **0.3.11**
-- `upgrade_releases/v0_3_11.py` — CLI UX release (no migration actions)
+- `upgrade_releases/v0_3_11.py`: CLI UX release (no migration actions)
 
 ---
 
@@ -189,7 +189,7 @@ packages/pipeline/upgrade_platform.py
 
 ---
 
-## 3. Mac test plan — run in this order
+## 3. Mac test plan: run in this order
 
 Use a **real enrolled repo** (this repo is fine). For destructive tests, use isolated home:
 
@@ -201,7 +201,7 @@ cd /path/to/context-engine
 
 ---
 
-### Phase 1 — Install & version (2 min)
+### Phase 1: Install & version (2 min)
 
 ```bash
 uv tool install --force . --refresh
@@ -216,10 +216,10 @@ scubiee --help                       # no crash, UTF-8 ok
 
 ---
 
-### Phase 2 — Unit / integration pytest (10 min)
+### Phase 2: Unit / integration pytest (10 min)
 
 ```bash
-# Fast — must all pass
+# Fast - must all pass
 python -m pytest \
   tests/test_cli_terminal.py \
   tests/test_setup_progress.py \
@@ -236,7 +236,7 @@ python -m pytest \
 
 ---
 
-### Phase 3 — Automated CLI combinations (5 min)
+### Phase 3: Automated CLI combinations (5 min)
 
 Same pattern as Windows `24/24`:
 
@@ -253,7 +253,7 @@ Full matrix reference: `docs/scubiee-cli-combination-test-matrix.md`
 
 ---
 
-### Phase 4 — Real CLI e2e script (15–30 min, destructive)
+### Phase 4: Real CLI e2e script (15-30 min, destructive)
 
 **This is the main Windows-style combination run.** Logs to `tests/_e2e_cmd_results.txt`.
 
@@ -271,7 +271,7 @@ bash tests/_e2e_run_cmds.sh
 | Repo wipe | W1, W1b, W2 | wipe repo, re-init, stop |
 | Full wipe | G16, G16b | confirm gate, full wipe keep-package |
 | Post-wipe | P1, P2, P3 | setup, init, status |
-| Read-only | R1–R4 | help, halt help, wipe help, list |
+| Read-only | R1, R4 | help, halt help, wipe help, list |
 | Connect | C1, C2 | multi-tool dry-run connect |
 
 **Pass checks in log:**
@@ -290,12 +290,12 @@ grep 'G16b-check' tests/_e2e_cmd_results.txt   # ~/.scubiee gone, scubiee still 
 
 ---
 
-### Phase 5 — Visual UX verification (10 min)
+### Phase 5: Visual UX verification (10 min)
 
 Run manually and **look at the terminal** (not just exit codes):
 
 ```bash
-# 1. Setup — banner + single bar
+# 1. Setup - banner + single bar
 scubiee setup
 # ✓ ANSI Shadow SCUBIEE banner with frame lines
 # ✓ ONE bar at bottom updating (not multiple bars)
@@ -305,7 +305,7 @@ scubiee setup
 # 2. Init
 scubiee init .
 
-# 3. Search — colors, no escape garbage
+# 3. Search - colors, no escape garbage
 scubiee search "how is the repo structured?"
 
 # 4. Connect
@@ -328,7 +328,7 @@ scubiee wipe --all --confirm --keep-package
 
 ---
 
-### Phase 6 — Upgrade matrix (20–40 min)
+### Phase 6: Upgrade matrix (20-40 min)
 
 **Warm engine first** (avoids cold-start flake):
 
@@ -367,7 +367,7 @@ python scripts/simulate_upgrade_matrix.py --scenario stale_mcp_pins
 
 ---
 
-### Phase 7 — CLI smoke (non-destructive, 5 min)
+### Phase 7: CLI smoke (non-destructive, 5 min)
 
 ```bash
 python tests/_cli_smoke_all.py
@@ -379,9 +379,9 @@ Covers: version, help, preflight, setup --status, resources, migrate, diagnose, 
 
 ---
 
-### Phase 8 — Engine / lifecycle combinations (10 min)
+### Phase 8: Engine / lifecycle combinations (10 min)
 
-Manual — from matrix section 2–3:
+Manual, from matrix section 2-3:
 
 ```bash
 # READY state (after setup + init + connect)
@@ -390,7 +390,7 @@ scubiee init .              # must OK (not globally blocked)
 scubiee engine ensure .
 
 scubiee stop -y
-scubiee engine start .      # must BLOCK — use resume
+scubiee engine start .      # must BLOCK - use resume
 scubiee resume
 
 scubiee halt
@@ -402,7 +402,7 @@ Record in matrix doc table (section 10).
 
 ---
 
-### Phase 9 — Mac-specific paths (10 min)
+### Phase 9: Mac-specific paths (10 min)
 
 ```bash
 # MLX / CoreML (Apple Silicon)
@@ -419,7 +419,7 @@ python tests/_mcp_break_it_suite.py
 
 ---
 
-### Phase 10 — Full pytest (optional, ~20 min)
+### Phase 10: Full pytest (optional, ~20 min)
 
 ```bash
 python -m pytest tests/ -q --tb=line 2>&1 | tee tests/_mac_full_pytest.txt
@@ -454,9 +454,9 @@ Layer 6: visual check                → banner, bars, colors
 | `wipe --all` (no confirm) | exit 2, no delete |
 | `wipe --all --confirm --keep-package` | clean audit, CLI stays on PATH |
 | `halt` → `wipe --all --confirm` | one-shot, no manual taskkill |
-| upgrade cold daemon | flake — warm with `engine start` |
+| upgrade cold daemon | flake, warm with `engine start` |
 
-**Mac must re-verify all of the above** — especially wipe with Cursor open and MLX setup path.
+**Mac must re-verify all of the above**: especially wipe with Cursor open and MLX setup path.
 
 ---
 
@@ -474,7 +474,7 @@ Layer 6: visual check                → banner, bars, colors
 | Git commit + tag 0.3.11 | ⬜ | ⬜ |
 | PyPI publish | ⬜ | ⬜ |
 
-**Ship when:** Mac phases 2–6 pass + MLX setup verified.
+**Ship when:** Mac phases 2-6 pass + MLX setup verified.
 
 ---
 

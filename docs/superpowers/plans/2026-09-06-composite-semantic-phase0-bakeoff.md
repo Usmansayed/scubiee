@@ -37,7 +37,7 @@ Kill Phase 0 sensor for default use; neither add nor gate met keep/kill gate vs 
 
 ### Notes
 
-- Hot-set metrics (acc / F1 / must-rec / prec) are **identical** to `composite_v1` on this board — soft add (`α=0.15`) and gate did not move the hot threshold decisions.
+- Hot-set metrics (acc / F1 / must-rec / prec) are **identical** to `composite_v1` on this board, soft add (`α=0.15`) and gate did not move the hot threshold decisions.
 - `composite_semantic_add` slightly lowered `must_at_5` (0.682 → 0.665); gate matched baseline ranking@5.
 - Same failure case `p19` across all three arms.
 - Next research bet: **Phase 1 teleport** (FN recovery), not stronger rank-only weights on this board.

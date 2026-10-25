@@ -13,7 +13,7 @@ This document is for **operators upgrading** from 0.2.x or early 0.3.x. For day-
 # Recommended
 uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
-scubiee connect --cursor    # or your IDE — refresh MCP + rules
+scubiee connect --cursor    # or your IDE - refresh MCP + rules
 ```
 
 Then reload MCP in your IDE. Re-run `scubiee init .` only if a repo shows `enrolled: false`.
@@ -29,7 +29,7 @@ Then reload MCP in your IDE. Re-run `scubiee init .` only if a repo shows `enrol
 | **Repo wipe** | Could run without confirmation | Requires TTY confirm or `--confirm` (exit **2** without) |
 | **Repo wipe cleanup** | Could leave orphan VectorDB collections | Drops VectorDB + legacy index paths for that repo |
 | **`pause` → `activate`** | `activate` could fail with `error: "paused"` | `activate` restores repo to **active** (0.3.11+) |
-| **`sync-now` while paused** | Still ran | Blocked with `error: "paused"` — run `activate` first (0.3.13+) |
+| **`sync-now` while paused** | Still ran | Blocked with `error: "paused"`, run `activate` first (0.3.13+) |
 | **Global `stop`** | Process teardown could leave half-stopped state on Windows | Pause state saved **before** kill; CLI process tree protected (0.3.13+) |
 | **Windows terminal** | Raw ANSI (`[90m`) on some consoles | `colorama` + UTF-8 init; branded banner; single progress bar for setup/wipe |
 | **`doctor`** | Basic readiness only | Shows **active vs expected binary** when multiple installs on PATH |
@@ -65,7 +65,7 @@ Then reload MCP in your IDE. Re-run `scubiee init .` only if a repo shows `enrol
 - `scubiee activate .` after `scubiee pause .` works (transitions PAUSED → ACTIVE).
 - Expanded CLI combination test runner (`--cli`, 39 scenarios).
 
-### 0.3.5 – 0.3.10 (August 2026)
+### 0.3.5-0.3.10 (August 2026)
 
 - **`wipe --all --keep-package`** no longer removes uv tool shims.
 - OpenCode MCP **v2** config (`mcp.servers`) with v1 migration.
@@ -74,7 +74,7 @@ Then reload MCP in your IDE. Re-run `scubiee init .` only if a repo shows `enrol
 - Lifecycle / upgrade registry improvements, MCP hot-reload, production hardening.
 - See maintainer handoffs: [session-summary-aug31-2026-macbook.md](./session-summary-aug31-2026-macbook.md), [session-handoff-sep02-2026-macbook.md](./session-handoff-sep02-2026-macbook.md).
 
-### 0.3.0 – 0.3.4
+### 0.3.0-0.3.4
 
 - Major 0.3 line: managed repo lifecycle, global stop/resume, connect/disconnect family, upgrade command, dashboard, expanded MCP tool surface.
 - Product identity finalized: MCP key **`scubiee`**, data under **`~/.scubiee`** (no legacy `context-engine` paths).
@@ -121,7 +121,7 @@ When repo is **paused** (0.3.13+):
 {
   "ok": false,
   "error": "paused",
-  "hint": "Repository is paused — run `scubiee activate .` before sync-now."
+  "hint": "Repository is paused - run `scubiee activate .` before sync-now."
 }
 ```
 
@@ -129,10 +129,10 @@ When repo is **paused** (0.3.13+):
 
 | Command | Scope |
 |---------|--------|
-| `scubiee stop` | **Global** — tears down MCP/rules, hides `.scubiee`, blocks most CLI until `scubiee resume` |
-| `scubiee engine stop` | **Daemon only** — MCP stays; `engine start` or MCP brings engine back |
+| `scubiee stop` | **Global**, tears down MCP/rules, hides `.scubiee`, blocks most CLI until `scubiee resume` |
+| `scubiee engine stop` | **Daemon only**, MCP stays; `engine start` or MCP brings engine back |
 
-Do not use `engine start` after global stop — use **`scubiee resume`**.
+Do not use `engine start` after global stop, use **`scubiee resume`**.
 
 ### `scubiee doctor [path]`
 
@@ -142,17 +142,17 @@ JSON now includes **`install`**: version, active binary, expected binary, `extra
 
 ## Windows-specific
 
-- **CPU-only laptops** (Intel UHD / AMD APU): setup uses **`cpu`** profile — no DirectML hang.
+- **CPU-only laptops** (Intel UHD / AMD APU): setup uses **`cpu`** profile, no DirectML hang.
 - **Terminal UX (0.3.13):** colors and progress bars work in cmd/PowerShell without raw escape codes.
 - **`scubiee unlock-tool`:** still the first step for Access denied on `uv tool install`.
-- **Do not set `CTX_HOME` to a temp folder** for normal use — CLI refuses polluted paths. Tests use `CTX_ALLOW_TEST_HOME=1`.
+- **Do not set `CTX_HOME` to a temp folder** for normal use, CLI refuses polluted paths. Tests use `CTX_ALLOW_TEST_HOME=1`.
 
 ---
 
 ## MCP / connect (unchanged workflow, expanded tools)
 
-1. `scubiee init .` — enroll + index (**does not** write MCP).
-2. `scubiee connect --cursor` (or `--all`, `--kiro`, etc.) — MCP + agent rules.
+1. `scubiee init .`: enroll + index (**does not** write MCP).
+2. `scubiee connect --cursor` (or `--all`, `--kiro`, etc.): MCP + agent rules.
 3. Reload MCP in the IDE.
 
 OpenCode users: configs are written in **v2** shape when the file is new or migrated.
@@ -199,4 +199,4 @@ python scripts/run_cli_combination_tests.py \
 
 ---
 
-*Last updated: September 2, 2026 — scubiee 0.3.13*
+*Last updated: September 2, 2026, scubiee 0.3.13*

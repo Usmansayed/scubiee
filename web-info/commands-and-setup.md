@@ -95,7 +95,7 @@ scubiee connect --cursor
 | `scubiee init <path>` | Per-repository: enroll + index | Each repo you want searchable |
 | `scubiee connect --<tool>` | MCP + rules | Each IDE; Special-4 inside each project |
 
-Adding a second repository does **not** repeat machine setup — only `init` (and Special-4 `connect` if needed).
+Adding a second repository does **not** repeat machine setup, only `init` (and Special-4 `connect` if needed).
 
 If `init` returns `"error": "machine_not_setup"`, run `scubiee setup --repair` first.
 
@@ -108,7 +108,7 @@ Embedding model: **`nomic-ai/CodeRankEmbed`** (FP16).
 | `dml` | Windows **discrete** AMD/NVIDIA GPU |
 | `cpu` | Windows Intel iGPU / AMD APU / no discrete GPU; any CPU fallback |
 | `cuda` | Linux NVIDIA |
-| `mlx` | Apple Silicon (default — should not stay on CPU) |
+| `mlx` | Apple Silicon (default, should not stay on CPU) |
 | `coreml` | Intel Mac when viable |
 
 ```bash

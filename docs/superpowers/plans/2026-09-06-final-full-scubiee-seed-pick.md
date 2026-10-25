@@ -1,8 +1,8 @@
-# Final full-Scubiee MCP collect — seed-pick (awaiting native)
+# Final full-Scubiee MCP collect: seed-pick (awaiting native)
 
 **Agent:** [Full Scubiee](9b2a0392-cb37-47d5-9392-cff533d48b62)  
 **Mode:** scubiee_full_mcp (gate → map → pack → expand×2 + Grep/Read)  
-**Status:** complete — native twin not started
+**Status:** complete, native twin not started
 
 ## Efficiency (self-report)
 

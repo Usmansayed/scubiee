@@ -1,11 +1,11 @@
-# Scubiee sync — bug traces (stage-by-stage)
+# Scubiee sync: bug traces (stage-by-stage)
 
 Companion to `docs/scubiee-sync-bug-register.md`. One section per bug: the full path a change
 travels, where it fails, the probe that localizes it, and the fix.
 
 ---
 
-## BUG-1 — newcomer over-count → publish refused  ✅ FIXED
+## BUG-1: newcomer over-count → publish refused  ✅ FIXED
 
 ### The full path a change travels (dirty → searchable)
 
@@ -50,7 +50,7 @@ Nearly every already-indexed file is mis-classified as new, doubling the change-
 the oversize guard at (E), so (F) publish never runs.
 
 ### Localizing probe
-`scripts/perf/probe_bug1_newcomers.py` — loads the live on-disk merkle and computes the newcomer
+`scripts/perf/probe_bug1_newcomers.py`: loads the live on-disk merkle and computes the newcomer
 set both ways (current vs canonicalized):
 
 | metric | value |
@@ -61,7 +61,7 @@ set both ways (current vs canonicalized):
 | newcomers under FIXED subtraction | **0** |
 | raw key overlap (index ∩ merkle) | 16 |
 
-Every one of the 1328 "newcomers" has `file_exists=True` and `canonical_in_merkle=True` — i.e. it
+Every one of the 1328 "newcomers" has `file_exists=True` and `canonical_in_merkle=True`, i.e. it
 is already indexed and only *looks* new because of the slash/case key mismatch.
 
 ### Root cause (code)
@@ -96,7 +96,7 @@ serves real content.
 
 ---
 
-## BUG-2 — oversize refusal: weak self-heal + silent-stale  ✅ PARTIALLY FIXED
+## BUG-2: oversize refusal: weak self-heal + silent-stale  ✅ PARTIALLY FIXED
 
 ### The full path
 
@@ -108,7 +108,7 @@ serves real content.
         ├─ bulk path (sync_loop ~L871)  → self.needs_full = True   ✓
         └─ interval  (sync_loop _sync_unlocked ~L1684)
                  last_result = payload                              ✗ needs_full NOT set
-                 if result.refreshed: publish                      (skipped — refreshed False)
+                 if result.refreshed: publish                      (skipped - refreshed False)
         │
         ▼
  status derivation
@@ -147,12 +147,12 @@ the index silently lagged.
 `tests/test_sync_status_canaries.py` → 10 passed. Probe shows the stale flag + `agent_ready='stale'`.
 
 ### Deliberately NOT changed
-No automatic full-reindex on `needs_full` — too expensive / thrash-prone to trigger silently. The
+No automatic full-reindex on `needs_full`, too expensive / thrash-prone to trigger silently. The
 engine now serves the current index as explicitly **stale** with the one-shot repair hint instead.
 
 ---
 
-## BUG-3 — graph_pending ghost entries never self-clear  ✅ FIXED
+## BUG-3: graph_pending ghost entries never self-clear  ✅ FIXED
 
 ### The full path (hot save defers graph → catch-up pays debt)
 
@@ -221,7 +221,7 @@ Probe: `[real, ghost, abs(real), backslash(real)]` → `[real]`.
 `tests/test_sync_corpus_alignment.py` + `tests/test_graph_catchup_async.py` → 23 passed (they
 assert exact `graph_pending` contents, so the hygiene pass preserves the healthy contract).
 
-### Side note — regression caught during this fix
+### Side note: regression caught during this fix
 Applying BUG-1 originally added a redundant `from pipeline.merkle import … canonical_relpath …`
 inside the `discover_newcomers` branch. Because `canonical_relpath` is already a module-level import
 (incremental.py L27) and is used earlier in the `force_files` branch (L801), the in-branch import
@@ -231,7 +231,7 @@ with a conditional in-function import.
 
 ---
 
-## BUG-6 — /v1/grep default `**/*` returns false-empty on large repos  ✅ FIXED
+## BUG-6: /v1/grep default `**/*` returns false-empty on large repos  ✅ FIXED
 
 ### The full path
 
@@ -290,7 +290,7 @@ speed follow-up: bundle ripgrep for the engine or raise the line cap now that or
 
 ---
 
-## BUG-4 — `scubiee index --force` can leave the serving engine DOWN  ⚠️ ROOT-CAUSED (fix recommended)
+## BUG-4: `scubiee index --force` can leave the serving engine DOWN  ⚠️ ROOT-CAUSED (fix recommended)
 
 ### The full path
 
@@ -312,16 +312,16 @@ speed follow-up: bundle ripgrep for the engine or raise the line cap now that or
 
 ### Where it fails
 `cmd_index` has no post-index engine handoff. `index_repo` (`indexer.py`) never touches the engine/
-daemon/watchdog — it only writes the store. Recovery is left entirely to the watchdog, which is
+daemon/watchdog, it only writes the store. Recovery is left entirely to the watchdog, which is
 (a) demand-gated (won't restart a ghost engine when no client is attached) and (b) crash-loop-capped
-(10-minute pause after 20 restarts/hour — consistent with the observed `restart_count:47`).
+(10-minute pause after 20 restarts/hour, consistent with the observed `restart_count:47`).
 
 ### Root cause
 A CLI `index --force` rewrites the store out from under the serving engine but delegates recovery to
 a watchdog that is intentionally demand-gated, so a bare-CLI reindex with no attached client leaves
 no serving engine.
 
-### Recommended fix (not applied — engine-lifecycle change, wants its own review)
+### Recommended fix (not applied: engine-lifecycle change, wants its own review)
 After a successful `index_repo`, have `cmd_index` call `ensure_daemon(root)` (the canonical bring-up
 helper) to explicitly restore a serving + warm engine, instead of relying on the demand-gated
 watchdog. Lower-risk alternative: print an explicit "engine not auto-restarted; run `scubiee engine

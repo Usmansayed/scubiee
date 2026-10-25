@@ -1,4 +1,4 @@
-# Questions Answered — Context Engine Production Readiness
+# Questions Answered: Context Engine Production Readiness
 
 **Source checklist:** `questions.md` (unchanged)  
 **Worktree / branch:** `.worktrees/production-certification` / `feat/production-certification`  
@@ -8,10 +8,10 @@
 
 Every item uses:
 
-1. **Decision** — locked product behavior  
-2. **Implementation** — modules / interfaces that enforce it  
-3. **Verification** — tests or live checks actually run  
-4. **Status** — `resolved` | `partial` | `not implemented`
+1. **Decision**: locked product behavior  
+2. **Implementation**: modules / interfaces that enforce it  
+3. **Verification**: tests or live checks actually run  
+4. **Status**: `resolved` | `partial` | `not implemented`
 
 ### Certification snapshot (this machine)
 
@@ -54,7 +54,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 1.4 Can one project be initialized from multiple paths (symlink)?
-- **Decision:** Yes — realpath aliases map to one durable project ID.
+- **Decision:** Yes, realpath aliases map to one durable project ID.
 - **Implementation:** `project_id.resolve_project` + registry path aliases; identity requires live `.context-engine/id.json` match
 - **Verification:** `tests/test_repo_lifecycle.py` alias / move cases
 - **Status:** resolved
@@ -100,7 +100,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 2.5 Should Auto have a maximum number of managed repositories?
-- **Decision:** Yes — configurable cap for Auto-admitted repos.
+- **Decision:** Yes, configurable cap for Auto-admitted repos.
 - **Implementation:** admission policy
 - **Verification:** same suite
 - **Status:** resolved
@@ -195,14 +195,14 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Verification:** sync status / live reindex tests
 - **Status:** resolved
 
-### 4.6 Two sessions modify the same file — final state?
+### 4.6 Two sessions modify the same file: final state?
 - **Decision:** Filesystem wins; CE does not keep competing repo versions per session.
 - **Implementation:** Merkle/disk producers
 - **Verification:** design + dirty ledger rewrite debounce tests
 - **Status:** resolved
 
 ### 4.7 Should `session_authored` be per session?
-- **Decision:** Yes — per session/client metadata, not a single boolean for the repo.
+- **Decision:** Yes, per session/client metadata, not a single boolean for the repo.
 - **Implementation:** session store / admission response fields
 - **Verification:** session attribution tests
 - **Status:** resolved
@@ -218,7 +218,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 ## 5. Multiple sessions on DIFFERENT repos
 
 ### 5.1 Can one daemon manage 10 repos?
-- **Decision:** Yes — `RepoHub` holds isolated runtimes.
+- **Decision:** Yes, `RepoHub` holds isolated runtimes.
 - **Implementation:** `repo_runtime.RepoHub`
 - **Verification:** isolation tests; certify `two_repo_runtime_isolation`
 - **Status:** resolved
@@ -250,7 +250,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Decision:** Active/search/write priority outranks idle maintenance.
 - **Status:** resolved
 
-### 5.7 Five dirty repos — queue or concurrent?
+### 5.7 Five dirty repos: queue or concurrent?
 - **Decision:** Keepers can run per repo; embeds queue through the fair single-flight scheduler.
 - **Status:** resolved
 
@@ -265,7 +265,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 6.2 Should CodeRankEmbed always stay warm?
-- **Decision:** No — ResourceManager may unload after inactivity; lexical/graph can remain.
+- **Decision:** No, ResourceManager may unload after inactivity; lexical/graph can remain.
 - **Implementation:** resources / embedder cache
 - **Verification:** resource manager tests (existing)
 - **Status:** partial (unload policy exists; exact latency SLA is env-dependent)
@@ -281,11 +281,11 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved (fail-closed); warm latency **partial** (hardware-bound)
 
 ### 6.5 Graph/BM25 alive if embed unloaded?
-- **Decision:** Yes — search can continue from last coherent generation / lexical+graph.
+- **Decision:** Yes, search can continue from last coherent generation / lexical+graph.
 - **Status:** resolved
 
 ### 6.6 Idle mode releasing GPU/model memory?
-- **Decision:** Yes — daemon stays; model may unload.
+- **Decision:** Yes, daemon stays; model may unload.
 - **Status:** partial (mechanism present; dashboard labeling optional)
 
 ### 6.7 After laptop wake from sleep?
@@ -311,7 +311,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 7.2 Reduce priority under CPU/GPU/RAM pressure?
-- **Decision:** Yes — defer/reduce batches; do not crash.
+- **Decision:** Yes, defer/reduce batches; do not crash.
 - **Status:** resolved
 
 ### 7.3 Disk budget reached?
@@ -326,7 +326,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 7.5 Pause indexing but keep search?
-- **Decision:** Yes — `pause_repo` / resource defer; search from last coherent generation.
+- **Decision:** Yes, `pause_repo` / resource defer; search from last coherent generation.
 - **Verification:** lifecycle pause + publish isolation
 - **Status:** resolved
 
@@ -337,7 +337,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 7.7 Can one broken repo crash the daemon?
-- **Decision:** No — failures isolated per runtime.
+- **Decision:** No, failures isolated per runtime.
 - **Verification:** `test_failure_is_isolated_to_its_repository`; certify two-repo isolation
 - **Status:** resolved
 
@@ -391,7 +391,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 9.2 Do two Git worktrees share an index?
-- **Decision:** **No** — separate project IDs / indexes. Shared `git_common_dir` is metadata only.
+- **Decision:** **No**, separate project IDs / indexes. Shared `git_common_dir` is metadata only.
 - **Implementation:** `git_common_dir` recorded; roots resolve independently
 - **Verification:** lifecycle worktree tests
 - **Status:** resolved
@@ -401,7 +401,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 9.4 Is branch identity part of index identity?
-- **Decision:** No — filesystem checkout state is identity; branch name is not the store key.
+- **Decision:** No, filesystem checkout state is identity; branch name is not the store key.
 - **Status:** resolved
 
 ### 9.5 `git checkout` changes 500 files?
@@ -459,7 +459,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 ## 11. Search while indexing
 
 ### 11.1 Can search continue while chunks embed?
-- **Decision:** Yes — last coherent generation remains searchable.
+- **Decision:** Yes, last coherent generation remains searchable.
 - **Status:** resolved
 
 ### 11.2 BM25/graph updated but dense pending?
@@ -500,11 +500,11 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 12.3 Can dirty ledger survive restart?
-- **Decision:** Yes — durable journal under `projects/<id>/dirty_journal.json` (atomic write).
+- **Decision:** Yes, durable journal under `projects/<id>/dirty_journal.json` (atomic write).
 - **Status:** resolved
 
 ### 12.4 Reconstruct if journal lost?
-- **Decision:** Yes — Merkle/root probe marks dirty paths.
+- **Decision:** Yes, Merkle/root probe marks dirty paths.
 - **Verification:** journal loss + Merkle recovery canary
 - **Status:** resolved
 
@@ -533,7 +533,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 13.2 Does FAISS immediately reclaim space?
-- **Decision:** No — compact/rebuild/serialize required.
+- **Decision:** No, compact/rebuild/serialize required.
 - **Status:** resolved
 
 ### 13.3 Prevent years of dead metadata?
@@ -545,7 +545,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 13.5 Can user see disk per repo?
-- **Decision:** Yes — `repo_storage_status` / status fields include bytes + reclaimable.
+- **Decision:** Yes, `repo_storage_status` / status fields include bytes + reclaimable.
 - **Verification:** storage + observability tests
 - **Status:** resolved
 
@@ -558,7 +558,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 14.2 Need to know Cursor vs Claude vs Codex?
-- **Decision:** Not for index semantics — telemetry/attribution only.
+- **Decision:** Not for index semantics, telemetry/attribution only.
 - **Status:** resolved
 
 ### 14.3 Should client tell CE the workspace path?
@@ -570,7 +570,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 - **Status:** resolved
 
 ### 14.5 Should CE auto-install into a client?
-- **Decision:** Only during explicit setup/install commands — not silently on Auto.
+- **Decision:** Only during explicit setup/install commands, not silently on Auto.
 - **Status:** resolved
 
 ### 14.6 Auto enabled but user never authorized manage?
@@ -582,28 +582,28 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 ## 15. User control
 
 ### 15.1 Never index this repo?
-- **Decision:** Yes — `never_index_repo` / CLI `never-index`.
+- **Decision:** Yes, `never_index_repo` / CLI `never-index`.
 - **Verification:** lifecycle + auto tests
 - **Status:** resolved
 
 ### 15.2 Exclude directories (`node_modules`, `.git`, build, …)?
-- **Decision:** Yes — existing ignore/noise path filters in indexing/graphify extract.
+- **Decision:** Yes, existing ignore/noise path filters in indexing/graphify extract.
 - **Status:** resolved
 
 ### 15.3 Temporarily pause CE for a repository?
-- **Decision:** Yes — `pause_repo` / `resume_repo`.
+- **Decision:** Yes, `pause_repo` / `resume_repo`.
 - **Status:** resolved
 
 ### 15.4 Force `ctx sync` immediately?
-- **Decision:** Yes — `sync_now_repo` / CLI `sync-now`.
+- **Decision:** Yes, `sync_now_repo` / CLI `sync-now`.
 - **Status:** resolved
 
 ### 15.5 Force full rebuild?
-- **Decision:** Yes — `rebuild_repo` / CLI `rebuild`.
+- **Decision:** Yes, `rebuild_repo` / CLI `rebuild`.
 - **Status:** resolved
 
 ### 15.6 Remove from CE without deleting the git repo?
-- **Decision:** Yes — `remove_repo(delete_store=False)` default; optional store delete.
+- **Decision:** Yes, `remove_repo(delete_store=False)` default; optional store delete.
 - **Status:** resolved
 
 ---
@@ -646,7 +646,7 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 ## 17. Important product questions
 
 ### A. What does “managed repo” mean?
-- **Decision:** Persistently registered and eligible for sync until paused, never-index, or removed. Continuous watch/index intensity follows activation/policy — not “every idle managed root forever at full watch cost.”
+- **Decision:** Persistently registered and eligible for sync until paused, never-index, or removed. Continuous watch/index intensity follows activation/policy, not “every idle managed root forever at full watch cost.”
 - **Status:** resolved
 
 ### B. Who owns the repository lifecycle?
@@ -674,17 +674,17 @@ Skipped checks never increment `passed`. Required skips are auto-downgraded to n
 
 These are **not** claimed as fully lab-closed:
 
-1. **Windows chmod permission denial** — skipped (not reliable on NT); not counted as pass.  
-2. **External client matrix** — optional (`ctx test clients --clients`).  
-3. **Dashboard UI polish** — status data complete; visual dashboard not redesigned.  
-4. **Cross-file identical-chunk embedding cache** — not a v1 goal.  
-5. **Real ReadDirectoryChangesW OS integration test** — overflow semantics covered via recovery API, not kernel buffer capture.  
-6. **SDK/Cursor-agent packages** — some experimental SDK tests require `cursor-sdk` and are environment-gated.  
-7. **Always-on sweeper** for unused repos — policy exists; destructive GC remains explicit/dry-run-first.
+1. **Windows chmod permission denial**: skipped (not reliable on NT); not counted as pass.  
+2. **External client matrix**: optional (`ctx test clients --clients`).  
+3. **Dashboard UI polish**: status data complete; visual dashboard not redesigned.  
+4. **Cross-file identical-chunk embedding cache**: not a v1 goal.  
+5. **Real ReadDirectoryChangesW OS integration test**: overflow semantics covered via recovery API, not kernel buffer capture.  
+6. **SDK/Cursor-agent packages**: some experimental SDK tests require `cursor-sdk` and are environment-gated.  
+7. **Always-on sweeper** for unused repos, policy exists; destructive GC remains explicit/dry-run-first.
 
 ## Bottom line
 
-**No — not “every single part is cosmically perfect.”**  
-**Yes — every question in `questions.md` now has a locked decision, an implementation pointer, and evidence-backed status.** Shipping-critical sections **1–12 and 15** are **resolved** under the design contract; section **16** UI and a few operational labs remain **partial** as documented above.
+**No, not “every single part is cosmically perfect.”**  
+**Yes, every question in `questions.md` now has a locked decision, an implementation pointer, and evidence-backed status.** Shipping-critical sections **1-12 and 15** are **resolved** under the design contract; section **16** UI and a few operational labs remain **partial** as documented above.
 
 `questions.md` and `docs/superpowers/plans/2026-08-17-production-certification.md` were left unchanged.

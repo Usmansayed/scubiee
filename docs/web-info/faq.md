@@ -33,7 +33,7 @@ No. **`connect`** writes MCP + rules. **`init`** only enrolls/indexes the repo.
 ## Install
 
 **uv or pip?**  
-Prefer **uv tool install** — isolated CLI, clearer upgrades on Windows.
+Prefer **uv tool install**, isolated CLI, clearer upgrades on Windows.
 
 **Why `setup --repair`?**  
 Safest after fresh install, upgrade, or broken reinstall. Installs missing FastEmbed/ORT extras and refreshes `accel.json`.
@@ -62,7 +62,7 @@ Default **`mlx`** (Metal). Should not stay on CPU after `--repair`. See [Mac & L
 ## Usage
 
 **Why won't init run from my home folder?**  
-Safety — don’t index all of `C:\Users\you` or `$HOME`. `cd` into the project.
+Safety, don’t index all of `C:\Users\you` or `$HOME`. `cd` into the project.
 
 **What does `--fast` do?**  
 Indexes `.py` under common code directories (`packages`, `src`, …) or your `--roots` list.
@@ -84,19 +84,19 @@ Required when more than 400 indexable files would be touched.
 `scubiee wipe . --confirm` (since 0.3.12). Without confirm, exit code **2**. See [Repository lifecycle](./repo-lifecycle.md).
 
 **How do I unmanage a repo and delete its Scubiee data?**  
-`scubiee wipe . --confirm` — removes enrollment, index, VectorDB, `.scubiee`, and repo MCP/rules. Your source code is **not** deleted. Not the same as `pause` or `stop`. Details: [Repository lifecycle](./repo-lifecycle.md).
+`scubiee wipe . --confirm`: removes enrollment, index, VectorDB, `.scubiee`, and repo MCP/rules. Your source code is **not** deleted. Not the same as `pause` or `stop`. Details: [Repository lifecycle](./repo-lifecycle.md).
 
 **`remove` vs `wipe`?**  
 `remove` drops registry tracking (optional `--delete-store`). **`wipe --confirm`** is the full per-repo cleanup.
 
 **What does each MCP tool do?**  
-[MCP tools reference](./mcp-tools-reference.md) — one `map` tool (`config=find|focus`) plus `gate` / `status`.
+[MCP tools reference](./mcp-tools-reference.md): one `map` tool (`config=find|focus`) plus `gate` / `status`.
 
 **`status` on a folder I never initialized?**  
-`enrolled: false`, `state: "unmanaged"` — run `scubiee init .` to enroll.
+`enrolled: false`, `state: "unmanaged"`, run `scubiee init .` to enroll.
 
 **Upgrading from 0.2.88?**  
-See [What's changed since 0.2.88](../archive/qa-bug-reports/whats-changed-since-0.2.88.md) — pin `scubiee==0.3.146`, run `setup --repair`, re-run `connect`.
+See [What's changed since 0.2.88](../archive/qa-bug-reports/whats-changed-since-0.2.88.md), pin `scubiee==0.3.146`, run `setup --repair`, re-run `connect`.
 
 ---
 
@@ -125,7 +125,7 @@ Yes after setup. HuggingFace is only needed once for the model download.
 `scubiee unlock-tool` → reinstall → `scubiee setup --repair`. **Not** Admin/reboot. See [Install & debug](./install-and-debug.md) / [Windows](./windows.md).
 
 **`No module named 'pipeline'`?**  
-Half-deleted uv tool env — `scubiee unlock-tool`, then `uv tool install --force scubiee`.
+Half-deleted uv tool env, `scubiee unlock-tool`, then `uv tool install --force scubiee`.
 
 **AMD discrete GPU?**  
 Yes via DirectML (`dml`). Verify with `scubiee setup --status`.
@@ -135,7 +135,7 @@ Yes via DirectML (`dml`). Verify with `scubiee setup --status`.
 ## Data & privacy
 
 **Does my code leave the machine?**  
-No — indexing and search are local. Only the embedding model downloads during setup.
+No, indexing and search are local. Only the embedding model downloads during setup.
 
 **How do I delete everything?**  
 `scubiee unlock-tool` (if locked) → `scubiee wipe --all --confirm --package`. Check JSON `audit.remaining`.

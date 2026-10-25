@@ -22,24 +22,24 @@ n=1 per cell, so read these as direction, not settled numbers.
 
 ## What happened in each
 
-**dirty_files_cap (keyword-friendly, single file) — old map cheaper.**
-`newmap`'s `find` nailed the file in one call (2,438 chars). But the agent then ran `around` + **three `refs` calls** before editing — it explored every config when `find` → edit was enough. config_use: find 1, around 1, refs 3. mini_v3 did find → edit in fewer calls, so it was cheaper (258k vs 353k). Both passed. The extra cost was round-trips, not payload (newmap pulled only 10,241 result chars).
+**dirty_files_cap (keyword-friendly, single file), old map cheaper.**
+`newmap`'s `find` nailed the file in one call (2,438 chars). But the agent then ran `around` + **three `refs` calls** before editing, it explored every config when `find` → edit was enough. config_use: find 1, around 1, refs 3. mini_v3 did find → edit in fewer calls, so it was cheaper (258k vs 353k). Both passed. The extra cost was round-trips, not payload (newmap pulled only 10,241 result chars).
 
-**cache_aware_savings (multi-module) — new map correct, old map wrong.**
+**cache_aware_savings (multi-module), new map correct, old map wrong.**
 `newmap` ran the intended trajectory: `find` → `refs` → `open`, **grep=0**, edit, pass (1.0). mini_v3 found the file but its edit only satisfied 1 of 3 behavior checks (oracle 0.33, fail): on this harder task the single-map agent grepped around (4 greps) and made an incomplete change. So newmap cost ~18% more tokens but was the only arm that got the task right.
 
 ## Reading it honestly
 
 - **Correctness, 3 of 4 passes, and newmap got the one that mattered.** On the hard task newmap passed and old map failed. That is the result that counts: a cheaper wrong answer is not cheaper.
 - **On the easy task, the new tool cost more because the agent over-explored.** This is a rules gap, not a tool gap: the configs make exploration cheap, so the agent used `around` and repeated `refs` when `find` had already answered it. The "stop retrieving the moment you can edit" rule did not bite hard enough.
-- **The cost difference is round-trips, not payload.** newmap's result-chars were small both times (10k, 30k). The extra tokens are the extra `refs`/`around` calls, each re-reading the transcript — exactly the lever the rules are supposed to control.
+- **The cost difference is round-trips, not payload.** newmap's result-chars were small both times (10k, 30k). The extra tokens are the extra `refs`/`around` calls, each re-reading the transcript, exactly the lever the rules are supposed to control.
 - **grep went to 0 on the hard task with newmap**, vs 4 for old map. The configs did replace the grep-walk, which was their main job.
 
 ## The fix (rules, not tool)
 
-The over-exploration on the easy task is a one-line tightening of the configs rules: after `find` returns a confident body, if that is the place you need to edit, **edit — do not call refs/around/open to look around first**. The rules already say "stop retrieving the moment you can edit"; it needs to be a hard MUST NOT, like the anti-re-grep rule in v3, with an explicit bad example (`find` answered it, then refs/around anyway).
+The over-exploration on the easy task is a one-line tightening of the configs rules: after `find` returns a confident body, if that is the place you need to edit, **edit, do not call refs/around/open to look around first**. The rules already say "stop retrieving the moment you can edit"; it needs to be a hard MUST NOT, like the anti-re-grep rule in v3, with an explicit bad example (`find` answered it, then refs/around anyway).
 
-I did **not** change the rules yet — that is a new iteration, and I would want your go-ahead before another token spend to test it.
+I did **not** change the rules yet, that is a new iteration, and I would want your go-ahead before another token spend to test it.
 
 ## Standing
 

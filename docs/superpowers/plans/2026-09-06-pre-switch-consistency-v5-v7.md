@@ -35,8 +35,8 @@ Delta vs composite: acc +0.1627, F1 +0.0169, must +0.0000
 | `composite_v1` | 0.9167 | 0.7606 | 1.0000 | b07 |
 | `semantic_tracer_fuse` | 0.9167 | 0.7606 | 1.0000 | b07 |
 | `poly_embed` | 0.8333 | 0.7060 | 1.0000 | b07,b11 |
-| `hyb_fuse_demote_noise_plus` | 1.0000 | 0.7797 | 1.0000 | — |
-| `hyb_comp_demote_noise_plus` | 1.0000 | 0.7797 | 1.0000 | — |
+| `hyb_fuse_demote_noise_plus` | 1.0000 | 0.7797 | 1.0000 | - |
+| `hyb_comp_demote_noise_plus` | 1.0000 | 0.7797 | 1.0000 | - |
 
 ### verify_ood_v7.json (n=14)
 

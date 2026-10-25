@@ -47,7 +47,7 @@ At the end of `incremental_sync`, the success return is unconditional:
 
 `embed_records` can be **0**. That happens when the named files produce no chunk records (`chunk_file_from_ir` returns `[]` if the file has no lines, and any exception before the chunk write aborts the upsert). The keeper still treats `refreshed=true` as “publish now” (`sync_loop.drain_due`). Publish reloads `chunks.jsonl`, finds **7636** lines, and bumps generation.
 
-So the engine can look like it synced (generation moved, `memory mode=background` was printed) while the chunk file never gained `f0.py`–`f2.py`.
+So the engine can look like it synced (generation moved, `memory mode=background` was printed) while the chunk file never gained `f0.py`, `f2.py`.
 
 `chunk_file_from_ir` does create one whole-file chunk when the file has lines and the graph has no symbols for it. A readable new `.py` file should not take this empty path. If it does, the cause is an exception **before** `_write_sliced_chunks`, not an empty file. That exception is the next hole.
 
@@ -82,7 +82,7 @@ The model was not loaded. The sync paid **4.1 s** inside `get_embedder` before i
 - The keeper was running. `/v1/sync` returned `ok=true` in 413 ms, not “keeper not running”.
 - This run did not take the old full-repo `large_reindex` walk. The log says `background`.
 - The 10,000-chunk cap was not involved. Three tiny files are tier 1 (live batch after the 1 s debounce).
-- The probe files were removed at the end of the check. Their absence now is cleanup, not the reason search missed them at 25–50 s, while they were still on disk.
+- The probe files were removed at the end of the check. Their absence now is cleanup, not the reason search missed them at 25-50 s, while they were still on disk.
 
 ## What to change
 

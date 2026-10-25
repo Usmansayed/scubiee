@@ -1,6 +1,6 @@
 # How everything works
 
-Detailed explanation of Scubiee — what each piece does, how they connect, and why the product behaves the way it does.
+Detailed explanation of Scubiee, what each piece does, how they connect, and why the product behaves the way it does.
 
 **Version:** 0.3.14 · **Audience:** operators, support, technical writers, power users  
 **Fix guide:** [complete-fix-guide.md](./complete-fix-guide.md) · **Files on disk:** [data-and-files-reference.md](./data-and-files-reference.md)
@@ -40,9 +40,9 @@ Scubiee is **not** an IDE plugin and **not** a cloud service. It is three local 
                     ~/.scubiee + <repo>/.scubiee
 ```
 
-- **CLI** — setup, init, connect, sync, doctor, wipe, upgrade.
-- **MCP adapter** — thin process Cursor/Copilot/etc. spawn; forwards tool calls to the engine.
-- **Engine** — owns indexes, embeds code, answers search/grep requests.
+- **CLI**: setup, init, connect, sync, doctor, wipe, upgrade.
+- **MCP adapter**: thin process Cursor/Copilot/etc. spawn; forwards tool calls to the engine.
+- **Engine**: owns indexes, embeds code, answers search/grep requests.
 
 All three use the **same installed Python package** (`pipeline` module) from uv tool or pip.
 
@@ -59,9 +59,9 @@ Think of Scubiee in four layers. Problems usually mean one layer is missing or s
 | **3. Repo enrollment** | Is *this folder* indexed? | `scubiee init .` | `<repo>/.scubiee/id.json` |
 | **4. IDE wiring** | Does the agent know to call MCP? | `scubiee connect --cursor` | `~/.cursor/mcp.json`, rules |
 
-**Why agents say `managed: false`:** Layer 3 or 4 is missing — not a “broken index” by itself.
+**Why agents say `managed: false`:** Layer 3 or 4 is missing, not a “broken index” by itself.
 
-**Why `init` alone is not enough:** Layer 3 without Layer 4 — index exists but IDE never told to use Scubiee.
+**Why `init` alone is not enough:** Layer 3 without Layer 4, index exists but IDE never told to use Scubiee.
 
 ---
 
@@ -69,11 +69,11 @@ Think of Scubiee in four layers. Problems usually mean one layer is missing or s
 
 ### What it does
 
-1. **Detects hardware** — NVIDIA CUDA, Windows DirectML, Apple MLX, or CPU fallback.
-2. **Installs runtime wheels** — FastEmbed, ONNX Runtime variant matching profile (may pip-install into uv tool env).
-3. **Downloads embedding model** — CodeRankEmbed (~270 MB FP16) via HuggingFace/FastEmbed cache.
-4. **Calibrates** — measures embed throughput, writes batch size to `accel.json`.
-5. **Optional** — supervisor/autostart hooks on some platforms.
+1. **Detects hardware**: NVIDIA CUDA, Windows DirectML, Apple MLX, or CPU fallback.
+2. **Installs runtime wheels**: FastEmbed, ONNX Runtime variant matching profile (may pip-install into uv tool env).
+3. **Downloads embedding model**: CodeRankEmbed (~270 MB FP16) via HuggingFace/FastEmbed cache.
+4. **Calibrates**: measures embed throughput, writes batch size to `accel.json`.
+5. **Optional**: supervisor/autostart hooks on some platforms.
 
 ### What it does *not* do
 
@@ -95,7 +95,7 @@ Upgrades and broken Windows reinstalls often leave:
 | Machine | Typical profile | Why |
 |---------|-----------------|-----|
 | Windows + discrete AMD/NVIDIA | `dml` | DirectML FP16 embed |
-| Windows + Intel iGPU only | `cpu` | DML on iGPU hangs or fails — CPU is reliable |
+| Windows + Intel iGPU only | `cpu` | DML on iGPU hangs or fails, CPU is reliable |
 | Apple Silicon | `mlx` | Metal FP16 path |
 | Linux + NVIDIA | `cuda` | CUDA ORT |
 | Everything else | `cpu` | Safe default |
@@ -106,26 +106,26 @@ Upgrades and broken Windows reinstalls often leave:
 
 ### What it does
 
-1. **Validates path** — refuses silent indexing of `$HOME`, `C:\`, `/` (safety).
-2. **Assigns or reads `project_id`** — stable `ce_…` id in `<repo>/.scubiee/id.json`.
-3. **Updates registry** — `~/.scubiee/registry.json` lists this path as managed.
-4. **Runs index pipeline** — scan → parse (Tree-sitter) → graph → chunk → embed → FAISS.
-5. **Starts or attaches daemon** — engine serves this repo’s runtime.
+1. **Validates path**: refuses silent indexing of `$HOME`, `C:\`, `/` (safety).
+2. **Assigns or reads `project_id`**: stable `ce_…` id in `<repo>/.scubiee/id.json`.
+3. **Updates registry**: `~/.scubiee/registry.json` lists this path as managed.
+4. **Runs index pipeline**: scan → parse (Tree-sitter) → graph → chunk → embed → FAISS.
+5. **Starts or attaches daemon**: engine serves this repo’s runtime.
 
 ### Project identity
 
 - **One project id** can map to **multiple checkout paths** (e.g. worktrees) in registry.
-- **Moving the repo** — if `id.json` moves with it, Scubiee recognizes the project.
-- **Deleting `id.json`** — next `init` may create a **new** id → full re-index required.
+- **Moving the repo**: if `id.json` moves with it, Scubiee recognizes the project.
+- **Deleting `id.json`**: next `init` may create a **new** id → full re-index required.
 
 ### Fast mode vs full
 
-- **`--fast`** — only `.py` under standard roots (`packages`, `src`, …) or your `--roots`.
-- **Full** — broader walk with skip rules (skips `node_modules`, `.git`, large vendor trees, etc.).
+- **`--fast`**: only `.py` under standard roots (`packages`, `src`, …) or your `--roots`.
+- **Full**: broader walk with skip rules (skips `node_modules`, `.git`, large vendor trees, etc.).
 
 ### Confirm gate (>400 files)
 
-Counts **indexable** files (same rules as indexing — not raw file count on disk). Prevents accidental indexing of huge trees without explicit `--confirm`.
+Counts **indexable** files (same rules as indexing, not raw file count on disk). Prevents accidental indexing of huge trees without explicit `--confirm`.
 
 ---
 
@@ -136,12 +136,12 @@ Counts **indexable** files (same rules as indexing — not raw file count on dis
 | Artifact | Purpose |
 |----------|---------|
 | User/global MCP config | Tells IDE how to spawn `scubiee-mcp` |
-| Project MCP config (Cursor, Special-4) | Absolute `CTX_REPO` pin — **required** because Cursor does not expand `${workspaceFolder}` in global MCP |
+| Project MCP config (Cursor, Special-4) | Absolute `CTX_REPO` pin, **required** because Cursor does not expand `${workspaceFolder}` in global MCP |
 | Agent rules (e.g. `.cursor/rules/scubiee.mdc`) | Teaches agent: call `gate`/`status` once, use map/focus when managed |
 
 ### Special-4 tools
 
-Kiro, Copilot/VS Code, Cline, Roo Code read **workspace-local** MCP files. Global connect alone is insufficient — run `connect` **inside each project**.
+Kiro, Copilot/VS Code, Cline, Roo Code read **workspace-local** MCP files. Global connect alone is insufficient, run `connect` **inside each project**.
 
 ### After every upgrade
 
@@ -154,9 +154,9 @@ Package version changes but MCP env and rules may reference old behavior. **Re-r
 ### Role
 
 - HTTP server on `127.0.0.1:8765` (default).
-- Holds **RuntimeManager** per enrolled repo — index freshness, search, grep.
-- **ResourceManager** — pauses embed when free RAM critically low (unless `CTX_RM_DISABLE=1`).
-- **Watchdog** — restarts daemon if health check fails (disable: `CTX_WATCHDOG=0`).
+- Holds **RuntimeManager** per enrolled repo, index freshness, search, grep.
+- **ResourceManager**: pauses embed when free RAM critically low (unless `CTX_RM_DISABLE=1`).
+- **Watchdog**: restarts daemon if health check fails (disable: `CTX_WATCHDOG=0`).
 
 ### Who talks to it
 
@@ -165,12 +165,12 @@ Package version changes but MCP env and rules may reference old behavior. **Re-r
 
 ### Warming
 
-When daemon is starting or repo runtime is cold, MCP may return `warming: true`. **Meaning:** retry the **locate tool** once after a few seconds — do not poll `status()` every agent turn.
+When daemon is starting or repo runtime is cold, MCP may return `warming: true`. **Meaning:** retry the **locate tool** once after a few seconds, do not poll `status()` every agent turn.
 
 ### Logs
 
-- `~/.scubiee/engine.log` — daemon stdout/stderr
-- `~/.scubiee/watchdog.log` — restart events
+- `~/.scubiee/engine.log`: daemon stdout/stderr
+- `~/.scubiee/watchdog.log`: restart events
 
 ---
 
@@ -191,13 +191,13 @@ Files on disk
 
 ### Incremental sync
 
-`scubiee sync .` recomputes Merkle diff — only changed files re-parsed and re-embedded. Background daemon may also sync enrolled repos.
+`scubiee sync .` recomputes Merkle diff, only changed files re-parsed and re-embedded. Background daemon may also sync enrolled repos.
 
 ### Why search misses new code
 
 - File not in index scope (e.g. not `.py` in fast mode).
 - Sync not run after edit.
-- Searching wrong repo (multi-root Cursor — bind `root` on first MCP call).
+- Searching wrong repo (multi-root Cursor, bind `root` on first MCP call).
 
 ---
 
@@ -209,13 +209,13 @@ Files on disk
 scubiee search "authentication middleware" .
 ```
 
-Uses same engine as MCP — hybrid semantic + lexical + graph fusion inside conductor/retrieve layer.
+Uses same engine as MCP, hybrid semantic + lexical + graph fusion inside conductor/retrieve layer.
 
 ### MCP (`phase` surface)
 
 | Stage | Tool | Returns |
 |-------|------|---------|
-| Overview | `map(query)` | Ranked cards — paths, symbols, scores — **no bodies** |
+| Overview | `map(query)` | Ranked cards, paths, symbols, scores, **no bodies** |
 | Depth | `focus(target, mode=…)` | Outline, span, neighbors, call_sites |
 | Literal | `grep(pattern, glob=…)` | Line matches in **indexed** files |
 | Paths | `glob(pattern)` | Indexed file paths matching pattern |
@@ -240,7 +240,7 @@ One MCP process may serve multiple Cursor workspaces. Pass **`root`** = workspac
 
 ### Global stop
 
-When user runs `scubiee stop`, MCP tools return paused/stopped errors until **`scubiee resume`**. Polling `status()` does not unpause — user action required.
+When user runs `scubiee stop`, MCP tools return paused/stopped errors until **`scubiee resume`**. Polling `status()` does not unpause, user action required.
 
 ---
 
@@ -253,7 +253,7 @@ When user runs `scubiee stop`, MCP tools return paused/stopped errors until **`s
 | Paused | managed, paused flag | present | Native tools until `activate` |
 | After wipe | removed | deleted | Native tools; re-`init` to return |
 
-**Wipe** (`scubiee wipe . --confirm`) — removes enrollment, project store, VectorDB collections, `.scubiee`, repo MCP/rules. **Does not delete source code.**
+**Wipe** (`scubiee wipe . --confirm`): removes enrollment, project store, VectorDB collections, `.scubiee`, repo MCP/rules. **Does not delete source code.**
 
 Details: [../docs/web-info/repo-lifecycle.md](../docs/web-info/repo-lifecycle.md)
 
@@ -269,7 +269,7 @@ Details: [../docs/web-info/repo-lifecycle.md](../docs/web-info/repo-lifecycle.md
 | Data | Kept | Kept |
 | Use when | Upgrade, uninstall prep | Maintenance on one repo |
 
-Common mistake: user paused one repo but agent says run `resume` — that's **global** stop. Per-repo needs **`activate`**.
+Common mistake: user paused one repo but agent says run `resume`, that's **global** stop. Per-repo needs **`activate`**.
 
 ---
 
@@ -295,13 +295,13 @@ Upgrade releases registered in code declare which components need rewrite/migrat
 
 ### File locks
 
-Cursor holds `python.exe` under `%APPDATA%\uv\tools\scubiee\Scripts\`. `uv tool install --force` fails with **Access denied (os error 5)** — not ACL.
+Cursor holds `python.exe` under `%APPDATA%\uv\tools\scubiee\Scripts\`. `uv tool install --force` fails with **Access denied (os error 5)**, not ACL.
 
 **Fix path:** `scubiee unlock-tool` → disables MCP stub → kills processes → rename-aside tool dir → reinstall.
 
 ### Doctor install identity (0.3.13+)
 
-`scubiee doctor` reports `active_binary` vs `expected_binary`. Duplicate scubiee on PATH (conda + uv) causes version drift — use one install method.
+`scubiee doctor` reports `active_binary` vs `expected_binary`. Duplicate scubiee on PATH (conda + uv) causes version drift, use one install method.
 
 ### Terminal UX (0.3.13+)
 

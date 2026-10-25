@@ -1,4 +1,4 @@
-# Why the agent picks Grep over Map — evidence from decision traces
+# Why the agent picks Grep over Map: evidence from decision traces
 
 Built from the captured decision traces (Cursor `auto`, Run 4 `20261004T160838Z`, 4 cells:
 c_default ×2, c_nav ×2) plus the earlier cells. Each trace records the agent's own reasoning
@@ -13,19 +13,19 @@ exception" rules. **Do not draft wording without reconciling it against this lis
 
 Before any map-vs-grep reasoning, two artifacts dominated the traces and must be neutralized:
 
-1. **Contaminated task — `add_importers_expand_alias` (hard7) is INVALID.**
+1. **Contaminated task, `add_importers_expand_alias` (hard7) is INVALID.**
    Its oracle expects edits to `packages/pipeline/mcp_locate.py` + the constant
    `_EXPAND_DIRECTION_VALUES`. That file was **archived** to `archive/old-mcp-map/mcp_locate.py`
    during the v3 doc/cutover. Verified: the file is absent from the live tree; the constant has
    0 hits in `packages/`, 3 in the archive. The agent correctly kept discovering the file missing
-   and burned **40–60 greps** trying to reconcile with the oracle. This — not framing — is why
+   and burned **40-60 greps** trying to reconcile with the oracle. This, not framing, is why
    hard7 swung 0.33↔1.0. **Discard hard7 as an instrument.** Valid tasks whose targets exist:
    `unify_token_estimate` (token_meter.py + session_store.py) and `cache_aware_savings`
    (token_meter.py).
 
 2. **Task-spec hunting is a harness artifact, not a code-locate fork.**
    The prompt is vague and the workspace folder is literally named after the task
-   (`..._cursor_add_importers_expand_alias`), so every cell opened with 2–4 grep/glob calls
+   (`..._cursor_add_importers_expand_alias`), so every cell opened with 2-4 grep/glob calls
    searching for the task spec string (`grep "add_importers_expand_alias"`, globbing the harness
    dir). Reasoning verbatim: *"The workspace is named `cursor_add_importers_expand_alias`… I will
    search the harness scripts for the exact requirement."* This inflates grep counts and is
@@ -41,10 +41,10 @@ must keep a clear path for these, or stricter wording will backfire.
 
 | # | Trigger (from traces) | Why grep is right |
 |---|---|---|
-| L1 | **Exact literal / known string** — "the exact files and strings are known, routing a known literal through map is unnecessary." | A known literal is one cheap grep; map adds nothing. |
-| L2 | **Verify a specific line/edit site after you already hold the file** — confirm a brace set contains both `importers` and `callers`. | Pinpoint confirmation of a literal, not discovery. |
-| L3 | **Map genuinely returned nothing usable** — "the prior find on context_trace.py only returned its module docstring… a direct grep is preferable." | Correct fallback when a map result is thin (see B3 — the upstream cause is often a bad query, but the fallback itself is legitimate). |
-| L4 | **Non-code / structural checks** — `.gitignore`, git ls-files, "is this file tracked?" | Outside map's semantic code index. |
+| L1 | **Exact literal / known string**, "the exact files and strings are known, routing a known literal through map is unnecessary." | A known literal is one cheap grep; map adds nothing. |
+| L2 | **Verify a specific line/edit site after you already hold the file**, confirm a brace set contains both `importers` and `callers`. | Pinpoint confirmation of a literal, not discovery. |
+| L3 | **Map genuinely returned nothing usable**, "the prior find on context_trace.py only returned its module docstring… a direct grep is preferable." | Correct fallback when a map result is thin (see B3, the upstream cause is often a bad query, but the fallback itself is legitimate). |
+| L4 | **Non-code / structural checks**, `.gitignore`, git ls-files, "is this file tracked?" | Outside map's semantic code index. |
 
 ## 2. DEFAULT-TO-GREP (the behavior we must fix with wording)
 
@@ -81,7 +81,7 @@ drivers. It did **not** fix B3 (query quality) or fully fix B4 (cross-file reach
 4. **Teach cross-file reach (fixes B4).** `focus names=[A,B,...]` spans files in one call;
    `graph`/`related` cover spread-out changes. Knowing the change touches 2 files is a reason to
    pass both names to focus, not to grep.
-5. **Preserve the narrow grep path (L1–L4) explicitly** so stricter wording doesn't push map onto
+5. **Preserve the narrow grep path (L1, L4) explicitly** so stricter wording doesn't push map onto
    genuine literal lookups and non-code checks.
 
 ## 5. Measurement hygiene for the A/B (feeds task #4)
@@ -90,5 +90,5 @@ drivers. It did **not** fix B3 (query quality) or fully fix B4 (cross-file reach
   oracle is retargeted to the v3 tree (or delete it).
 - Expect a task-spec-hunt phase from the folder name; count **map calls** and **post-spec greps**
   separately from the initial spec-hunt greps, or feed the prompt without the telltale folder name.
-- Keep trace capture ON every run so each new wording is judged by whether B1–B5 reasoning
-  disappears — not just by tokens/oracle, which are high-variance on `auto` at low n.
+- Keep trace capture ON every run so each new wording is judged by whether B1, B5 reasoning
+  disappears, not just by tokens/oracle, which are high-variance on `auto` at low n.

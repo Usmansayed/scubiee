@@ -1,4 +1,4 @@
-# CE Live Reindexing System — Final Design
+# CE Live Reindexing System: Final Design
 
 **Date:** 2026-08-16  
 **Status:** **LOCKED for implementation** (product contract)  
@@ -18,9 +18,9 @@
 
 When agents are **forced to locate via CE**, the index must be:
 
-1. **Fresh enough** that code the agent just wrote is findable within ~1–2 seconds of a quiet save.  
+1. **Fresh enough** that code the agent just wrote is findable within ~1-2 seconds of a quiet save.  
 2. **Stable enough** that an active `map` / `search` / `focus` streak does not reshuffle mid-thought (token thrash).  
-3. **Cheap enough** that normal agent dirty sets (≈5–20 chunks) never feel like “reindexing the repo.”
+3. **Cheap enough** that normal agent dirty sets (≈5-20 chunks) never feel like “reindexing the repo.”
 
 **Non-goal:** full-corpus re-embed on a timer. Full index remains cold-start / repair / branch-storm only.
 
@@ -33,13 +33,13 @@ Do **not** ship multi-model concurrent Nomic workers on DML (3+ copies crash; 2 
 
 | Workload | Embed-only (measured) | Design implication |
 |----------|----------------------:|--------------------|
-| 5 chunks | ~0.22–0.24 s | Instant after debounce |
-| 10 chunks | ~0.34–0.39 s | Instant |
-| ~15–20 chunks (typical sync dirty) | ~0.5–0.8 s | “Every edit very fresh” is viable |
+| 5 chunks | ~0.22-0.24 s | Instant after debounce |
+| 10 chunks | ~0.34-0.39 s | Instant |
+| ~15-20 chunks (typical sync dirty) | ~0.5-0.8 s | “Every edit very fresh” is viable |
 | 100 chunks | ~3.5 s | Still fine; rare for one quiet window |
 | Full frontend-mcp ~3806 chunks | **~118 s (~2 min)** | Never on the live path |
 | Clean root probe | tens of ms | Timer backup stays cheap |
-| Graph patch (changed files only) | typically sub-second–~1–2 s | Structural live before dense |
+| Graph patch (changed files only) | typically sub-second, ~1-2 s | Structural live before dense |
 
 **Assumption (product):** agent-driven sync dirty sets stay ≤ ~20 chunks almost always. Larger → storm path (§7).
 
@@ -49,7 +49,7 @@ Do **not** ship multi-model concurrent Nomic workers on DML (3+ copies crash; 2 
 
 | Layer | Today | Target |
 |-------|-------|--------|
-| Trigger | Keeper every **5 min** + `.sync-trigger` | **Primary:** file-change / write debounce 1–2 s; **backup:** 4–5 min probe; session-end drain |
+| Trigger | Keeper every **5 min** + `.sync-trigger` | **Primary:** file-change / write debounce 1-2 s; **backup:** 4-5 min probe; session-end drain |
 | Work unit | `incremental_sync` on dirty merkle set | Same core; always bounded + coalesced |
 | Graph | `patch_and_save_graph` / replace by `source_file` | Unchanged algorithm; run **eager** on debounce fire |
 | Embed | Re-embed changed chunks, **1 model** | Unchanged; fire for small dirty sets immediately after extract |
@@ -66,13 +66,13 @@ We are not inventing a new indexer. We are **retargeting triggers and publicatio
                     ┌─────────────────────────────────────┐
                     │           Triggers                   │
                     │  file watch / save / Edit tool       │
-                    │  merkle probe (4–5 min)              │
+                    │  merkle probe (4-5 min)              │
                     │  session end / MCP disconnect        │
                     └──────────────┬──────────────────────┘
                                    ▼
                          dirty_set (ledger)
                                    │
-                         debounce 1–2 s
+                         debounce 1-2 s
                          (reset per path on rewrite)
                                    ▼
               ┌────────────────────┴────────────────────┐
@@ -119,7 +119,7 @@ overlay is searchable; promotion only controls stable global ranking.
 
 ## 5. Dirty ledger
 
-First-class in-memory (+ optional persist) structure — not an informal side effect.
+First-class in-memory (+ optional persist) structure, not an informal side effect.
 
 Per path:
 
@@ -142,7 +142,7 @@ Per path:
 
 ---
 
-## 6. Primary path — continuous per-edit sync
+## 6. Primary path: continuous per-edit sync
 
 ### 6.1 Trigger
 
@@ -157,32 +157,32 @@ On filesystem mtime/hash change or host write signal (IDE watcher → existing `
 
 **Default debounce:** 1500 ms first-write / 2500 ms rewrite-burst
 (configurable `CTX_SYNC_DEBOUNCE_MS` and
-`CTX_SYNC_REWRITE_DEBOUNCE_MS`, clamp 500–5000).
+`CTX_SYNC_REWRITE_DEBOUNCE_MS`, clamp 500-5000).
 
 ### 6.2 On debounce fire (normal agent edit)
 
 Assume dirty set maps to **≤ ~20 chunks** (typical):
 
-1. Acquire sync lock (skip/queue if already syncing — coalesce into next run).  
+1. Acquire sync lock (skip/queue if already syncing, coalesce into next run).  
 2. ResourceManager gate (`sync` / `embed`); if deferred, keep dirty and retry.  
 3. **Extract** only dirty files (Graphify AST cache for unchanged).  
 4. **Graph patch** (`build_merge` / `patch_and_save_graph`) + **prune** removed files.  
 5. Update **BM25 / disk overlay** immediately → mark `bm25_ready` / `graph_ready`.  
 6. **Embed** changed chunks with **one** warm model, batch 16.  
 7. Upsert vectors; mark `dense_ready`.  
-8. **Publish policy (§8)** — may promote now or wait for streak end.
+8. **Publish policy (§8)**: may promote now or wait for streak end.
 
 **Target SLA (p50, warm model, ≤20 chunks):**
 
 | Milestone | Target |
 |-----------|--------:|
-| `save → graph+BM25 searchable` | ≤ **1.5–2.5 s** (incl. debounce) |
-| `save → dense searchable` | ≤ **2–3.5 s** (incl. debounce) |
+| `save → graph+BM25 searchable` | ≤ **1.5-2.5 s** (incl. debounce) |
+| `save → dense searchable` | ≤ **2-3.5 s** (incl. debounce) |
 | `save → published generation` | ≤ **same**, or delayed until locate quiet |
 
 ### 6.3 Why “every edit very fresh” is correct here
 
-Agent sync is **not** full reindex. Even a “big” agent turn usually dirties a handful of files → **~15–20 chunks**. At ~33 chunks/s embed, that is sub-second embed after quiet. The product promise is:
+Agent sync is **not** full reindex. Even a “big” agent turn usually dirties a handful of files → **~15-20 chunks**. At ~33 chunks/s embed, that is sub-second embed after quiet. The product promise is:
 
 > **After you stop typing/saving for ~1.5 s, CE is live again.**
 
@@ -244,7 +244,7 @@ When streak ends **or** quiet debounce after last locate:
 
 | Trigger | Behavior |
 |---------|----------|
-| **4–5 min probe** | Root probe; if dirty and no active sync, drain `dirty_set` with same SyncWorker |
+| **4-5 min probe** | Root probe; if dirty and no active sync, drain `dirty_set` with same SyncWorker |
 | **Session end / MCP disconnect / process exit** | `final_check`: process remaining dirty + **force publish** |
 | **Manual / doctor** | `ctx sync` / repair rebuild |
 
@@ -314,7 +314,7 @@ No new “second indexer.” Extend:
 
 ## 14. Explicit non-goals / anti-patterns
 
-- Full re-embed every 4–5 minutes.  
+- Full re-embed every 4-5 minutes.  
 - Un-debounced sync on every keystroke / ApplyPatch.  
 - Multi-copy Nomic “workers” for throughput.  
 - Blocking agents on dense completion.  
@@ -334,14 +334,14 @@ No new “second indexer.” Extend:
 | Decision | Choice |
 |----------|--------|
 | Primary freshness | Debounced continuous sync on file change |
-| Debounce | 1–2 s (default 1500 ms) |
-| Typical dirty assumption | ≤ ~15–20 chunks |
+| Debounce | 1-2 s (default 1500 ms) |
+| Typical dirty assumption | ≤ ~15-20 chunks |
 | Embed workers | **1** model |
 | Batch | **16** |
 | Graph | Eager patch on sync fire |
 | Dense | Eager for small dirty sets; never block tools |
 | Publish | Separated; freeze during locate streak |
-| Timer | Backup probe 4–5 min |
+| Timer | Backup probe 4-5 min |
 | Session end | Force drain + publish |
 | Storm | Caps + chunked/full; no fake live SLA |
 

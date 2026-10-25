@@ -1,4 +1,4 @@
-# Live MCP smoke — Context Tracing tools
+# Live MCP smoke: Context Tracing tools
 
 ```powershell
 # Reload Scubiee MCP in Cursor after pull (or restart MCP server).

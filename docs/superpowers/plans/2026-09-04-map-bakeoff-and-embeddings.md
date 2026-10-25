@@ -30,7 +30,7 @@ On this fixture:
 
 1. **BM25 alone is the best map** into PolyTrace.
 2. Graph reinforcement / PPR slightly **hurts** (hubs get mass).
-3. Multi-seed raises recall to ~1.0 but floods forbidden FPs — bad for “no more.”
+3. Multi-seed raises recall to ~1.0 but floods forbidden FPs, bad for “no more.”
 4. Embeddings as the map channel **lose** to BM25 for landing a seed.
 
 So for tracing: **BM25 map → PolyTrace** is enough. Whole-repo dense index is not buying the heatmap.
@@ -54,4 +54,4 @@ So for tracing: **BM25 map → PolyTrace** is enough. Whole-repo dense index is 
 - **Tracing / context slice:** BM25 (optional) + **PolyTrace**. Skip dense.
 - **Discovery / relatedness / soft locate:** keep dense in **`plate` / `pinpoint` / searcher`**, preferably as **rerank of BM25 candidates**, not as the only index of truth.
 
-Dense indexing the whole repo is justified for Scubie’s *search/plate* product — **not** because tracing needs it on every file.
+Dense indexing the whole repo is justified for Scubie’s *search/plate* product, **not** because tracing needs it on every file.

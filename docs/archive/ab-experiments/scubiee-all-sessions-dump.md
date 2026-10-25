@@ -1,6 +1,6 @@
-# Scubiee harness — complete session data dump
+# Scubiee harness: complete session data dump
 
-Generated 2026-09-30 18:22:05Z from `C:\Users\usman\Downloads\context-engine\.ab_workspaces\claude_sdk_harness`. Every number is read directly from the stored run JSON; nothing here is estimated. Token totals are cache-read-dominated (~90%+), so absolute totals carry run-to-run variance — the trajectory counts (map/grep/read, turns) and oracle results are the stable signals.
+Generated 2026-09-30 18:22:05Z from `C:\Users\usman\Downloads\context-engine\.ab_workspaces\claude_sdk_harness`. Every number is read directly from the stored run JSON; nothing here is estimated. Token totals are cache-read-dominated (~90%+), so absolute totals carry run-to-run variance, the trajectory counts (map/grep/read, turns) and oracle results are the stable signals.
 
 **Total run directories: 34**
 
@@ -18,8 +18,8 @@ cited here is present verbatim in a run section further down.
 | rules4 (#27) | cache_aware (discovery) | 1,249,297 | **831,077** (guided) | **−33% cost** | guided passed oracle, 20 turns |
 | rules4 (#27) | same | 1,249,297 | 1,282,194 (strict) | +2.6% | strict passed, 34 turns (worst cost) |
 | rules4 (#27) | same | 1,249,297 | 1,146,194 (flexible) | −8.3% | flexible FAILED oracle (0.33) |
-| gVs (#29) | cache_aware | — | 1,000,482 (guided) | — | guided FAILED (0.33), 21 turns |
-| gVs (#29) | same | — | 1,119,510 (strict) | — | strict PASSED (1.0), 24 turns |
+| gVs (#29) | cache_aware | - | 1,000,482 (guided) | - | guided FAILED (0.33), 21 turns |
+| gVs (#29) | same | - | 1,119,510 (strict) | - | strict PASSED (1.0), 24 turns |
 | smallGuided (#25) | cache_aware | 862,855 | 1,246,468 (guided) | −44% | both passed; guided pricier this run |
 | smallStrict (#23) | cache_aware | 1,037,706 | 1,125,787 (strict) | −8.5% | strict FAILED oracle (0.33) |
 | 3arm (#17) | cache_aware | 750,033 | 1,344,822 (map-only) | −79% | map-only FAILED (0.33) that run |
@@ -41,27 +41,27 @@ cited here is present verbatim in a run section further down.
 
 ### The stable findings across all runs
 
-1. **~90%+ of every run's tokens is `cache_read`** — the transcript re-read each
+1. **~90%+ of every run's tokens is `cache_read`**: the transcript re-read each
    turn. So total tokens ≈ (context size) × (turns). Output tokens are always
-   tiny (3k–27k). This is the single most important mechanic in the whole study.
+   tiny (3k, 27k). This is the single most important mechanic in the whole study.
 2. **The biggest single waste is a whole-file Read.** Run #34's without arm read a
    67,473-char file; its per-turn carried context jumped from ~28k to ~87k and
    stayed there for the rest of the run → 973,962 tokens. Map-equipped arms never
-   read a whole file (biggest reads 4.7k–6.3k chars) because map returns `loc`
+   read a whole file (biggest reads 4.7k, 6.3k chars) because map returns `loc`
    line ranges. Total result-chars pulled into context: without 139,039 vs guided
-   22,576 vs two_layer 26,757 — a **5–6× compression** and Scubiee's clearest win.
+   22,576 vs two_layer 26,757, a **5-6× compression** and Scubiee's clearest win.
 3. **A single map response is ~1,000 chars (warm/first) to ~4,200 chars (full 12
-   cards)** — measured in #34. Two maps ≈ 5.2k chars, carrying zero file bodies.
+   cards)**, measured in #34. Two maps ≈ 5.2k chars, carrying zero file bodies.
 4. **Cost order guided < strict reproduced twice** (rules4: 831k vs 1,282k; gVs:
    1,000k vs 1,120k). Strict's forced map-first ran the most turns (34, 24). [STR]
 5. **Correctness did NOT track cost.** guided passed 2 of 4 relevant coding runs,
    strict passed the ones guided failed; flexible failed. No arm is a clean winner
    on correctness at these sample sizes. [WEAK]
 6. **Why Scubiee does not win the token total every time:** (a) turn-count variance
-   is huge — the SAME without/idle_retire query was 12 turns/278k (#33) and 20
+   is huge, the SAME without/idle_retire query was 12 turns/278k (#33) and 20
    turns/974k (#34), a 3.5× swing from nondeterminism alone, larger than the
    Scubiee effect at n=1; (b) map + a long instruction block is a fixed tax that
-   only pays off when it prevents a big read — on an easy query native grep is
+   only pays off when it prevents a big read, on an easy query native grep is
    already cheap, so the tax makes Scubiee the pricier arm (see #25, #33 guided).
 7. **map→grep redundancy and grep-walking are the observed failure patterns** in
    the losing traces; "read the loc span, never the whole file" is the rule that
@@ -71,9 +71,9 @@ cited here is present verbatim in a run section further down.
 - **Nearly all cells are n=1.** Cost differences between arms are directional, not
   significant. Trajectory counts (map/grep/read, turns) and oracle pass/fail are
   the trustworthy per-run signals; absolute token totals carry 3×+ variance.
-- Early runs (#1–#10, `vague`/`s1`/`s2`) predate the bare-server-instruction
+- Early runs (#1, #10, `vague`/`s1`/`s2`) predate the bare-server-instruction
   confound fix, so their with-Scubiee arm also carried the stock pack-ladder text
-  that references tools it couldn't call — treat their token totals as confounded.
+  that references tools it couldn't call, treat their token totals as confounded.
 - `bigStrict` (#20/#21) has an aborted/partial run with no report.
 
 ---
@@ -1981,13 +1981,13 @@ _preflight-only or aborted; no cells._
 | guided/idle_engine_self_retire | 300,252 | 275,748 | 4,031 | 13 | 12 | 2 | 4 | 4 | 1 | R1.0/P0.25/M1.0 |
 | two_layer/idle_engine_self_retire | 456,737 | 429,812 | 4,157 | 13 | 12 | 2 | 4 | 4 | 1 | R1.0/P0.333/M1.0 |
 
-**without / idle_engine_self_retire** — result sizes (chars): Grep=1594, Grep=721, Grep=40, Grep=42, Grep=49, Read=37561, Read=67473, Grep=51, Grep=9681, Read=2701, Grep=1802, Grep=4254, Grep=1635, Read=3021, Read=2879, Read=1944, Grep=74, Read=3263, Write=254
+**without / idle_engine_self_retire**: result sizes (chars): Grep=1594, Grep=721, Grep=40, Grep=42, Grep=49, Read=37561, Read=67473, Grep=51, Grep=9681, Read=2701, Grep=1802, Grep=4254, Grep=1635, Read=3021, Read=2879, Read=1944, Grep=74, Read=3263, Write=254
   cache_read/turn: first=20798 peak=87238 last=87238 steps=32
 
-**guided / idle_engine_self_retire** — result sizes (chars): ToolSearch=60, s:map=989, s:map=4170, Read=3964, Read=3668, Grep=106, Read=4704, Grep=156, Grep=148, Grep=1447, Read=2911, Write=253
+**guided / idle_engine_self_retire**: result sizes (chars): ToolSearch=60, s:map=989, s:map=4170, Read=3964, Read=3668, Grep=106, Read=4704, Grep=156, Grep=148, Grep=1447, Read=2911, Write=253
   cache_read/turn: first=20798 peak=38953 last=38953 steps=20
 
-**two_layer / idle_engine_self_retire** — result sizes (chars): ToolSearch=60, s:map=995, s:map=4274, Read=3385, Read=4727, Read=1860, Read=6263, Grep=106, Grep=40, Grep=2790, Grep=2001, Write=256
+**two_layer / idle_engine_self_retire**: result sizes (chars): ToolSearch=60, s:map=995, s:map=4274, Read=3385, Read=4727, Read=1860, Read=6263, Grep=106, Grep=40, Grep=2790, Grep=2001, Write=256
   cache_read/turn: first=20798 peak=41172 last=41172 steps=22
 
 **Aggregate (per-arm):**

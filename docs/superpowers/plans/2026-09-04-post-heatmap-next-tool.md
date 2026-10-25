@@ -22,7 +22,7 @@ Neighbors/hop are a **rare second step** when wiring is still missing after read
 
 ```text
 trace (heatmap cards + handles)
-  → fetch/expand top 1–3 handles   ← primary completer
+  → fetch/expand top 1-3 handles   ← primary completer
   → hop(handle) only if still stuck ← secondary
   → edit
 ```

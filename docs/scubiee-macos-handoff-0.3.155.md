@@ -1,4 +1,4 @@
-# Scubiee macOS Handoff — v0.3.155 (delta since the 0.3.152 pass)
+# Scubiee macOS Handoff: v0.3.155 (delta since the 0.3.152 pass)
 
 **You are:** an autonomous coding agent on a **macOS** machine (say whether it's
 Apple Silicon or Intel) with a terminal and, ideally, the `@scubiee/*` MCP tools
@@ -12,7 +12,7 @@ most. Fix macOS-specific breakage on a branch and write a short findings doc.
 
 **Authority:** yes to install, run, test, edit code, rebuild, commit on a branch.
 Do **not** push or open PRs unless asked. Destructive commands (`wipe`, `remove`,
-`halt`) are expected in §3 and §8 — this handoff exists partly to test them.
+`halt`) are expected in §3 and §8, this handoff exists partly to test them.
 Run them only on this machine's Scubiee install and throwaway repos.
 
 **Deliverable:** `docs/scubiee-macos-findings-0.3.155.md` (template in §9).
@@ -30,15 +30,15 @@ Full write-ups (root cause, fix, Windows/Linux evidence):
 
 | # | Ver | Change | Mac risk |
 |---|-----|--------|----------|
-| L | 0.3.153 | New progress loaders: logo, "Analysing repository size" spinner, per-stage bars in `setup` / `init` / `wipe` | **medium** — terminal rendering differs (Terminal.app vs iTerm2, `\r` redraws, Unicode spinner glyphs) |
-| 1 | 0.3.154 | `wipe --all` no longer exits 1 ("quit Cursor…") on a clean machine; stopping never recreates `~/.scubiee` | **medium** — the IDE-lock / remaining-files audit is OS-specific |
-| 2 | 0.3.154 | `doctor`/`setup` no longer report a second install on a plain `uv tool install` (`env_guard.current_python()` no longer resolves the venv `python` symlink) | **high** — macOS venvs are symlinked like Linux, plus `/var`→`/private/var`, Homebrew and uv-managed Pythons. Only tested on Linux |
-| 3 | 0.3.154 | `scubiee sync` waits for its own poll to finish instead of returning `deferred` | low — smoke only |
-| 4 | 0.3.154 | `init` time estimate = work ÷ this machine's measured embed speed (`~/.scubiee/embed_throughput.json`) | **high** — speed comes from MLX/CoreML on Mac; calibrated only on CPU and DirectML |
-| 5 | 0.3.154 | `resume` no longer hangs ~90 s with the engine silently failing to start | **medium** — engine spawn/launchd path differs on Mac |
-| 6 | 0.3.154 | `connect` / `resume` report only paths that were actually written | low–medium — Cursor/Claude config locations on Mac |
-| 10 | 0.3.155 | `wipe --all` fast path: never walks home; pruned repo scan; sleeps only when something was killed; `~/.scubiee` + model caches renamed aside and deleted by a detached `/bin/sh` cleaner after the CLI exits | **high** — the POSIX cleaner, macOS home layout / TCC prompts and the process check are all Mac-specific (details in §3) |
-| 11 | 0.3.155 | `map focus` by bare name ~120 ms again (was ~1.3 s): the grep prefilter now handles lookaround/char-class patterns | low — pure Python; just record the timing |
+| L | 0.3.153 | New progress loaders: logo, "Analysing repository size" spinner, per-stage bars in `setup` / `init` / `wipe` | **medium**, terminal rendering differs (Terminal.app vs iTerm2, `\r` redraws, Unicode spinner glyphs) |
+| 1 | 0.3.154 | `wipe --all` no longer exits 1 ("quit Cursor…") on a clean machine; stopping never recreates `~/.scubiee` | **medium**, the IDE-lock / remaining-files audit is OS-specific |
+| 2 | 0.3.154 | `doctor`/`setup` no longer report a second install on a plain `uv tool install` (`env_guard.current_python()` no longer resolves the venv `python` symlink) | **high**, macOS venvs are symlinked like Linux, plus `/var`→`/private/var`, Homebrew and uv-managed Pythons. Only tested on Linux |
+| 3 | 0.3.154 | `scubiee sync` waits for its own poll to finish instead of returning `deferred` | low, smoke only |
+| 4 | 0.3.154 | `init` time estimate = work ÷ this machine's measured embed speed (`~/.scubiee/embed_throughput.json`) | **high**, speed comes from MLX/CoreML on Mac; calibrated only on CPU and DirectML |
+| 5 | 0.3.154 | `resume` no longer hangs ~90 s with the engine silently failing to start | **medium**, engine spawn/launchd path differs on Mac |
+| 6 | 0.3.154 | `connect` / `resume` report only paths that were actually written | low, medium, Cursor/Claude config locations on Mac |
+| 10 | 0.3.155 | `wipe --all` fast path: never walks home; pruned repo scan; sleeps only when something was killed; `~/.scubiee` + model caches renamed aside and deleted by a detached `/bin/sh` cleaner after the CLI exits | **high**, the POSIX cleaner, macOS home layout / TCC prompts and the process check are all Mac-specific (details in §3) |
+| 11 | 0.3.155 | `map focus` by bare name ~120 ms again (was ~1.3 s): the grep prefilter now handles lookaround/char-class patterns | low, pure Python; just record the timing |
 
 Nothing in this delta changed the embedder, MLX, warm sequence, graph lane or
 launchd supervisor. If those were green in the 0.3.152 findings, only re-check
@@ -61,11 +61,11 @@ TOOL_PY="$(dirname "$(readlink -f "$(command -v scubiee)")")/python"; echo "$TOO
 > Do NOT use `packaging/uv-overrides-win-dml.txt` on macOS (Windows-only; it strips `onnxruntime`).
 
 - **[ ] PASS/FAIL** version 0.3.155.
-- **[ ] OBS** the `scubiee` symlink target and the chain behind `$TOOL_PY` — needed for §2.
+- **[ ] OBS** the `scubiee` symlink target and the chain behind `$TOOL_PY`, needed for §2.
 
 ---
 
-## 2. #2 — install identity on symlinked venvs (high)
+## 2. #2: install identity on symlinked venvs (high)
 
 ```bash
 scubiee setup 2>&1 | tee /tmp/scu_setup.log      # also watch the loaders (§6)
@@ -80,7 +80,7 @@ scubiee doctor 2>&1 | grep -iE "multiple_installs|binaries_match|expected"
 - **[ ] PASS/FAIL (negative)** a real second copy is still detected:
   `python3 -m venv /tmp/scu_venv && /tmp/scu_venv/bin/pip install -q scubiee==0.3.155`,
   then rerun the identity report from `$TOOL_PY`. It should flag the venv copy.
-  (Don't run `connect`/`setup` from the venv — it would try to consolidate.)
+  (Don't run `connect`/`setup` from the venv, it would try to consolidate.)
 - Code: `env_guard.current_python()` uses `Path(sys.executable).absolute()`.
   Mac-specific worry: a Homebrew/framework Python whose `sys.executable` already
   points outside the venv. Note what you see.
@@ -89,7 +89,7 @@ scubiee doctor 2>&1 | grep -iE "multiple_installs|binaries_match|expected"
 
 ---
 
-## 3. #10 + #1 — `wipe --all` speed and correctness (high, run after §7)
+## 3. #10 + #1: `wipe --all` speed and correctness (high, run after §7)
 
 Run this section **after** the batteries in §7 (it removes the install), then
 reinstall for §8. What differs on Mac:
@@ -109,7 +109,7 @@ reinstall for §8. What differs on Mac:
   engine is still killed (3b).
 - **Model caches.** MLX/HF model folders are also renamed aside; confirm they're
   on the same volume (`rename` across volumes fails and should fall back to an
-  in-place delete — note if that happens).
+  in-place delete, note if that happens).
 
 ### 3a. Clean wipe from home, timed
 ```bash
@@ -121,7 +121,7 @@ command -v scubiee || echo "scubiee gone"
 launchctl list | grep -i contextengine || echo "no launchd job"   # label: com.contextengine.supervisor
 ```
 - **[ ] PASS/FAIL** exit 0, final JSON `"audit": {"clean": true}`, `"next": "Machine is clean…"`.
-- **[ ] PASS/FAIL** wall time — Windows was 11.6 s from an empty folder, Linux 3.8 s
+- **[ ] PASS/FAIL** wall time, Windows was 11.6 s from an empty folder, Linux 3.8 s
   from a home holding a 300k-file `node_modules`. Report the Mac number.
 - **[ ] PASS/FAIL** no TCC privacy prompt appeared.
 - **[ ] PASS/FAIL** trash drained within a few seconds; no `sh` cleaner left behind
@@ -151,7 +151,7 @@ Unit: `PYTHONPATH=packages python3 -m pytest tests/test_wipe_speed.py tests/test
 
 ---
 
-## 4. #4 — `init` estimate on MLX/CoreML (high)
+## 4. #4: `init` estimate on MLX/CoreML (high)
 
 ```bash
 cat ~/.scubiee/embed_throughput.json 2>/dev/null || echo "no measured speed yet"
@@ -165,16 +165,16 @@ cd scu_req2 && time scubiee init .       # second estimate now uses the measured
 - **[ ] PASS/FAIL** after flask, `embed_throughput.json` holds a sane MLX chunk/s
   (it records only runs of 64+ fresh chunks).
 - **[ ] PASS/FAIL** the second estimate brackets requests' real time.
-- Reference (8-CPU Linux container): flask said ~5–9 min, took 5.4 min; requests
-  said ~4–6 min, took 3.8 min. On Apple Silicon expect much shorter times, under
+- Reference (8-CPU Linux container): flask said ~5-9 min, took 5.4 min; requests
+  said ~4-6 min, took 3.8 min. On Apple Silicon expect much shorter times, under
   a minute shown as "<1 min". **The risk:** setup's single-threaded calibration
   may badly misjudge MLX batch speed (estimate wildly high), or the
-  0.8–1.25× band may be wrong for Metal. Report estimate vs real for both repos.
+  0.8-1.25× band may be wrong for Metal. Report estimate vs real for both repos.
 - Code: `cli_ui.format_index_eta`, `workload.machine_embed_cps`, `incremental.scope_bytes`.
 
 ---
 
-## 5. #5 / #6 / #3 / #1 — quick Mac checks
+## 5. #5 / #6 / #3 / #1: quick Mac checks
 
 ```bash
 cd /tmp/scu_flask
@@ -198,7 +198,7 @@ scubiee search "helpers edit marker" | head -20; git checkout src/flask/helpers.
 
 ---
 
-## 6. L — loaders in real Mac terminals (medium)
+## 6. L: loaders in real Mac terminals (medium)
 
 Watch `scubiee setup`, `scubiee init`, `scubiee wipe --all` in **Terminal.app** and,
 if present, **iTerm2** (and Cursor's integrated terminal):
@@ -220,7 +220,7 @@ if present, **iTerm2** (and Cursor's integrated terminal):
 
 Use a checkout of this repo, **enrolled and indexed** (`scubiee init .` in the
 repo root), with the **installed tool's** Python (no `PYTHONPATH`). Write
-host-sim reports **outside the repo** — the default writes into
+host-sim reports **outside the repo**, the default writes into
 `docs/superpowers/plans/`, so the next run starts by re-indexing that report
 right when the locate calls are timed (this caused false Lane A failures on
 Windows).
@@ -239,19 +239,19 @@ Windows reference (0.3.155, this repo, DirectML, engine capped to 6/16 CPUs):
 
 | Phase / check | Budget | Windows |
 |---|---|---|
-| Lane A `map_first` (after 35 s settle) | ≤3 s | 781–1,045 ms |
-| Lane A `map_second` (new query) | ≤1 s | 962–979 ms — **thin margin** |
-| Lane A `pack_first` (= `map focus`, bare name) | ≤1 s | 116–117 ms (was 1,322 ms before #11) |
-| Lane A `expand_first` (served as `find`) | ≤1 s | 664–810 ms |
-| Lane A `post_idle_map` / `post_idle_pack` (after 120 s idle) | ≤1 s | 442–750 / 115–122 ms |
+| Lane A `map_first` (after 35 s settle) | ≤3 s | 781-1,045 ms |
+| Lane A `map_second` (new query) | ≤1 s | 962-979 ms, **thin margin** |
+| Lane A `pack_first` (= `map focus`, bare name) | ≤1 s | 116-117 ms (was 1,322 ms before #11) |
+| Lane A `expand_first` (served as `find`) | ≤1 s | 664-810 ms |
+| Lane A `post_idle_map` / `post_idle_pack` (after 120 s idle) | ≤1 s | 442-750 / 115-122 ms |
 | `warm_contract` | 6 checks | 6/6; warm 6.0 s; first map 1,322 ms; map after idle 426 ms |
 | `ship_check` | ok | ok, 3 tools, 0 errors |
 
 - **[ ] PASS/FAIL** Lane A exit 0 with every phase `ok=True`, both runs. Paste the
   `phase …: ok= ms=` lines.
 - **[ ] PASS/FAIL** warm_contract `"failed": 0`; ship_check `"ok": true`.
-- **[ ] OBS — the open question from Windows:** a `find` with a new query is
-  260–600 ms steady but 800–1,000 ms in the first minute after the engine starts,
+- **[ ] OBS, the open question from Windows:** a `find` with a new query is
+  260-600 ms steady but 800-1,000 ms in the first minute after the engine starts,
   with spikes to ~2.8 s while the engine hot-syncs a changed file (GIL contention
   in the engine). Is Apple Silicon comfortably under 1 s, or equally tight?
   If tight, run the engine search directly and report `timings` (`embed_ms`,
@@ -279,12 +279,12 @@ Then reinstall + `setup` if you want the Mac left in a working state, and say wh
 
 ---
 
-## 9. Deliverable — `docs/scubiee-macos-findings-0.3.155.md`
+## 9. Deliverable: `docs/scubiee-macos-findings-0.3.155.md`
 
 1. **Environment:** macOS version, chip, backend (MLX/CoreML/CPU), Python, uv, install method.
 2. **§7 batteries first:** every phase's ok/ms for both Lane A runs, warm_contract,
    ship_check, plus the `find` latency answer.
-3. **Per-delta results** §2–§6: PASS/FAIL/OBS/N-A with real output. Lead with
+3. **Per-delta results** §2, §6: PASS/FAIL/OBS/N-A with real output. Lead with
    §3 (wipe) and §2 (install identity).
 4. **Bug register** (table): ID, severity, area, summary, root cause, fix (commit
    on your branch), status.
@@ -300,7 +300,7 @@ Then reinstall + `setup` if you want the Mac left in a working state, and say wh
 
 ---
 
-## Appendix — key facts
+## Appendix: key facts
 - **Version:** 0.3.155 on PyPI. **Engine:** `127.0.0.1:8765`.
 - **Shipped MCP tools:** `map` (config `find`|`focus`), `gate`, `status`.
 - **Backends:** Mac MLX (Metal) on Apple Silicon, CoreML/CPU on Intel; Windows DirectML.

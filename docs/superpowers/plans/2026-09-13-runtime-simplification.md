@@ -54,7 +54,7 @@
 - [ ] **Step 1: Add dependencies**
 
 ```toml
-# pyproject.toml dependencies — append:
+# pyproject.toml dependencies - append:
 #   "httpx>=0.27",
 #   "tenacity>=8.2",
 ```
@@ -103,7 +103,7 @@ def test_post_json_does_not_retry_by_default():
 - [ ] **Step 3: Implement `engine_http.py` (sync Client)**
 
 ```python
-# packages/pipeline/engine_http.py — sketch
+# packages/pipeline/engine_http.py - sketch
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential_jitter, retry_if_exception_type
 
@@ -194,7 +194,7 @@ Behavior:
 - `serve`: if READY return; else join remaining deadline; for `need_ast` hydrate with bake_on_miss=True
 - `leave`: stop heartbeat; unregister; do not spawn
 
-- [ ] **Step 3: Status fields come only from `snapshot()`** — ban hand-rolled contradictory warm flags
+- [ ] **Step 3: Status fields come only from `snapshot()`**, ban hand-rolled contradictory warm flags
 
 - [ ] **Step 4: Tests pass**
 
@@ -215,7 +215,7 @@ Run: `pytest tests/test_runtime_controller.py -q`
 - Duplicate `_attach_warm_coordinator` body (move into controller)
 - Separate `start_attach_warm_pipeline` public API → alias to `RuntimeController.ensure(..., "attach")`
 
-- [ ] **Step 1: Update lazy tests — attach warm default on; `CTX_MCP_ATTACH_WARM=0` for pure lazy**
+- [ ] **Step 1: Update lazy tests, attach warm default on; `CTX_MCP_ATTACH_WARM=0` for pure lazy**
 
 - [ ] **Step 2: Bridge `main`:**
 
@@ -253,7 +253,7 @@ Run: `pytest tests/test_attach_warm_pipeline.py tests/test_mcp_lazy_warm.py test
 
 - [ ] **Step 1: `warm_ready` iff snapshot.engine_ok and snapshot.embedder_loaded**
 
-- [ ] **Step 2: Regression — bridge client holds demote for simulated 2h**
+- [ ] **Step 2: Regression, bridge client holds demote for simulated 2h**
 
 - [ ] **Step 3: Never set warm_ready true when health embedder_loaded false**
 
@@ -267,7 +267,7 @@ Run: `pytest tests/test_attach_warm_pipeline.py tests/test_mcp_lazy_warm.py test
 - Modify: `docs/architecture/scubiee-reliability-issues.md` (R13)
 - Modify: `scripts/_probe_mcp_reliability_full.py` assert `warm_ready` consistent
 
-- [ ] **Step 1: Release notes — one lifecycle owner; httpx+tenacity; AUTO_WARM alias**
+- [ ] **Step 1: Release notes, one lifecycle owner; httpx+tenacity; AUTO_WARM alias**
 
 - [ ] **Step 2: `uv tool install --force . --refresh`**
 
@@ -281,7 +281,7 @@ python scripts/_probe_mcp_reliability_full.py
 
 Expected: all PASS; map2 ≤300ms; pack2 ≤800ms; no status contradiction.
 
-- [ ] **Step 4: Manual — reload Cursor MCP; gate/status/map once**
+- [ ] **Step 4: Manual, reload Cursor MCP; gate/status/map once**
 
 ---
 

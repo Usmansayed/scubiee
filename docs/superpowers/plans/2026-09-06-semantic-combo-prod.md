@@ -1,4 +1,4 @@
-# Semantic combo bakeoff — `verify_prod.json`
+# Semantic combo bakeoff: `verify_prod.json`
 
 Cases: 10 · Variants: 55 · Backend: `real:fastembed` · 10.58s
 

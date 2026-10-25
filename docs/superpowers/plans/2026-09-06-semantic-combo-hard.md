@@ -1,4 +1,4 @@
-# Semantic combo bakeoff — `verify_hard.json`
+# Semantic combo bakeoff: `verify_hard.json`
 
 Cases: 50 · Variants: 55 · Backend: `real:fastembed` · 19.16s
 
@@ -32,9 +32,9 @@ Cases: 50 · Variants: 55 · Backend: `real:fastembed` · 19.16s
 
 ## Verdict
 
-Formal keep-gate listed `poly_embed` (must↑ + F1↑ + prec flat), but **hard accuracy fell 0.42 → 0.26** — not a production win.
+Formal keep-gate listed `poly_embed` (must↑ + F1↑ + prec flat), but **hard accuracy fell 0.42 → 0.26**, not a production win.
 
-Raw must-rec leaders (`hybrid_teleport`, aggressive `embed_teleport_*`) **buy recall by dumping precision** (prec 0.23–0.64) and fail the keep gate.
+Raw must-rec leaders (`hybrid_teleport`, aggressive `embed_teleport_*`) **buy recall by dumping precision** (prec 0.23-0.64) and fail the keep gate.
 
 ### What we actually ran (55 variants × 50 hard cases)
 

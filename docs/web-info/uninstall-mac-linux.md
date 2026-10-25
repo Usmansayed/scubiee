@@ -64,7 +64,7 @@ Removes that repo’s `.scubiee/id.json`, Cursor rule snippet, and index store e
 
 ```bash
 rm -rf ~/.scubiee
-# edit ~/.cursor/mcp.json — remove "scubiee" from mcpServers
+# edit ~/.cursor/mcp.json - remove "scubiee" from mcpServers
 uv tool uninstall scubiee
 ```
 

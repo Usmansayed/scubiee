@@ -1,12 +1,12 @@
-# Scubiee-first context collect — map→pack seed selection
+# Scubiee-first context collect: map→pack seed selection
 
 **Agent:** [Scubiee collect](8a6501bd-e5f2-4604-acdb-d7de7ce69c5e)  
 **Mode:** Scubiee CLI map→pack→expand + guided Grep/Read  
-**Status:** complete — Native twin done: [Native collect](d0320302-e9f5-4ec6-a3bd-968da20979bb). Compare: `2026-09-06-compare-scubiee-vs-native-seed-pick.md`.
+**Status:** complete, Native twin done: [Native collect](d0320302-e9f5-4ec6-a3bd-968da20979bb). Compare: `2026-09-06-compare-scubiee-vs-native-seed-pick.md`.
 
 ## Work prompt
 
-Improve map→pack seed selection so pack prefers real `packages/` public functions/methods — not empty file-level cards, not private helpers (`_templates_dir`, `_env_flag`, etc.).
+Improve map→pack seed selection so pack prefers real `packages/` public functions/methods, not empty file-level cards, not private helpers (`_templates_dir`, `_env_flag`, etc.).
 
 ## Efficiency (self-reported)
 
@@ -22,5 +22,5 @@ Improve map→pack seed selection so pack prefers real `packages/` public functi
 
 ## Spot-check (parent)
 
-- `pick_suggested_seed` / `resolve_seed_node` / `_SKIP_SEED_SYMBOLS={"ROOT","root"}` present in `context_trace.py` ~358–525 — claims align.
+- `pick_suggested_seed` / `resolve_seed_node` / `_SKIP_SEED_SYMBOLS={"ROOT","root"}` present in `context_trace.py` ~358-525, claims align.
 - Ladder reproduced: map → empty symbol `locate_cli.py`; bare pack → `::_root`.

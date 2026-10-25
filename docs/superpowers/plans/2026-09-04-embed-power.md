@@ -1,4 +1,4 @@
-# EmbedPower — embeddings inside the tracer (2026-09-04)
+# EmbedPower: embeddings inside the tracer (2026-09-04)
 
 ## What "oracle" meant (and why it felt like cheating)
 
@@ -8,11 +8,11 @@
 
 Embeddings are not a pre-step. They decide:
 
-1. **Soft seeds** — relative peak `cos(query, node)` (CodeRank via FastEmbed/DML)
-2. **Edge capacity** — `struct_w × (floor + (1-floor)·σ(affinity)) × coherence`
-3. **Trusted frontier** — once accepted, callees keep a high floor so generic `decode`/`resolve` survive
-4. **Hub contrast** — mean embedding of high-degree nodes; residual `aff − λ·hub` kills logger/http seeds
-5. **LSP channels** — registry/inheritance still exist, capacity-gated
+1. **Soft seeds**: relative peak `cos(query, node)` (CodeRank via FastEmbed/DML)
+2. **Edge capacity**: `struct_w × (floor + (1-floor)·σ(affinity)) × coherence`
+3. **Trusted frontier**: once accepted, callees keep a high floor so generic `decode`/`resolve` survive
+4. **Hub contrast**: mean embedding of high-degree nodes; residual `aff − λ·hub` kills logger/http seeds
+5. **LSP channels**: registry/inheritance still exist, capacity-gated
 
 No path-faction tables and no synonym expand lists inside EmbedPower.
 
@@ -46,4 +46,4 @@ Family heatmap agreement (paraphrases):
 
 - Real CodeRank embeddings **inside** the cut beat hashed-vector map and beat BM25 map on this 28-prompt board.
 - End-to-end EmbedPower (~0.76 F1) is the honest number. Oracle PolyTrace (~0.96) is the expansion upper bound.
-- Remaining gap is soft-seed ranking on underspecified prompts — next lever is FAISS over the whole repo index + multi-seed fusion with residual voting, not more path heuristics.
+- Remaining gap is soft-seed ranking on underspecified prompts, next lever is FAISS over the whole repo index + multi-seed fusion with residual voting, not more path heuristics.

@@ -9,9 +9,9 @@ all (native Read/Grep/Glob/Edit only)?**
 - **Production prompt under test**: `RULES['map_v3'] == MAP_V3_U` (the "ultimate
   hybrid"). rules=331 tok (<350), instructions=1111 tok (<2000), combined 1442.
 - **Arms**:
-  - `without` — native tools only, no MCP. Tools: Read/Grep/Glob/Edit/Write/TodoWrite.
-  - `map_v3`  — same native tools + the Scubiee map-v3 bridge + the U prompt appended to CLAUDE.md.
-- **Model**: claude-sonnet (harness default). **No Bash** in either arm — locate+edit
+  - `without`: native tools only, no MCP. Tools: Read/Grep/Glob/Edit/Write/TodoWrite.
+  - `map_v3`: same native tools + the Scubiee map-v3 bridge + the U prompt appended to CLAUDE.md.
+- **Model**: claude-sonnet (harness default). **No Bash** in either arm, locate+edit
   only; the hidden oracle does verification, removing the pytest/shell confound.
 - **Snapshot**: full repo subtree (packages + tests + docs + scripts) copied per cell,
   git baseline, reset between cells. merkle.py + freshness.py always present.
@@ -24,15 +24,15 @@ by `FreshnessReport` whose `to_dict()` lives in packages/pipeline/freshness.py. 
 correct, natural implementation of each task MUST add an accessor on the diff type
 (merkle.py) AND surface it in the report dict (freshness.py).
 
-- **MF1 `total_changed_field`** — expose a single total-changed count = plain
+- **MF1 `total_changed_field`**: expose a single total-changed count = plain
   `len(added)+len(modified)+len(removed)` as a reusable accessor on the diff, then
   surface it in the report dict. Oracle uses an overlap trick so the plain SUM is
   provably distinct from the pre-existing `changed_count` (which is a set-union), i.e.
   the task cannot be satisfied by the field that already exists. Oracle is 3/3 strict.
-- **MF2 `root_hash_fingerprint`** — expose a short 12-char fingerprint of the content
+- **MF2 `root_hash_fingerprint`**: expose a short 12-char fingerprint of the content
   root hash as a reusable accessor on the diff, surface it in the report dict, keep the
   full hash. Oracle grades 2/3 here because the lenient backwards-compat check ("full
-  hash still present") is not required by the baseline dict — identical for both arms,
+  hash still present") is not required by the baseline dict, identical for both arms,
   so it does not bias the comparison.
 
 ### Oracle discrimination (proven offline, no AI)
@@ -47,14 +47,14 @@ read through to the dict (freshness.py).
 
 ## Results (live, n=2)
 
-### MF1 — total_changed_field
+### MF1: total_changed_field
 
 | arm | tok mean | calls | map | grep | read | edits | success | oracle |
 |-----|---------:|------:|----:|-----:|-----:|------:|:-------:|:------:|
 | without | **211,608** | 7.0 | 0 | 2.5 | 1.5 | 2 | 2/2 | 1.0 |
 | map_v3  | 226,242 | 7.0 | 2.0 | 0 | 1.0 | 2 | 2/2 | 1.0 |
 
-### MF2 — root_hash_fingerprint
+### MF2: root_hash_fingerprint
 
 | arm | tok mean | calls | map | grep | read | edits | success | oracle |
 |-----|---------:|------:|----:|-----:|-----:|------:|:-------:|:------:|
@@ -63,13 +63,13 @@ read through to the dict (freshness.py).
 
 ## Verdict (honest)
 
-**Correctness: a tie — both arms solved both tasks every time (8/8 cells, correct
+**Correctness: a tie, both arms solved both tasks every time (8/8 cells, correct
 2-file edits in all).** On these well-specified, 2-file-seam tasks, Scubiee is not
 required for the agent to get the right answer; a capable native agent finds the
 `SyncDiff`/`FreshnessReport` seam with Grep + Read.
 
 **Efficiency: task-dependent, net slight win for Scubiee, not decisive at n=2.**
-- MF2: map_v3 was clearly leaner — **222k vs 276k tok (~19% fewer)**, 7 vs 8.5 calls,
+- MF2: map_v3 was clearly leaner, **222k vs 276k tok (~19% fewer)**, 7 vs 8.5 calls,
   and it reached the seam with 2 map calls and **zero** file reads on the clean rep.
   The native arm spent 2.5-3 reads + 3 greps hunting the two files.
 - MF1: the native arm was actually a touch cheaper (**212k vs 226k**, ~7% ). Here Grep
@@ -79,7 +79,7 @@ required for the agent to get the right answer; a capable native agent finds the
   overall**, driven entirely by MF2.
 
 **Behavioral signal (consistent with the whole experiment):** the U prompt routes the
-agent to `map` and suppresses the grep-shotgun — map_v3 did 0 grep on MF1 and reached
+agent to `map` and suppresses the grep-shotgun, map_v3 did 0 grep on MF1 and reached
 MF2 with 0 reads once. When the target is a plain literal/known symbol (MF1), U
 correctly does NOT save calls over native Grep, matching U's own "needles -> Grep"
 rule; the benefit shows up when the seam is more semantic (MF2's "short fingerprint of
@@ -103,7 +103,7 @@ harder-to-locate seams or cross-module discovery, not tidy 2-file edits.
 Pulled the recorded tool traces for both arms. The map_v3 arm's *trajectory* was
 actually cleaner than native, yet it cost the same or slightly more tokens. Reasons:
 
-**MF1 (literal/greppable target) — map trace (both reps identical):**
+**MF1 (literal/greppable target), map trace (both reps identical):**
 ```
 ToolSearch select:mcp__scubiee__map   (60c)   <- loads the MCP tool def = 1 extra API turn
 MAP find  "freshness report dict added modified removed diff" -> 1912c
@@ -111,7 +111,7 @@ MAP focus                                       -> 3661c
 Read  (one file)                                -> 5669c
 Edit ; Edit                                     (2-file edit)
 ```
-**MF1 — native trace (winning rep r2):**
+**MF1, native trace (winning rep r2):**
 ```
 Grep "added.*modified.*removed|freshness"       -> 732c
 Read (one 14k file)                              -> 14010c
@@ -120,21 +120,21 @@ Edit ; Edit
 ```
 
 Three fixed costs the WITH arm pays that native never does:
-1. **ToolSearch tax** — a whole extra API round-trip just to load `map`'s definition
+1. **ToolSearch tax**: a whole extra API round-trip just to load `map`'s definition
    (each round-trip re-sends the full context).
 2. **The 1442-token U prompt** is appended to CLAUDE.md and re-sent on all ~7 turns
    (~10k tokens of pure prompt overhead across the run).
-3. **Richer map payload** — find(1912) + focus(3661) = ~5.6k of semantic context the
+3. **Richer map payload**: find(1912) + focus(3661) = ~5.6k of semantic context the
    agent did not need, because the target symbols (`added/modified/removed`, `SyncDiff`,
    `to_dict`) are plain literals that Grep resolves in one hit.
 
-MF1's target is a **needle** — U's own rule says "needles -> Grep." The WITH arm had
+MF1's target is a **needle**, U's own rule says "needles -> Grep." The WITH arm had
 `map` in hand and used it where grep was strictly cheaper. The map calls weren't wrong,
 they just had nothing to locate, so their fixed cost was not repaid.
 
-**Contrast — MF2 (semantic target "short fingerprint of the content hash", no literal):**
+**Contrast, MF2 (semantic target "short fingerprint of the content hash", no literal):**
 - map_v3 r1: `find` -> `focus` handed over BOTH file bodies; agent edited with
-  **0 grep, 0 Read**, 6 calls, **185k tok** — map fully replaced the hunt.
+  **0 grep, 0 Read**, 6 calls, **185k tok**, map fully replaced the hunt.
 - native r2: 3 grep + 3 Read, 9 calls, **296k tok**.
 
 **The lever:** map wins exactly when (a) the target is semantic enough that Grep needs
@@ -142,4 +142,4 @@ several tries, AND (b) the agent trusts the `focus` payload and skips native rea
 loses when the target is greppable (MF1) or when the agent redundantly greps after
 mapping (MF2 r2: 2 extra greps pushed it to 260k). The first is inherent to easy
 literal tasks; the second ("don't re-grep packed ground") is prompt-tunable and is
-already a FAIL rule in the Scubiee instructions — the agent just didn't always obey it.
+already a FAIL rule in the Scubiee instructions, the agent just didn't always obey it.

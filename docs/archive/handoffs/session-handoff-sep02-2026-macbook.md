@@ -1,7 +1,7 @@
 # Session Handoff: MacBook CLI Bug Hunt + 0.3.11 / 0.3.12
 
 **Date:** September 2, 2026  
-**Machine:** Apple Silicon MacBook (MLX ~63–112 t/s)  
+**Machine:** Apple Silicon MacBook (MLX ~63-112 t/s)  
 **Repo:** `https://github.com/Usmansayed/new-context-engine.git`  
 **Remote:** `upstream` → `new-context-engine`  
 **Commits:** `f7e1d21` (0.3.11), `fe5b73e` (0.3.12)  
@@ -10,7 +10,7 @@
 
 ---
 
-## MacBook — start here
+## MacBook: start here
 
 ```bash
 cd ~/path/to/new-context-engine
@@ -28,13 +28,13 @@ python scripts/run_cli_combination_tests.py \
   --json /tmp/cli_combo.json
 ```
 
-**Do not set `CTX_HOME=/tmp/...` for normal use** — production CLI refuses polluted temp homes (exit 1). Combination tests use temp dirs under `/var/folders/...` via the runner, or set `CTX_ALLOW_TEST_HOME=1` for deliberate isolation.
+**Do not set `CTX_HOME=/tmp/...` for normal use**: production CLI refuses polluted temp homes (exit 1). Combination tests use temp dirs under `/var/folders/...` via the runner, or set `CTX_ALLOW_TEST_HOME=1` for deliberate isolation.
 
 ---
 
 ## What this session was about
 
-End-to-end **real `scubiee` CLI** testing across lifecycle, stop/resume, connect, wipe, and edge cases — not `python -m pipeline` imports. Goal: find user-facing bugs before release.
+End-to-end **real `scubiee` CLI** testing across lifecycle, stop/resume, connect, wipe, and edge cases, not `python -m pipeline` imports. Goal: find user-facing bugs before release.
 
 **Method:**
 1. Built wheel from source and installed into a clean venv (not editable `.venv` only).
@@ -94,26 +94,26 @@ git push upstream main && git tag vX.Y.Z && git push upstream vX.Y.Z
 
 ## Real CLI test results (Sep 2 Mac)
 
-### Combination matrix — **39/39 PASS** (~90s)
+### Combination matrix: **39/39 PASS** (~90s)
 
 ```bash
 python scripts/run_cli_combination_tests.py \
   --cli /path/to/scubiee --repo /tmp/scubiee-tiny --json results.json
 ```
 
-Groups: readonly (R1–R4), global stop (G1–G13), engine-only stop (E1–E7), connect (C1–C3), lifecycle (L1–L6), wipe (W1–W3), recovery (X1–X8), init combos (I1–I2), disconnect (D1).
+Groups: readonly (R1, R4), global stop (G1, G13), engine-only stop (E1, E7), connect (C1, C3), lifecycle (L1, L6), wipe (W1, W3), recovery (X1, X8), init combos (I1, I2), disconnect (D1).
 
-### Connect + MCP merge — PASS
+### Connect + MCP merge: PASS
 
 | Script | Result |
 |--------|--------|
-| `bash tests/_e2e_run_connect.sh` | C1–C4 dry-run OK |
+| `bash tests/_e2e_run_connect.sh` | C1, C4 dry-run OK |
 | `python tests/_e2e_mcp_merge_experiment.py` | 13/13 tools |
 | `bash tests/_e2e_mcp_merge_experiment.sh` | cursor, claude, codex, opencode OK |
 
 ### Bug-hunt script (new)
 
-`tests/_cli_bughunt.sh` — edge cases (invalid args, pause/activate, never-index, global stop, symlink paths).  
+`tests/_cli_bughunt.sh`: edge cases (invalid args, pause/activate, never-index, global stop, symlink paths).  
 Use `$HOME` sandbox, not `/tmp` CTX_HOME. Run:
 
 ```bash

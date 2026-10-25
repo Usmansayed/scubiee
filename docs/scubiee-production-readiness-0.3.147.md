@@ -1,12 +1,12 @@
-# Scubiee 0.3.147 — production-readiness validation (macOS / Apple Silicon)
+# Scubiee 0.3.147: production-readiness validation (macOS / Apple Silicon)
 
 _Platform: macOS 26.5.2, Apple Silicon (M5, arm64), MLX/Metal, Python 3.12.14 /
 numpy 2.5.3. Method: clone real GitHub repos spanning languages, sizes, and
 structures; run every feature and configuration against each; record PASS/FAIL._
 
-## Validation matrix — every feature × diverse codebases
+## Validation matrix: every feature × diverse codebases
 
-Codebases (8, 244–8624 chunks, varied structure incl. header-only C, large TS
+Codebases (8, 244-8624 chunks, varied structure incl. header-only C, large TS
 monorepo, classic Ruby gem, C++ test framework):
 
 | Repo | Lang | chunks | init | crash | gate | status | focus_bare | focus_qual | find | sync a/m/d |
@@ -24,7 +24,7 @@ Totals: **init 8/8 ok, 0 crashes; gate 8/8; status 8/8; focus_bare 64/64;
 focus_qual 64/64; find 62/64; sync add/modify/delete 8/8 each.**
 
 The 2 `find` misses (Go, Rust: 7/8) are semantic-recall variance on a single
-query phrasing — those symbols resolve correctly via `focus`. `find` is a
+query phrasing, those symbols resolve correctly via `focus`. `find` is a
 ranked semantic search, not an exact lookup; this is expected behavior, not a
 defect.
 
@@ -37,7 +37,7 @@ defect.
   (focus resolved `mlx_native_guard` with full wiring; find surfaced
   `map_lang_outline`).
 - **Sync lanes:** add (new file embedded + resolvable), modify (new symbol in
-  changed file resolvable), delete (symbol pruned) — consistent across all 8.
+  changed file resolvable), delete (symbol pruned), consistent across all 8.
 - **Lifecycle:** init-first→connect-later and connect-first→init-later both
   succeed with no crash; remove→re-init works.
 - **CLI:** `scubiee search` (relevant hits), `scubiee status`, `scubiee gate`.
@@ -50,7 +50,7 @@ Java, C, C++, Ruby, C#. All with a bundled tree-sitter grammar.
 
 ## Critical issues found and fixed this cycle
 
-1. **Fresh-init concurrent-MLX segfault** (was ~1/3–1/2 of inits) — a
+1. **Fresh-init concurrent-MLX segfault** (was ~1/3-1/2 of inits): a
    cross-thread race between Accelerate LAPACK (`turbo_quant` qr) and the prewarm
    MLX embed. Fixed with a shared native-op guard + GC-disable during MLX build
    + MLX-first backend choice. Now 0 crashes across all repos and stress loops.

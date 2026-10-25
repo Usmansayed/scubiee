@@ -1,4 +1,4 @@
-# Retrieval orchestration — decide / implement / defer
+# Retrieval orchestration: decide / implement / defer
 
 **Date:** 2026-08-03  
 **Context:** ChatGPT advice (GRASP, A-RAG, VecTree, confidence, graph expand) vs current Context Engine stage.
@@ -7,7 +7,7 @@
 
 ```text
 Query
-  → (optional blind English polish — no repo cheats)
+  → (optional blind English polish - no repo cheats)
   → CodeRankEmbed query vec (FastEmbed + DML/CUDA/CPU)
   → Conductor fusion:
        BM25  ⊕  dense(FAISS+TurboQuant)  ⊕  Graphify affinity
@@ -30,19 +30,19 @@ Query
 
 | Advice | Already have? | Decision |
 |--------|---------------|----------|
-| **GRASP** — plan which retriever | `query_state` / `path_likeness` / `retrieve_R_complex` (SOFT→Hippo, SYMBOL→D) | **IMPLEMENT now:** wire `engine.search` → `R_complex` (was stuck on `D_rerank`) |
-| **Confidence stop** | `channel_peakiness`, gated floor | **Thin slice later;** measure first — early-stop dense-only risks soft misses |
+| **GRASP**, plan which retriever | `query_state` / `path_likeness` / `retrieve_R_complex` (SOFT→Hippo, SYMBOL→D) | **IMPLEMENT now:** wire `engine.search` → `R_complex` (was stuck on `D_rerank`) |
+| **Confidence stop** | `channel_peakiness`, gated floor | **Thin slice later;** measure first, early-stop dense-only risks soft misses |
 | **A-RAG tools** | MCP `search_code` / `status` / `sync` | **Defer:** split `keyword_search` / `graph_expand` after planner proves value |
 | **VecTree hierarchy** | AST chunks + symbols already | **Defer:** big index reshape; current chunk+D enough for stage |
 | **Adaptive chunk size** | `max_chars` / fast mode | **Defer** |
 | **Better adaptive graph hops** | fixed `neighbor_files` + Hippo dual-seed | **Partial via R_complex Hippo on SOFT;** deeper adaptive hops later |
-| **Full GraphRAG** | — | **Do not implement** |
+| **Full GraphRAG** | - | **Do not implement** |
 
 ## Implement this PR slice
 
 1. `WarmSearchEngine.search` calls `retrieve_R_complex` (env override `CTX_RETRIEVE=D|R_complex`).  
 2. Record `query_state` + retrieve source in `_last_timings`.  
-3. A/B bench: soft queries + hard queries — quality top-5 + latency D vs R_complex.
+3. A/B bench: soft queries + hard queries, quality top-5 + latency D vs R_complex.
 
 ## Success criteria
 
@@ -65,9 +65,9 @@ Query
 1. “notice repo changed without scanning…” → Graphify `detect.py`/`watch.py` seeds dominate; Merkle/root_probe not recovered.  
 2. “search usable while index catching up…” → generic BM25/dense index modules; not `hot_patch`.
 
-**Conclusion:** Wiring R_complex is still correct (real SOFT→Hippo path). Quality win needs better soft seeds / confidence retry — not Full GraphRAG.
+**Conclusion:** Wiring R_complex is still correct (real SOFT→Hippo path). Quality win needs better soft seeds / confidence retry, not Full GraphRAG.
 
-## Slice 2 — `R_plan` (implement + test)
+## Slice 2: `R_plan` (implement + test)
 
 1. **BM25-lead** when `query_state=SYMBOL` and `path_likeness ≥ 0.55` (`retrieve_D_bm25_lead`).
 2. Else `R_complex`; if SOFT and top-1/top-2 score margin flat → **keyword/bigram BM25 probe** (query tokens only) → merge pool → D rerank.

@@ -4,10 +4,10 @@ Found by running real GitHub repos across 10 languages through a full
 `init` → `focus`/`find` cycle (the tiny in-tree fixtures never exercised the
 warm/prewarm concurrency, so these only surfaced on real repos).
 
-## Bug 1 (critical): fresh `init` segfaults ~1/3–1/2 of the time on Apple Silicon
+## Bug 1 (critical): fresh `init` segfaults ~1/3-1/2 of the time on Apple Silicon
 
 **Symptom.** On a fresh `init` of a real repo, the engine SIGSEGV'd during warm.
-The faulting frame varied across runs — all symptoms of ONE cross-thread native
+The faulting frame varied across runs, all symptoms of ONE cross-thread native
 race, not three bugs:
 - `numpy.linalg.qr` inside `turbo_quant._random_orthogonal` (Accelerate LAPACK)
 - `CodeRankMLX.__init__` building the MLX model (`Garbage-collecting` in frame)
@@ -36,7 +36,7 @@ not MLX-vs-Accelerate. A GC pass firing mid-construction and a concurrent heavy
    pure risk.
 
 **Result.** 10/10 clean inits on the Python repo and 6/6 on the JS repo that
-previously crashed ~1/3–1/2 of the time; 0 segfaults across all 8 sim repos.
+previously crashed ~1/3-1/2 of the time; 0 segfaults across all 8 sim repos.
 
 ## Bug 2: `focus` could not resolve a symbol defined only in a test file
 
@@ -51,9 +51,9 @@ keeps test hits. Python focus went 19/26 → 26/26 on the cachetools sim repo.
 C `struct __attribute__((__packed__)) Name` and Rust `mod x;` were missed by the
 keyword/decl grep patterns even though the outline captured them. Added a
 plain-identifier grep fallback that collects candidate files and confirms each
-via the (authoritative) multi-language outline — recall without false positives.
+via the (authoritative) multi-language outline, recall without false positives.
 Fixed C `sdshdr5`. (Ultra-common 2-char names like Rust `io`, which flood any
-text search, still resolve only by qualified `file::symbol` — an acceptable
+text search, still resolve only by qualified `file::symbol`, an acceptable
 limit; `focus_qual` works.)
 
 ## Bug 4: `focus` raised when the engine was unreachable
